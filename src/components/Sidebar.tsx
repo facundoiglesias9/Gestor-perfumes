@@ -20,7 +20,11 @@ import {
     Wallet,
     Shield,
     ShoppingBag,
-    Printer
+    Printer,
+    ClipboardList,
+    Percent,
+    PieChart,
+    StickyNote
 } from "lucide-react";
 import ThemeToggle from "@/components/ThemeToggle";
 
@@ -51,6 +55,7 @@ const menuSections = [
         items: [
             { href: "/caja", label: "Caja Unificada", icon: Wallet },
             { href: "/pedidos-solicitud", label: "Solicitud de Pedidos", icon: ShoppingBag },
+            { href: "/historial-compras", label: "Historial de Compras", icon: ClipboardList },
             { href: "/ventas-revendedores", label: "Ventas Revendedores", icon: ListTree },
         ]
     },
@@ -63,11 +68,20 @@ const menuSections = [
             { href: "/generos", label: "Géneros", icon: FlaskConical },
             { href: "/usuarios", label: "Gestión de Usuarios", icon: Users },
             { href: "/categoria-usuarios", label: "Categoría de Usuarios", icon: Tags },
+            { href: "/porcentaje-ganancia", label: "Porcentaje de Ganancia", icon: Percent },
+        ]
+    },
+    {
+        title: "Herramientas (Revendedores)",
+        key: "tools",
+        items: [
+            { href: "/dashboard-mayorista", label: "Dashboard", icon: PieChart },
+            { href: "/notas", label: "Notas", icon: StickyNote },
         ]
     }
 ];
 
-export default function Sidebar() {
+export default function Sidebar({ onClose }: { onClose?: () => void }) {
     const pathname = usePathname();
     const { currentUser, logout } = useAppContext(); // Destructured currentUser and logout
     const [openSection, setOpenSection] = useState<string | null>(null);
@@ -85,7 +99,7 @@ export default function Sidebar() {
                 return item.href === "/minorista" || item.href === "/pedidos-solicitud";
             }
             if (currentUser.role === "mayorista") {
-                return item.href === "/" || item.href === "/pedidos-solicitud";
+                return ["/", "/pedidos-solicitud", "/historial-compras", "/dashboard-mayorista", "/notas"].includes(item.href);
             }
             return false;
         });
@@ -94,9 +108,9 @@ export default function Sidebar() {
     }).filter(section => section.items.length > 0);
 
     return (
-        <aside className="w-[300px] bg-white dark:bg-[#1e293b] border-r border-slate-200 dark:border-slate-800 flex flex-col shadow-[4px_0_24px_rgba(0,0,0,0.02)] z-10 relative transition-colors duration-300">
+        <aside className="w-[300px] h-full bg-white dark:bg-[#1e293b] border-r border-slate-200 dark:border-slate-800 flex flex-col shadow-[4px_0_24px_rgba(0,0,0,0.02)] z-10 relative transition-colors duration-300">
             {/* Logo Area */}
-            <div className="h-24 flex items-center justify-between px-8 border-b border-slate-100 dark:border-slate-800/80">
+            <div className="h-24 flex shrink-0 items-center justify-between px-8 border-b border-slate-100 dark:border-slate-800/80">
                 <div className="flex items-center gap-3 text-indigo-600 dark:text-indigo-400 font-extrabold text-2xl tracking-tighter">
                     <div className="relative p-2 rounded-xl bg-slate-50 dark:bg-slate-900 shadow-sm border border-slate-200 dark:border-slate-800">
                         <svg width="32" height="32" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-8 h-8">
@@ -125,6 +139,7 @@ export default function Sidebar() {
                     <div className="space-y-1.5 mb-6">
                         <Link
                             href="/dashboard"
+                            onClick={onClose}
                             className={`group flex items-center gap-3.5 px-4 py-3.5 rounded-2xl font-bold transition-all border ${pathname === "/dashboard"
                                 ? "bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 border-indigo-100/50 dark:border-indigo-500/20"
                                 : "text-slate-600 dark:text-slate-400 border-transparent hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-slate-100"
@@ -160,6 +175,7 @@ export default function Sidebar() {
                                         <Link
                                             key={itemIdx}
                                             href={item.href}
+                                            onClick={onClose}
                                             className={`group flex items-center gap-3.5 px-4 py-3.5 rounded-2xl font-bold transition-all border ${isActive
                                                 ? "bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 border-indigo-100/50 dark:border-indigo-500/20"
                                                 : "text-slate-600 dark:text-slate-400 border-transparent hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-slate-100"
@@ -186,6 +202,7 @@ export default function Sidebar() {
                                 <Link
                                     key={itemIdx}
                                     href={item.href}
+                                    onClick={onClose}
                                     className={`group flex items-center gap-3.5 px-4 py-3.5 rounded-2xl font-bold transition-all border ${isActive
                                         ? "bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 border-indigo-100/50 dark:border-indigo-500/20"
                                         : "text-slate-600 dark:text-slate-400 border-transparent hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-slate-100"
@@ -206,6 +223,7 @@ export default function Sidebar() {
                     <div className="space-y-1.5 mt-6 border-t border-slate-100 dark:border-slate-800/80 pt-6">
                         <Link
                             href="/generacion-etiquetas"
+                            onClick={onClose}
                             className={`group flex items-center gap-3.5 px-4 py-3.5 rounded-2xl font-bold transition-all border ${pathname === "/generacion-etiquetas"
                                 ? "bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 border-indigo-100/50 dark:border-indigo-500/20"
                                 : "text-slate-600 dark:text-slate-400 border-transparent hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-slate-100"

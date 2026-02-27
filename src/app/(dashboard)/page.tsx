@@ -131,9 +131,10 @@ export default function ListaMayoristaPage() {
 
     const handleCheckout = (e: React.FormEvent) => {
         e.preventDefault();
-        if (!customerName || cart.length === 0) return;
-        createOrder(customerName);
-        setCustomerName("");
+        const finalName = (!isAdmin && currentUser) ? currentUser.username : customerName;
+        if (!finalName || cart.length === 0) return;
+        createOrder(finalName);
+        if (isAdmin) setCustomerName("");
         setOrderSuccess(true);
         setTimeout(() => {
             setOrderSuccess(false);
@@ -339,11 +340,11 @@ export default function ListaMayoristaPage() {
 
             {/* Pagination UI */}
             {totalPages > 1 && (
-                <div className="flex items-center justify-between px-8 py-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[2rem] shadow-sm">
-                    <p className="text-sm font-bold text-slate-500">
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-6 sm:px-8 py-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[2rem] shadow-sm">
+                    <p className="text-sm font-bold text-slate-500 text-center sm:text-left">
                         Mostrando <span className="text-slate-900 dark:text-white">{((currentPage - 1) * itemsPerPage) + 1}</span> a <span className="text-slate-900 dark:text-white">{Math.min(currentPage * itemsPerPage, filteredAndSortedProductos.length)}</span> de <span className="text-slate-900 dark:text-white">{filteredAndSortedProductos.length}</span> productos
                     </p>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap justify-center">
                         <button
                             disabled={currentPage === 1}
                             onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
@@ -419,12 +420,12 @@ export default function ListaMayoristaPage() {
                                         {cart.map((item, idx) => {
                                             const price = item.priceType === "mayorista" ? item.producto.price : item.producto.priceMinorista;
                                             return (
-                                                <div key={idx} className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800 animate-in slide-in-from-bottom-2">
-                                                    <div className="flex-1">
+                                                <div key={idx} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800 animate-in slide-in-from-bottom-2">
+                                                    <div className="flex-1 w-full text-center sm:text-left">
                                                         <p className="font-black text-slate-900 dark:text-slate-100">{item.producto.name}</p>
                                                         <p className="text-xs text-slate-400 font-bold tracking-tight">${price.toLocaleString()} c/u</p>
                                                     </div>
-                                                    <div className="flex items-center gap-4">
+                                                    <div className="flex items-center justify-between sm:justify-end gap-4 w-full sm:w-auto">
                                                         <div className="flex items-center bg-white dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 p-1">
                                                             <button
                                                                 onClick={() => updateCartQuantity(item.producto.id, item.priceType, item.quantity - 1)}
@@ -451,13 +452,14 @@ export default function ListaMayoristaPage() {
                                                     required
                                                     type="text"
                                                     placeholder="Ej: Mayorista San Juan"
-                                                    value={customerName}
+                                                    value={(!isAdmin && currentUser) ? currentUser.username : customerName}
                                                     onChange={e => setCustomerName(e.target.value)}
-                                                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl py-4 px-6 text-slate-900 dark:text-slate-100 font-bold focus:ring-4 focus:ring-indigo-500/10 focus:outline-none transition-all"
+                                                    readOnly={!isAdmin}
+                                                    className={`w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl py-4 px-6 text-slate-900 dark:text-slate-100 font-bold focus:ring-4 focus:ring-indigo-500/10 focus:outline-none transition-all ${!isAdmin ? 'opacity-70 cursor-not-allowed text-indigo-700 dark:text-indigo-400' : ''}`}
                                                 />
                                             </div>
-                                            <div className="flex items-center justify-between p-6 bg-slate-900 dark:bg-white rounded-3xl text-white dark:text-slate-900">
-                                                <div>
+                                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 bg-slate-900 dark:bg-white rounded-3xl text-white dark:text-slate-900">
+                                                <div className="text-center sm:text-left">
                                                     <p className="text-[10px] font-black uppercase tracking-widest opacity-60">Total a Pagar</p>
                                                     <p className="text-3xl font-black">${cartTotal.toLocaleString()}</p>
                                                 </div>

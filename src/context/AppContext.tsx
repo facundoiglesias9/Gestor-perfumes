@@ -211,6 +211,8 @@ interface AppContextProps {
     setGeneros: React.Dispatch<React.SetStateAction<string[]>>;
     generateProductsFromBase: (baseId: string, targetCategory: string) => Promise<{ created: number, updated: number } | undefined>;
     getNextId: (items: any[], prefix: string) => string;
+    categoryMargins: Record<string, { mayorista: number; minorista: number }>;
+    setCategoryMargins: React.Dispatch<React.SetStateAction<Record<string, { mayorista: number; minorista: number }>>>;
 }
 
 const AppContext = createContext<AppContextProps | undefined>(undefined);
@@ -268,6 +270,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const [scraperStatus, setScraperStatus] = useState<ScraperStatus>({ lastRun: "-", status: "idle" });
     const [currentUser, setCurrentUser] = useState<Usuario | null>(null);
     const [generos, setGeneros] = useState<string[]>(["Femenino", "Masculino", "Unisex"]);
+    const [categoryMargins, setCategoryMargins] = useState<Record<string, { mayorista: number; minorista: number }>>({});
     const [mounted, setMounted] = useState(false);
 
     // ── Load all data: Supabase first, localStorage fallback ────────
@@ -398,6 +401,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                 if (storedScraper) setScraperStatus(JSON.parse(storedScraper));
                 const storedGeneros = localStorage.getItem("generos");
                 if (storedGeneros) setGeneros(JSON.parse(storedGeneros));
+                const storedMargins = localStorage.getItem("categoryMargins");
+                if (storedMargins) setCategoryMargins(JSON.parse(storedMargins));
 
             } catch (err) {
                 console.error("Error during app initialization:", err);
@@ -446,6 +451,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         if (!mounted) return;
         localStorage.setItem("generos", JSON.stringify(generos));
     }, [generos, mounted]);
+
+    useEffect(() => {
+        if (!mounted) return;
+        localStorage.setItem("categoryMargins", JSON.stringify(categoryMargins));
+    }, [categoryMargins, mounted]);
 
     // ── Auth ──────────────────────────────────────────────────────
     const login = (user: Usuario) => {
@@ -651,6 +661,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                 cleanName += is5L ? " 5L" : " 1L";
             }
 
+            const margins = categoryMargins[targetCategory] || { mayorista: 1.5, minorista: 2.0 };
+
             newProductsGenerated.push({
                 id: "", // will be assigned below
                 name: cleanName,
@@ -658,8 +670,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                 baseId: base.id,
                 components: formula,
                 cost,
-                price: roundUpTo1000(cost * 1.5),
-                priceMinorista: roundUpTo1000(cost * 2.0),
+                price: roundUpTo1000(cost * margins.mayorista),
+                priceMinorista: roundUpTo1000(cost * margins.minorista),
                 stock: 0,
                 description: `Generado de base ${base.name}`,
                 gender: esc.gender || "Unisex",
@@ -985,7 +997,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             setGeneros,
             mounted,
             generateProductsFromBase,
-            getNextId: getNextSequenceId
+            getNextId: getNextSequenceId,
+            categoryMargins,
+            setCategoryMargins
         }}>
             {children}
         </AppContext.Provider>

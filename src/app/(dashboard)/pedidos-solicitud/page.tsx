@@ -46,10 +46,16 @@ export default function PedidosSolicitudPage() {
         { level: "listo para entregar", label: "Listo / Enviado", icon: Truck, color: "text-emerald-500 bg-emerald-50 dark:bg-emerald-500/10" },
     ];
 
-    const filteredOrders = orders.filter(o =>
-        o.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        o.id.includes(searchTerm)
-    );
+    const filteredOrders = orders.filter(o => {
+        // Search filter
+        const matchesSearch = o.customerName.toLowerCase().includes(searchTerm.toLowerCase()) || o.id.includes(searchTerm);
+
+        // Role filter
+        const isAdmin = currentUser?.role === "admin";
+        const isMine = o.customerName === currentUser?.username;
+
+        return matchesSearch && (isAdmin || isMine);
+    });
 
     const getNextStatus = (current: OrderStatus): OrderStatus | null => {
         const order = ["solicitud recibida", "pedido confirmado", "en preparacion", "listo para entregar"];
@@ -94,21 +100,15 @@ export default function PedidosSolicitudPage() {
                 ))}
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="md:col-span-2 relative group">
-                    <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 transition-colors group-focus-within:text-indigo-500" />
-                    <input
-                        type="text"
-                        placeholder="Buscar por cliente o N° de pedido..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl py-4 pl-14 pr-6 text-slate-900 dark:text-slate-50 focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500/50 transition-all font-semibold"
-                    />
-                </div>
-                <button className="flex items-center justify-center gap-3 px-8 py-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 font-bold hover:bg-slate-50 dark:hover:bg-slate-800 transition-all">
-                    <Filter className="w-5 h-5 text-slate-400" />
-                    Filtros Avanzados
-                </button>
+            <div className="mb-6 relative group">
+                <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 transition-colors group-focus-within:text-indigo-500" />
+                <input
+                    type="text"
+                    placeholder="Buscar por cliente o N° de pedido..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl py-4 pl-14 pr-6 text-slate-900 dark:text-slate-50 focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500/50 transition-all font-semibold"
+                />
             </div>
 
             <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[2.5rem] shadow-sm overflow-hidden">
@@ -147,10 +147,26 @@ export default function PedidosSolicitudPage() {
                                         <td className="px-8 py-6">
                                             <p className="text-slate-900 dark:text-slate-100 font-bold">{order.customerName}</p>
                                         </td>
-                                        <td className="px-8 py-6 text-center">
-                                            <span className="px-3 py-1 bg-slate-100 dark:bg-slate-800 rounded-lg text-xs font-black text-slate-600 dark:text-slate-400">
+                                        <td className="px-8 py-6 text-center relative group/tooltip">
+                                            <span className="px-3 py-1 bg-slate-100 dark:bg-slate-800 rounded-lg text-xs font-black text-slate-600 dark:text-slate-400 cursor-help transition-colors group-hover/tooltip:bg-slate-200 dark:group-hover/tooltip:bg-slate-700">
                                                 {order.items.reduce((acc, item) => acc + item.quantity, 0)} items
                                             </span>
+
+                                            {/* Tooltip */}
+                                            <div className="absolute left-1/2 -translate-x-1/2 bottom-1/2 mb-4 opacity-0 invisible group-hover/tooltip:opacity-100 group-hover/tooltip:visible transition-all duration-300 z-50 bg-slate-800 dark:bg-slate-700 text-white text-xs font-bold rounded-2xl shadow-[0_10px_50px_-10px_rgba(0,0,0,0.6)] w-max min-w-[320px] max-w-[450px] p-5 text-left pointer-events-none border border-slate-700 dark:border-slate-600">
+                                                <div className="space-y-3 max-h-[300px] overflow-y-auto custom-scrollbar pr-3">
+                                                    {order.items.map((item, idx) => (
+                                                        <div key={idx} className="flex justify-between items-start gap-5 border-b border-slate-700/50 dark:border-slate-600/50 last:border-0 pb-3 last:pb-0">
+                                                            <div className="flex flex-col">
+                                                                <span className="leading-tight text-slate-100 dark:text-slate-200 text-sm mb-1">{item.producto.name}</span>
+                                                                <span className="text-[9px] text-slate-400 uppercase tracking-widest">{item.producto.category} • {item.producto.gender}</span>
+                                                            </div>
+                                                            <span className="text-indigo-400 dark:text-indigo-300 font-black whitespace-nowrap mt-0.5">x{item.quantity}</span>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                                <div className="absolute left-1/2 -translate-x-1/2 top-full border-[5px] border-transparent border-t-slate-800 dark:border-t-slate-700"></div>
+                                            </div>
                                         </td>
                                         <td className="px-8 py-6 text-center">
                                             <p className="text-indigo-600 dark:text-indigo-400 font-black">
