@@ -900,7 +900,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                 description: p.description,
                 gender: p.gender,
                 last_update: p.lastUpdate ?? null,
-                image_url: p.imageUrl ?? null,
             }));
             return next;
         });

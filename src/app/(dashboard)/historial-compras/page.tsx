@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect } from "react";
 import { useAppContext } from "@/context/AppContext";
-import { ClipboardList, TrendingUp, DollarSign, Package, PlusCircle, History, X, Check, Trash2 } from "lucide-react";
+import { ClipboardList, TrendingUp, DollarSign, Package, PlusCircle, History, X, Check, Trash2, Receipt, Wallet, MinusCircle } from "lucide-react";
 
 type SaleRecord = {
     id: string;
@@ -19,7 +19,7 @@ export default function HistorialComprasPage() {
     const [salesLog, setSalesLog] = useState<SaleRecord[]>([]);
     const [isLoaded, setIsLoaded] = useState(false);
 
-    // Modal state
+    // Modal states
     const [sellingItem, setSellingItem] = useState<any | null>(null);
     const [formQty, setFormQty] = useState<number>(1);
     const [formPrice, setFormPrice] = useState<number>(0);
@@ -27,14 +27,12 @@ export default function HistorialComprasPage() {
     // Initialize local storage logic
     useEffect(() => {
         if (!currentUser) return;
-        const key = `reseller_sales_log_${currentUser.username}`;
         try {
+            const key = `reseller_sales_log_${currentUser.username}`;
             const stored = localStorage.getItem(key);
-            if (stored) {
-                setSalesLog(JSON.parse(stored));
-            }
+            if (stored) setSalesLog(JSON.parse(stored));
         } catch (e) {
-            console.error("Error loading sales history");
+            console.error("Error loading history");
         }
         setIsLoaded(true);
     }, [currentUser]);
@@ -79,16 +77,19 @@ export default function HistorialComprasPage() {
     }, [myCompletedOrders, salesLog]);
 
     // Widgets calculate
-    const totalCost = useMemo(() => {
+    const totalCostPurchases = useMemo(() => {
         return myPurchasedItems.reduce((acc, item) => acc + item.totalCost, 0);
     }, [myPurchasedItems]);
+
+    const totalInvestment = totalCostPurchases;
 
     const totalRevenue = useMemo(() => {
         return salesLog.reduce((acc, sale) => acc + (sale.qty * sale.sellPrice), 0);
     }, [salesLog]);
 
     const totalProfit = useMemo(() => {
-        return salesLog.reduce((acc, sale) => acc + (sale.qty * (sale.sellPrice - sale.costPerUnit)), 0);
+        const productProfit = salesLog.reduce((acc, sale) => acc + (sale.qty * (sale.sellPrice - sale.costPerUnit)), 0);
+        return productProfit;
     }, [salesLog]);
 
     const handleOpenSellModal = (item: any) => {
@@ -136,7 +137,7 @@ export default function HistorialComprasPage() {
                         Historial de Compras
                     </h1>
                     <p className="text-slate-500 dark:text-slate-400 text-lg max-w-xl leading-relaxed font-medium transition-colors">
-                        Revisá las compras que nos realizaste, gestioná tu inventario y calculá tus ganancias profesionalmente con ventas unitarias.
+                        Revisá las compras que nos realizaste, gestioná tu inventario y calculá tus ganancias profesionalmente observando el retorno sobre tu inversión real.
                     </p>
                 </div>
             </header>
@@ -144,16 +145,20 @@ export default function HistorialComprasPage() {
             {/* Widgets */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-8 rounded-[2rem] shadow-sm flex flex-col justify-between group hover:border-blue-500/30 transition-colors">
-                    <div className="flex items-center gap-4 mb-4">
-                        <div className="w-12 h-12 bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform">
-                            <Package className="w-6 h-6" />
-                        </div>
-                        <div>
-                            <p className="text-xs font-black uppercase tracking-widest text-slate-400">Costo Acumulado</p>
-                            <p className="text-3xl font-black text-slate-900 dark:text-slate-50">${totalCost.toLocaleString()}</p>
+                    <div className="flex items-start justify-between mb-4">
+                        <div className="flex items-center gap-4">
+                            <div className="w-12 h-12 bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform">
+                                <Wallet className="w-6 h-6" />
+                            </div>
+                            <div>
+                                <p className="text-xs font-black uppercase tracking-widest text-slate-400">Inversión Total</p>
+                                <p className="text-3xl font-black text-slate-900 dark:text-slate-50">${totalInvestment.toLocaleString()}</p>
+                            </div>
                         </div>
                     </div>
-                    <p className="text-sm text-slate-500 font-medium">Inversión total en tus compras.</p>
+                    <div className="space-y-1">
+                        <p className="text-sm text-slate-500 font-medium">Mercadería Total: <span className="text-slate-700 dark:text-slate-300 font-bold">${totalCostPurchases.toLocaleString()}</span></p>
+                    </div>
                 </div>
 
                 <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-8 rounded-[2rem] shadow-sm flex flex-col justify-between group hover:border-emerald-500/30 transition-colors">
@@ -169,8 +174,8 @@ export default function HistorialComprasPage() {
                     <p className="text-sm text-slate-500 font-medium">Facturación bruta por reventa.</p>
                 </div>
 
-                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-8 rounded-[2rem] shadow-sm flex flex-col justify-between group hover:border-indigo-500/30 transition-colors">
-                    <div className="flex items-center gap-4 mb-4">
+                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-8 rounded-[2rem] shadow-sm flex flex-col justify-between group hover:border-indigo-500/30 transition-colors relative overflow-hidden">
+                    <div className="flex items-center gap-4 mb-4 relative z-10">
                         <div className="w-12 h-12 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform">
                             <TrendingUp className="w-6 h-6" />
                         </div>
@@ -181,7 +186,10 @@ export default function HistorialComprasPage() {
                             </p>
                         </div>
                     </div>
-                    <p className="text-sm text-slate-500 font-medium">Beneficio total obtenido superando costos.</p>
+                    <p className="text-sm text-slate-500 font-medium relative z-10">Beneficio real extraído de las ventas tras restar el costo de mercadería despachada.</p>
+
+                    {/* Background Progress relative indicator idea */}
+                    <div className={`absolute bottom-0 left-0 h-1 transition-all duration-1000 ${totalProfit >= 0 ? "bg-emerald-500" : "bg-rose-500"}`} style={{ width: totalInvestment > 0 ? `${Math.min(100, Math.max(0, (totalRevenue / totalInvestment) * 100))}%` : '0%' }}></div>
                 </div>
             </div>
 
@@ -257,59 +265,111 @@ export default function HistorialComprasPage() {
                 </div>
             </div>
 
-            {/* Sales Log Table */}
-            {salesLog.length > 0 && (
-                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[2.5rem] shadow-sm overflow-hidden py-4 animate-in fade-in slide-in-from-bottom-4">
+            {/* Split layout for Sales vs Expenses */}
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+
+                {/* Sales Log Table */}
+                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[2.5rem] shadow-sm overflow-hidden py-4 flex flex-col">
                     <div className="px-8 py-6 border-b border-slate-100 dark:border-slate-800 flex items-center gap-3">
                         <div className="p-2 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-xl">
                             <History className="w-5 h-5" />
                         </div>
-                        <h3 className="text-xl font-black text-slate-900 dark:text-white">Registro de Ventas Confirmadas</h3>
+                        <h3 className="text-xl font-black text-slate-900 dark:text-white">Ventas Confirmadas</h3>
                     </div>
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-left whitespace-nowrap">
-                            <thead>
-                                <tr className="bg-slate-50/50 dark:bg-slate-950/20 text-slate-400 text-[10px] font-black uppercase tracking-widest border-b border-slate-100 dark:border-slate-800">
-                                    <th className="px-8 py-4">Fecha</th>
-                                    <th className="px-8 py-4">Producto</th>
-                                    <th className="px-8 py-4 text-center">Unidades</th>
-                                    <th className="px-8 py-4 text-right">Precio de Venta</th>
-                                    <th className="px-8 py-4 text-right">Ganancia</th>
-                                    <th className="px-8 py-4 text-center">Acción</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-sm">
-                                {salesLog.map(record => {
-                                    const profit = record.qty * (record.sellPrice - record.costPerUnit);
-                                    return (
-                                        <tr key={record.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/20 transition-colors">
-                                            <td className="px-8 py-4 font-bold text-slate-500">{record.date}</td>
-                                            <td className="px-8 py-4 font-black flex flex-col">
-                                                <span className="text-slate-900 dark:text-slate-100">{record.productName}</span>
-                                                <span className="text-[9px] uppercase tracking-widest text-slate-400">ID: {record.id.split('-')[2]}</span>
-                                            </td>
-                                            <td className="px-8 py-4 text-center font-black text-indigo-600 dark:text-indigo-400">x{record.qty}</td>
-                                            <td className="px-8 py-4 text-right font-black text-emerald-600 dark:text-emerald-400">${record.sellPrice.toLocaleString()}</td>
-                                            <td className="px-8 py-4 text-right font-black text-emerald-600 dark:text-emerald-400 text-base">
-                                                +${profit.toLocaleString()}
-                                            </td>
-                                            <td className="px-8 py-4 text-center">
-                                                <button
-                                                    onClick={() => deleteRecord(record.id)}
-                                                    className="p-2 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-xl transition-colors"
-                                                    title="Eliminar registro"
-                                                >
-                                                    <Trash2 className="w-4 h-4" />
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    );
-                                })}
-                            </tbody>
-                        </table>
-                    </div>
+
+                    {salesLog.length === 0 ? (
+                        <div className="p-12 text-center text-slate-400 font-bold m-auto">
+                            Aún no has registrado ninguna venta.
+                        </div>
+                    ) : (
+                        <div className="overflow-x-auto flex-1">
+                            <table className="w-full text-left whitespace-nowrap">
+                                <thead>
+                                    <tr className="bg-slate-50/50 dark:bg-slate-950/20 text-slate-400 text-[10px] font-black uppercase tracking-widest border-b border-slate-100 dark:border-slate-800">
+                                        <th className="px-6 py-4">Fecha</th>
+                                        <th className="px-6 py-4">Producto</th>
+                                        <th className="px-6 py-4 text-center">Cant.</th>
+                                        <th className="px-6 py-4 text-right">Precio V.</th>
+                                        <th className="px-6 py-4 text-center"></th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-sm">
+                                    {salesLog.map(record => {
+                                        const profit = record.qty * (record.sellPrice - record.costPerUnit);
+                                        return (
+                                            <tr key={record.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/20 transition-colors">
+                                                <td className="px-6 py-4 font-bold text-slate-500">{record.date}</td>
+                                                <td className="px-6 py-4 font-black flex flex-col">
+                                                    <span className="text-slate-900 dark:text-slate-100">{record.productName}</span>
+                                                    <span className="text-[9px] uppercase tracking-widest text-emerald-500">+${profit.toLocaleString()} Gan.</span>
+                                                </td>
+                                                <td className="px-6 py-4 text-center font-black text-indigo-600 dark:text-indigo-400">x{record.qty}</td>
+                                                <td className="px-6 py-4 text-right font-black text-emerald-600 dark:text-emerald-400">${record.sellPrice.toLocaleString()}</td>
+                                                <td className="px-6 py-4 text-center">
+                                                    <button
+                                                        onClick={() => deleteRecord(record.id)}
+                                                        className="p-2 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-xl transition-colors"
+                                                        title="Eliminar registro"
+                                                    >
+                                                        <Trash2 className="w-4 h-4" />
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
                 </div>
-            )}
+
+                {/* Investment Log Table mapped automatically */}
+                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[2.5rem] shadow-sm overflow-hidden py-4 flex flex-col">
+                    <div className="px-8 py-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 rounded-xl">
+                                <Receipt className="w-5 h-5" />
+                            </div>
+                            <h3 className="text-xl font-black text-slate-900 dark:text-white">Mis Inversiones</h3>
+                        </div>
+                    </div>
+
+                    {myCompletedOrders.length === 0 ? (
+                        <div className="p-12 text-center text-slate-400 font-bold m-auto">
+                            Aún no tienes pedidos finalizados registrados.
+                        </div>
+                    ) : (
+                        <div className="overflow-x-auto flex-1">
+                            <table className="w-full text-left whitespace-nowrap">
+                                <thead>
+                                    <tr className="bg-slate-50/50 dark:bg-slate-950/20 text-slate-400 text-[10px] font-black uppercase tracking-widest border-b border-slate-100 dark:border-slate-800">
+                                        <th className="px-6 py-4">Fecha</th>
+                                        <th className="px-6 py-4">N° Pedido</th>
+                                        <th className="px-6 py-4 text-center">Bultos</th>
+                                        <th className="px-6 py-4 text-right">Monto Total</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-sm">
+                                    {myCompletedOrders.map(order => {
+                                        const totalItems = order.items.reduce((acc, i) => acc + i.quantity, 0);
+                                        return (
+                                            <tr key={order.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/20 transition-colors">
+                                                <td className="px-6 py-4 font-bold text-slate-500">{order.date}</td>
+                                                <td className="px-6 py-4 font-black">
+                                                    <span className="text-slate-900 dark:text-slate-100 bg-slate-100 dark:bg-slate-800 px-3 py-1 rounded-lg">#{order.id}</span>
+                                                </td>
+                                                <td className="px-6 py-4 text-center font-bold text-slate-500">{totalItems} prods.</td>
+                                                <td className="px-6 py-4 text-right font-black text-indigo-600 dark:text-indigo-400">${order.total.toLocaleString()}</td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
+                </div>
+
+            </div>
 
             {/* Selling Modal */}
             {sellingItem && (
