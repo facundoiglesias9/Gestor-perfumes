@@ -14,6 +14,7 @@ type SaleRecord = {
     costPerUnit: number;
 };
 
+// Componente de Historial de Compras
 export default function HistorialComprasPage() {
     const { orders, currentUser } = useAppContext();
     const [salesLog, setSalesLog] = useState<SaleRecord[]>([]);
