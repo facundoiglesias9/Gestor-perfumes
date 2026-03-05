@@ -269,7 +269,7 @@ export default function ListaMayoristaPage() {
             ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6">
                     {paginatedProductos.map((prod, idx) => (
-                        <div key={prod.id} className="group flex flex-col bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl overflow-hidden hover:shadow-2xl hover:-translate-y-1 transition-all duration-300">
+                        <div key={prod.id} className="relative group flex flex-col bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl overflow-hidden hover:shadow-2xl hover:-translate-y-1 transition-all duration-300">
                             {/* Image Placeholder */}
                             <div className="relative aspect-square bg-slate-100 dark:bg-slate-800/50 flex items-center justify-center p-6 overflow-hidden">
                                 {prod.imageUrl ? (
