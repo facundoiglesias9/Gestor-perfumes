@@ -16,8 +16,10 @@ import {
     ChevronDown,
     ChevronLeft,
     ChevronRight,
-    ArrowUpRight
+    ArrowUpRight,
+    Loader2
 } from "lucide-react";
+import Image from "next/image";
 import { useState, useMemo, useEffect } from "react";
 import { useAppContext, Producto } from "@/context/AppContext";
 
@@ -246,12 +248,20 @@ export default function ListaMayoristaPage() {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6">
-                {paginatedProductos.map((prod) => (
+                {paginatedProductos.map((prod, idx) => (
                     <div key={prod.id} className="group flex flex-col bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl overflow-hidden hover:shadow-2xl hover:-translate-y-1 transition-all duration-300">
                         {/* Image Placeholder */}
-                        <div className="relative aspect-square bg-slate-100 dark:bg-slate-800/50 flex items-center justify-center p-6">
+                        <div className="relative aspect-square bg-slate-100 dark:bg-slate-800/50 flex items-center justify-center p-6 overflow-hidden">
                             {prod.imageUrl ? (
-                                <img src={prod.imageUrl} alt={prod.name} className="w-full h-full object-cover rounded-2xl group-hover:scale-105 transition-transform duration-500" />
+                                <Image
+                                    src={prod.imageUrl}
+                                    alt={prod.name}
+                                    fill
+                                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                                    className="object-cover rounded-2xl group-hover:scale-105 transition-transform duration-500"
+                                    loading={idx < 4 ? "eager" : "lazy"}
+                                    priority={idx < 4}
+                                />
                             ) : (
                                 /* Placeholder frame for future image */
                                 <div className="w-full h-full border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-2xl flex flex-col items-center justify-center text-slate-400 dark:text-slate-500 overflow-hidden group-hover:border-indigo-400 dark:group-hover:border-indigo-500 transition-colors">
@@ -262,9 +272,9 @@ export default function ListaMayoristaPage() {
                             {/* Gender Badge */}
                             <div className="absolute top-4 left-4 z-10 transition-transform duration-300 group-hover:scale-105">
                                 <span className={`inline-flex items-center px-3.5 py-1.5 rounded-2xl font-black text-[10px] uppercase tracking-[0.05em] shadow-xl border border-white/20 text-white ${prod.gender === 'Femenino' ? 'bg-gradient-to-br from-pink-500 to-rose-600 shadow-pink-500/20' :
-                                        prod.gender === 'Masculino' ? 'bg-gradient-to-br from-indigo-500 to-blue-700 shadow-indigo-500/20' :
-                                            prod.gender === 'Unisex' ? 'bg-gradient-to-br from-emerald-500 to-teal-700 shadow-emerald-500/20' :
-                                                'bg-gradient-to-br from-slate-600 to-slate-800 shadow-slate-500/20'
+                                    prod.gender === 'Masculino' ? 'bg-gradient-to-br from-indigo-500 to-blue-700 shadow-indigo-500/20' :
+                                        prod.gender === 'Unisex' ? 'bg-gradient-to-br from-emerald-500 to-teal-700 shadow-emerald-500/20' :
+                                            'bg-gradient-to-br from-slate-600 to-slate-800 shadow-slate-500/20'
                                     }`}>
                                     <span className="mr-2 w-1.5 h-1.5 rounded-full bg-white/40 animate-pulse"></span>
                                     {prod.gender}

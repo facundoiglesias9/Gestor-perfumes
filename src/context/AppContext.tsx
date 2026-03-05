@@ -304,57 +304,66 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     useEffect(() => {
         const initializeApp = async () => {
             try {
-                // Auth check
+                // 1. Auth check first - mandatory to know what to load
                 const { data: { user } } = await supabase.auth.getUser();
+                let resolvedUser: Usuario | null = null;
 
-                // Load all tables in parallel (errors are caught per-table)
-                const [
-                    catResult,
-                    provResult,
-                    escResult,
-                    insResult,
-                    invResult,
-                    transResult,
-                    basesResult,
-                    prodResult,
-                    usersResult,
-                    ordersResult,
-                    promoResult,
-                ] = await Promise.all([
+                // Get user record to know the role early
+                if (user) {
+                    const { data: userData } = await supabase.from("usuarios").select("*").eq("id", user.id).single();
+                    if (userData) {
+                        resolvedUser = dbToUsuario(userData);
+                    } else {
+                        // try by email if id failed (legacy)
+                        const { data: userDataEmail } = await supabase.from("usuarios").select("*").ilike("username", user.email || "").single();
+                        if (userDataEmail) resolvedUser = dbToUsuario(userDataEmail);
+                    }
+                } else {
+                    const mock = localStorage.getItem("mockUser");
+                    if (mock) resolvedUser = JSON.parse(mock);
+                }
+                setCurrentUser(resolvedUser);
+
+                const isAdmin = resolvedUser?.role === "admin";
+
+                // 2. Parallel fetch essential vs admin data
+                const essentialRequests = [
                     supabase.from("categorias").select("*").order("name"),
+                    supabase.from("productos").select("*").order("name"),
+                    supabase.from("promociones").select("*"),
+                ];
+
+                const adminRequests = isAdmin ? [
                     supabase.from("proveedores").select("*").order("name"),
                     supabase.from("esencias").select("*").order("name"),
                     supabase.from("insumos").select("*").order("name"),
                     supabase.from("inventario").select("*").order("name"),
                     supabase.from("transacciones").select("*").order("created_at", { ascending: false }),
                     supabase.from("bases").select("*").order("name"),
-                    supabase.from("productos").select("*").order("name"),
                     supabase.from("usuarios").select("*").order("username"),
                     supabase.from("orders").select("*").order("created_at", { ascending: false }),
-                    supabase.from("promociones").select("*"),
-                ]);
+                ] : [];
+
+                const results = await Promise.all([...essentialRequests, ...adminRequests]);
+
+                const [catResult, prodResult, promoResult] = results;
+                const [
+                    provResult, escResult, insResult, invResult, transResult, basesResult, usersResult, ordersResult
+                ] = isAdmin ? results.slice(3) : [null, null, null, null, null, null, null, null];
 
                 // Helper: use Supabase if available, else localStorage. Returns {data, fromLS}
-                const resolve = <T,>(result: { data: any[] | null; error: any }, lsKey: string, mapper: (r: any) => T, fallback: T[] = []): { data: T[]; fromLS: boolean } => {
-                    if (!result.error && result.data !== null) return { data: result.data.map(mapper), fromLS: false };
+                const resolve = <T,>(result: { data: any[] | null; error: any } | null, lsKey: string, mapper: (r: any) => T, fallback: T[] = []): { data: T[]; fromLS: boolean } => {
+                    if (result && !result.error && result.data !== null) return { data: result.data.map(mapper), fromLS: false };
                     const stored = localStorage.getItem(lsKey);
                     if (stored) { try { return { data: JSON.parse(stored) as T[], fromLS: true }; } catch {/* ignore */ } }
                     return { data: fallback, fromLS: false };
                 };
 
+                // Essential data
                 const catRes = resolve(catResult, "categorias", (r) => ({ id: r.id, name: r.name, count: r.count ?? 0 } as Categoria), [{ id: "1", name: "Perfumería Fina", count: 0 }, { id: "2", name: "Perfumes de Ambiente", count: 0 }]);
-                const provRes = resolve(provResult, "proveedores", (r) => ({ id: r.id, name: r.name, contact: r.contact ?? "" } as Proveedor), []);
-                const escRes = resolve(escResult, "esencias", dbToEsencia, []);
-                const insRes = resolve(insResult, "insumos", dbToInsumo, []);
-                const invRes = resolve(invResult, "inventario", dbToInventario, []);
-                const transRes = resolve(transResult, "transacciones", dbToTransaccion, []);
-                const basesRes = resolve(basesResult, "bases", dbToBase, []);
-                const usersRes = resolve(usersResult, "usuarios", dbToUsuario, [{ id: "admin-facu", username: "facundo", role: "admin" as UserRole, status: "Activo" as const }]);
-                const ordersRes = resolve(ordersResult, "orders", dbToOrder, []);
-                const promoData = resolve(promoResult, "promociones", (r) => ({ id: r.id, productId: r.product_id, discountPercentage: r.discount_percentage, isActive: r.is_active, endDate: r.end_date } as Promotion), []);
                 const rawProdsRes = resolve(prodResult, "productos", dbToProducto, []);
+                const promoData = resolve(promoResult, "promociones", (r) => ({ id: r.id, productId: r.product_id, discountPercentage: r.discount_percentage, isActive: r.is_active, endDate: r.end_date } as Promotion), []);
 
-                // Sanitize productos
                 const sanitizedProducts = rawProdsRes.data.map((p, index) => ({
                     ...p,
                     id: p.id || (index + 1).toString().padStart(3, "0"),
@@ -362,68 +371,33 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                 }));
 
                 setCategorias(catRes.data);
-                setProveedores(provRes.data);
-                setEsencias(escRes.data);
-                setInsumos(insRes.data);
-                setInventario(invRes.data);
-                setTransacciones(transRes.data);
-                setBases(basesRes.data);
                 setProductos(sanitizedProducts);
-                setUsuarios(usersRes.data);
-                setOrders(ordersRes.data);
                 setPromotions(promoData.data);
 
-                // AUTO-MIGRATE: push localStorage data to Supabase where Supabase was empty
-                const migrate = (p: any) => p.then((r: any) => r); // ensure Promise
-                const migrations: Promise<any>[] = [];
-                if (catRes.fromLS && catRes.data.length > 0)
-                    migrations.push(migrate(supabase.from("categorias").upsert(catRes.data.map(c => ({ id: c.id, name: c.name, count: c.count })))));
-                if (provRes.fromLS && provRes.data.length > 0)
-                    migrations.push(migrate(supabase.from("proveedores").upsert(provRes.data.map(p => ({ id: p.id, name: p.name, contact: p.contact })))));
-                if (escRes.fromLS && escRes.data.length > 0)
-                    migrations.push(migrate(supabase.from("esencias").upsert(escRes.data.map(e => ({ id: e.id, name: e.name, category: e.category ?? "Perfumería Fina", gender: e.gender ?? "Femenino", provider: e.provider ?? "Van Rossum", cost: e.cost ?? 0, qty: e.qty ?? 0, price30g: e.price30g === "consultar" ? null : (e.price30g ?? null), price100g: e.price100g === "consultar" ? null : (e.price100g ?? null), last_update: e.lastUpdate ?? null, source: e.source ?? "manual" })))));
-                if (insRes.fromLS && insRes.data.length > 0)
-                    migrations.push(migrate(supabase.from("insumos").upsert(insRes.data.map(i => ({ id: i.id, name: i.name, category: i.category, provider: i.provider, cost: i.cost, qty: i.qty, stock: i.stock ?? 0, unit: i.unit ?? "un." })))));
-                if (invRes.fromLS && invRes.data.length > 0)
-                    migrations.push(migrate(supabase.from("inventario").upsert(invRes.data.map(i => ({ id: i.id, name: i.name, type: i.type, category: i.category, qty: i.qty, last_update: i.lastUpdate, unit: i.unit })))));
-                if (transRes.fromLS && transRes.data.length > 0)
-                    migrations.push(migrate(supabase.from("transacciones").upsert(transRes.data.map(t => ({ id: t.id, type: t.type, amount: t.amount, description: t.description, date: t.date })))));
-                if (basesRes.fromLS && basesRes.data.length > 0)
-                    migrations.push(migrate(supabase.from("bases").upsert(basesRes.data.map(b => ({ id: b.id, name: b.name, components: b.components, essence_gender: b.essenceGender ?? null, essence_grams: b.essenceGrams ?? null })))));
-                if (rawProdsRes.fromLS && sanitizedProducts.length > 0)
-                    migrations.push(migrate(supabase.from("productos").upsert(sanitizedProducts.map(p => ({ id: p.id, name: p.name, category: p.category, base_id: p.baseId, components: p.components, cost: p.cost, price: p.price, price_minorista: p.priceMinorista, stock: p.stock, description: p.description, gender: p.gender, last_update: p.lastUpdate ?? null, image_url: p.imageUrl ?? null })))));
-                if (usersRes.fromLS && usersRes.data.length > 0)
-                    migrations.push(migrate(supabase.from("usuarios").upsert(usersRes.data.map(u => ({ id: u.id, username: u.username, password: u.password, role: u.role, status: u.status })))));
-                if (ordersRes.fromLS && ordersRes.data.length > 0)
-                    migrations.push(migrate(supabase.from("orders").upsert(ordersRes.data.map(o => ({ id: o.id, items: o.items, total: o.total, customer_name: o.customerName, status: o.status, date: o.date })))));
-                if (promoData.fromLS && promoData.data.length > 0)
-                    migrations.push(migrate(supabase.from("promociones").upsert(promoData.data.map(p => ({ id: p.id, product_id: p.productId, discount_percentage: p.discountPercentage, is_active: p.isActive, end_date: p.endDate })))));
+                // Admin-only data (load if admin, else use empty/local)
+                if (isAdmin) {
+                    const provRes = resolve(provResult, "proveedores", (r) => ({ id: r.id, name: r.name, contact: r.contact ?? "" } as Proveedor), []);
+                    const escRes = resolve(escResult, "esencias", dbToEsencia, []);
+                    const insRes = resolve(insResult, "insumos", dbToInsumo, []);
+                    const invRes = resolve(invResult, "inventario", dbToInventario, []);
+                    const transRes = resolve(transResult, "transacciones", dbToTransaccion, []);
+                    const basesRes = resolve(basesResult, "bases", dbToBase, []);
+                    const usersRes = resolve(usersResult, "usuarios", dbToUsuario, []);
+                    const ordersRes = resolve(ordersResult, "orders", dbToOrder, []);
 
-                if (migrations.length > 0) {
-                    console.log(`🚀 Auto-migrating ${migrations.length} table(s) from localStorage to Supabase...`);
-                    await Promise.all(migrations);
-                    console.log("✅ Migration to Supabase complete!");
+                    setProveedores(provRes.data);
+                    setEsencias(escRes.data);
+                    setInsumos(insRes.data);
+                    setInventario(invRes.data);
+                    setTransacciones(transRes.data);
+                    setBases(basesRes.data);
+                    setUsuarios(usersRes.data);
+                    setOrders(ordersRes.data);
+                } else if (!isAdmin && resolvedUser) {
+                    // Wholesalers/Retailers only need THEIR orders
+                    const { data: ownOrders } = await supabase.from("orders").select("*").eq("customer_name", resolvedUser.username).order("created_at", { ascending: false });
+                    if (ownOrders) setOrders(ownOrders.map(dbToOrder));
                 }
-
-                // Resolve logged-in user
-                let resolvedUser: Usuario | null = null;
-                if (user) {
-                    resolvedUser = usersRes.data.find((u: Usuario) =>
-                        u.username.toLowerCase() === user.email?.toLowerCase() ||
-                        u.id === user.id
-                    ) || null;
-                    if (!resolvedUser && (user.email?.toLowerCase().includes("facu") || user.email?.toLowerCase().includes("admin"))) {
-                        resolvedUser = usersRes.data[0] ?? null;
-                    }
-                } else {
-                    const mock = localStorage.getItem("mockUser");
-                    if (mock) {
-                        const parsedMock = JSON.parse(mock);
-                        const fresh = usersRes.data.find((u: Usuario) => u.id === parsedMock.id || u.username === parsedMock.username);
-                        resolvedUser = fresh || parsedMock;
-                    }
-                }
-                setCurrentUser(resolvedUser);
 
                 // Load ephemeral/local settings
                 const storedCart = localStorage.getItem(`cart_${resolvedUser?.id || 'guest'}`);
