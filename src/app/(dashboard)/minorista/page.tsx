@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import Image from "next/image";
+import { getOptimizedImageUrl } from "@/lib/image-optimizer";
 import { useState, useMemo, useEffect } from "react";
 import { useAppContext, Producto, Promotion } from "@/context/AppContext";
 import { motion, AnimatePresence } from "framer-motion";
@@ -71,7 +72,8 @@ export default function ListaMinoristaPage() {
         currentUser,
         generos,
         promotions,
-        paymentInfo
+        paymentInfo,
+        isLoading
     } = useAppContext();
     const isAdmin = currentUser?.role === "admin";
     const [search, setSearch] = useState("");
@@ -307,18 +309,46 @@ export default function ListaMinoristaPage() {
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6">
-                {paginatedProductos.map((prod, idx) => (
-                    <div key={prod.id} className="group flex flex-col bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl overflow-hidden hover:shadow-2xl hover:-translate-y-1 transition-all duration-300">
-                        {/* Image Placeholder */}
-                        <div className="relative aspect-square bg-slate-100 dark:bg-slate-800/50 flex items-center justify-center p-6">
-                            {prod.imageUrl ? (
-                                <img src={prod.imageUrl} alt={prod.name} className="w-full h-full object-cover rounded-2xl group-hover:scale-105 transition-transform duration-500" />
-                            ) : (
-                                <div className="w-full h-full border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-2xl flex flex-col items-center justify-center text-slate-400 dark:text-slate-500 overflow-hidden group-hover:border-emerald-400 dark:group-hover:border-emerald-500 transition-colors">
-                                    <span className="text-[10px] font-medium opacity-40 uppercase tracking-widest">Sin Imagen</span>
+            {/* Skeleton Loading State */}
+            {isLoading ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6">
+                    {[...Array(itemsPerPage)].map((_, i) => (
+                        <div key={i} className="flex flex-col bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl overflow-hidden animate-pulse">
+                            <div className="aspect-square bg-slate-200 dark:bg-slate-800" />
+                            <div className="p-6 space-y-4">
+                                <div className="h-2 w-1/3 bg-slate-200 dark:bg-slate-800 rounded mx-auto" />
+                                <div className="h-4 w-2/3 bg-slate-200 dark:bg-slate-800 rounded mx-auto" />
+                                <div className="h-4 w-1/2 bg-slate-200 dark:bg-slate-800 rounded mx-auto" />
+                                <div className="flex justify-between items-center mt-auto pt-4">
+                                    <div className="h-8 w-1/3 bg-slate-200 dark:bg-slate-800 rounded" />
+                                    <div className="h-12 w-12 bg-slate-200 dark:bg-slate-800 rounded-2xl" />
                                 </div>
-                            )}
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6">
+                    {paginatedProductos.map((prod, idx) => (
+                        <div key={prod.id} className="group flex flex-col bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl overflow-hidden hover:shadow-2xl hover:-translate-y-1 transition-all duration-300">
+                            {/* Image Placeholder */}
+                            <div className="relative aspect-square bg-slate-100 dark:bg-slate-800/50 flex items-center justify-center p-6 overflow-hidden">
+                                {prod.imageUrl ? (
+                                    <Image
+                                        src={getOptimizedImageUrl(prod.imageUrl, 400) || prod.imageUrl || ""}
+                                        alt={prod.name}
+                                        fill
+                                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                                        className="object-cover rounded-2xl group-hover:scale-105 transition-transform duration-500"
+                                        priority={idx < 4}
+                                        loading={idx < 4 ? undefined : "lazy"}
+                                    />
+                                ) : (
+                                    <div className="w-full h-full border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-2xl flex flex-col items-center justify-center text-slate-400 dark:text-slate-500 overflow-hidden group-hover:border-emerald-400 dark:group-hover:border-emerald-500 transition-colors">
+                                        <span className="text-[10px] font-medium opacity-40 uppercase tracking-widest">Sin Imagen</span>
+                                    </div>
+                                )}
+                            </div>
 
                             {/* Gender Badge */}
                             <div className="absolute top-4 left-4 z-10">
@@ -364,304 +394,311 @@ export default function ListaMinoristaPage() {
                                     </button>
                                 </div>
                             )}
-                        </div>
 
-                        {/* Product Info */}
-                        <div className="p-6 flex-1 flex flex-col items-center text-center">
-                            <p className="text-[10px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-400 mb-2">
-                                {prod.category}
-                            </p>
-                            <h3 className="text-xl font-black text-slate-900 dark:text-slate-100 leading-tight mb-1">
-                                {extractBrand(prod.name).title}
-                            </h3>
-                            {extractBrand(prod.name).brand && (
-                                <p className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-2">
-                                    {extractBrand(prod.name).brand}
+                            {/* Product Info */}
+                            <div className="p-6 flex-1 flex flex-col items-center text-center">
+                                <p className="text-[10px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-400 mb-2">
+                                    {prod.category}
                                 </p>
-                            )}
-                            <div className="mb-6 flex-1 flex justify-center items-start mt-2">
-                                <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 text-[10px] font-black uppercase tracking-widest ring-1 ring-slate-200 dark:ring-slate-700 shadow-sm transition-colors group-hover:bg-emerald-50 dark:group-hover:bg-emerald-500/10 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 group-hover:ring-emerald-200 dark:group-hover:ring-emerald-800">
-                                    Cód. {prod.id}
-                                </span>
-                            </div>
-
-                            <div className="flex items-end justify-between w-full mt-auto text-left">
-                                <div>
-                                    {(() => {
-                                        const promo = promotions.find(p => p.productId === prod.id && p.isActive && (!p.endDate || new Date(p.endDate) >= new Date()));
-                                        if (promo) {
-                                            return (
-                                                <>
-                                                    <p className="text-xs text-slate-400 line-through font-bold mb-0.5 opacity-60">
-                                                        ${prod.priceMinorista.toLocaleString()}
-                                                    </p>
-                                                    <p className="text-3xl font-black text-violet-600 dark:text-violet-400 tracking-tight">
-                                                        <span className="text-xl mr-0.5">$</span>
-                                                        {Math.round(prod.priceMinorista * (1 - promo.discountPercentage / 100)).toLocaleString()}
-                                                    </p>
-                                                </>
-                                            );
-                                        }
-                                        return (
-                                            <p className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">
-                                                <span className="text-xl text-slate-400 mr-0.5">$</span>
-                                                {prod.priceMinorista.toLocaleString("es-AR")}
-                                            </p>
-                                        );
-                                    })()}
+                                <h3 className="text-xl font-black text-slate-900 dark:text-slate-100 leading-tight mb-1">
+                                    {extractBrand(prod.name).title}
+                                </h3>
+                                {extractBrand(prod.name).brand && (
+                                    <p className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-2">
+                                        {extractBrand(prod.name).brand}
+                                    </p>
+                                )}
+                                <div className="mb-6 flex-1 flex justify-center items-start mt-2">
+                                    <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 text-[10px] font-black uppercase tracking-widest ring-1 ring-slate-200 dark:ring-slate-700 shadow-sm transition-colors group-hover:bg-emerald-50 dark:group-hover:bg-emerald-500/10 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 group-hover:ring-emerald-200 dark:group-hover:ring-emerald-800">
+                                        Cód. {prod.id}
+                                    </span>
                                 </div>
 
-                                <button
-                                    onClick={() => addToCart(prod, "minorista")}
-                                    className="p-4 bg-slate-900 dark:bg-emerald-600 text-white rounded-2xl hover:bg-emerald-600 dark:hover:bg-emerald-500 shadow-[0_4px_20px_rgb(0,0,0,0.1)] hover:shadow-[0_8px_25px_rgba(16,185,129,0.3)] hover:-translate-y-1 active:translate-y-0 active:scale-95 transition-all"
-                                    title="Agregar al carrito"
-                                >
-                                    <ShoppingCart className="w-6 h-6" strokeWidth={2.5} />
-                                </button>
+                                <div className="flex items-end justify-between w-full mt-auto text-left">
+                                    <div>
+                                        {(() => {
+                                            const promo = promotions.find(p => p.productId === prod.id && p.isActive && (!p.endDate || new Date(p.endDate) >= new Date()));
+                                            if (promo) {
+                                                return (
+                                                    <>
+                                                        <p className="text-xs text-slate-400 line-through font-bold mb-0.5 opacity-60">
+                                                            ${prod.priceMinorista.toLocaleString()}
+                                                        </p>
+                                                        <p className="text-3xl font-black text-violet-600 dark:text-violet-400 tracking-tight">
+                                                            <span className="text-xl mr-0.5">$</span>
+                                                            {Math.round(prod.priceMinorista * (1 - promo.discountPercentage / 100)).toLocaleString()}
+                                                        </p>
+                                                    </>
+                                                );
+                                            }
+                                            return (
+                                                <p className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">
+                                                    <span className="text-xl text-slate-400 mr-0.5">$</span>
+                                                    {prod.priceMinorista.toLocaleString("es-AR")}
+                                                </p>
+                                            );
+                                        })()}
+                                    </div>
+
+                                    <button
+                                        onClick={() => addToCart(prod, "minorista")}
+                                        className="p-4 bg-slate-900 dark:bg-emerald-600 text-white rounded-2xl hover:bg-emerald-600 dark:hover:bg-emerald-500 shadow-[0_4px_20px_rgb(0,0,0,0.1)] hover:shadow-[0_8px_25px_rgba(16,185,129,0.3)] hover:-translate-y-1 active:translate-y-0 active:scale-95 transition-all"
+                                        title="Agregar al carrito"
+                                    >
+                                        <ShoppingCart className="w-6 h-6" strokeWidth={2.5} />
+                                    </button>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                ))}
+                    ))
+                    }
 
-                {filteredAndSortedProductos.length === 0 && (
-                    <div className="col-span-full py-32 text-center flex flex-col items-center justify-center bg-white dark:bg-slate-900 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-[2.5rem]">
-                        <Search className="w-16 h-16 text-slate-300 dark:text-slate-600 mb-6" />
-                        <h3 className="text-2xl font-black text-slate-900 dark:text-slate-100 mb-3">No se encontraron productos</h3>
-                        <p className="text-slate-500 dark:text-slate-400 font-medium text-lg">Intentá con otros filtros o términos de búsqueda.</p>
-                    </div>
-                )}
-            </div>
+                    {
+                        filteredAndSortedProductos.length === 0 && (
+                            <div className="col-span-full py-32 text-center flex flex-col items-center justify-center bg-white dark:bg-slate-900 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-[2.5rem]">
+                                <Search className="w-16 h-16 text-slate-300 dark:text-slate-600 mb-6" />
+                                <h3 className="text-2xl font-black text-slate-900 dark:text-slate-100 mb-3">No se encontraron productos</h3>
+                                <p className="text-slate-500 dark:text-slate-400 font-medium text-lg">Intentá con otros filtros o términos de búsqueda.</p>
+                            </div>
+                        )
+                    }
+                </div >
+            )}
 
             {/* Pagination UI */}
-            {totalPages > 1 && (
-                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-6 sm:px-8 py-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[2rem] shadow-sm">
-                    <p className="text-sm font-bold text-slate-500 text-center sm:text-left">
-                        Mostrando <span className="text-slate-900 dark:text-white">{((currentPage - 1) * itemsPerPage) + 1}</span> a <span className="text-slate-900 dark:text-white">{Math.min(currentPage * itemsPerPage, filteredAndSortedProductos.length)}</span> de <span className="text-slate-900 dark:text-white">{filteredAndSortedProductos.length}</span> productos
-                    </p>
-                    <div className="flex items-center gap-2 flex-wrap justify-center">
-                        <button
-                            disabled={currentPage === 1}
-                            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                            className="p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
-                        >
-                            <ChevronLeft className="w-5 h-5" />
-                        </button>
-                        <div className="flex items-center gap-1">
-                            {[...Array(totalPages)].map((_, i) => {
-                                const page = i + 1;
-                                if (page === 1 || page === totalPages || (page >= currentPage - 1 && page <= currentPage + 1)) {
-                                    return (
-                                        <button
-                                            key={page}
-                                            onClick={() => setCurrentPage(page)}
-                                            className={`w-10 h-10 rounded-xl font-black text-sm transition-all ${currentPage === page
-                                                ? "bg-emerald-600 text-white shadow-lg shadow-emerald-600/20"
-                                                : "text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800"
-                                                }`}
-                                        >
-                                            {page}
-                                        </button>
-                                    );
-                                } else if (page === currentPage - 2 || page === currentPage + 2) {
-                                    return <span key={page} className="px-1 text-slate-300">...</span>;
-                                }
-                                return null;
-                            })}
-                        </div>
-                        <button
-                            disabled={currentPage === totalPages}
-                            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                            className="p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
-                        >
-                            <ChevronRight className="w-5 h-5" />
-                        </button>
-                    </div>
-                </div>
-            )}
-
-            {/* Cart Modal */}
-            {isCartOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/40 backdrop-blur-sm animate-in fade-in duration-300">
-                    <div className="bg-white dark:bg-slate-900 w-full max-w-2xl rounded-[2.5rem] shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col max-h-[90vh]">
-                        <div className="p-8 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-950/20">
-                            <h2 className="text-2xl font-black text-slate-900 dark:text-slate-100 flex items-center gap-3">
-                                <ShoppingBag className="w-6 h-6 text-emerald-600" />
-                                Review de Pedido (Minorista)
-                            </h2>
-                            <button onClick={() => setIsCartOpen(false)} className="p-2 text-slate-400 hover:text-slate-600 transition-colors">
-                                <X className="w-6 h-6" />
+            {
+                totalPages > 1 && (
+                    <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-6 sm:px-8 py-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[2rem] shadow-sm">
+                        <p className="text-sm font-bold text-slate-500 text-center sm:text-left">
+                            Mostrando <span className="text-slate-900 dark:text-white">{((currentPage - 1) * itemsPerPage) + 1}</span> a <span className="text-slate-900 dark:text-white">{Math.min(currentPage * itemsPerPage, filteredAndSortedProductos.length)}</span> de <span className="text-slate-900 dark:text-white">{filteredAndSortedProductos.length}</span> productos
+                        </p>
+                        <div className="flex items-center gap-2 flex-wrap justify-center">
+                            <button
+                                disabled={currentPage === 1}
+                                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                                className="p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                            >
+                                <ChevronLeft className="w-5 h-5" />
+                            </button>
+                            <div className="flex items-center gap-1">
+                                {[...Array(totalPages)].map((_, i) => {
+                                    const page = i + 1;
+                                    if (page === 1 || page === totalPages || (page >= currentPage - 1 && page <= currentPage + 1)) {
+                                        return (
+                                            <button
+                                                key={page}
+                                                onClick={() => setCurrentPage(page)}
+                                                className={`w-10 h-10 rounded-xl font-black text-sm transition-all ${currentPage === page
+                                                    ? "bg-emerald-600 text-white shadow-lg shadow-emerald-600/20"
+                                                    : "text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800"
+                                                    }`}
+                                            >
+                                                {page}
+                                            </button>
+                                        );
+                                    } else if (page === currentPage - 2 || page === currentPage + 2) {
+                                        return <span key={page} className="px-1 text-slate-300">...</span>;
+                                    }
+                                    return null;
+                                })}
+                            </div>
+                            <button
+                                disabled={currentPage === totalPages}
+                                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                                className="p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                            >
+                                <ChevronRight className="w-5 h-5" />
                             </button>
                         </div>
+                    </div>
+                )
+            }
 
-                        <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
-                            {orderSuccess ? (
-                                <div className="flex flex-col items-center justify-center py-20 animate-in zoom-in-95">
-                                    <div className="w-20 h-20 bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 rounded-full flex items-center justify-center mb-6">
-                                        <CheckCircle2 className="w-10 h-10" />
+            {/* Cart Modal */}
+            {
+                isCartOpen && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/40 backdrop-blur-sm animate-in fade-in duration-300">
+                        <div className="bg-white dark:bg-slate-900 w-full max-w-2xl rounded-[2.5rem] shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col max-h-[90vh]">
+                            <div className="p-8 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-950/20">
+                                <h2 className="text-2xl font-black text-slate-900 dark:text-slate-100 flex items-center gap-3">
+                                    <ShoppingBag className="w-6 h-6 text-emerald-600" />
+                                    Review de Pedido (Minorista)
+                                </h2>
+                                <button onClick={() => setIsCartOpen(false)} className="p-2 text-slate-400 hover:text-slate-600 transition-colors">
+                                    <X className="w-6 h-6" />
+                                </button>
+                            </div>
+
+                            <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
+                                {orderSuccess ? (
+                                    <div className="flex flex-col items-center justify-center py-20 animate-in zoom-in-95">
+                                        <div className="w-20 h-20 bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 rounded-full flex items-center justify-center mb-6">
+                                            <CheckCircle2 className="w-10 h-10" />
+                                        </div>
+                                        <h3 className="text-2xl font-black text-slate-900 dark:text-slate-100">¡Pedido Enviado!</h3>
+                                        <p className="text-slate-500 font-medium">Revisalo en la pestaña "Solicitud de Pedidos"</p>
                                     </div>
-                                    <h3 className="text-2xl font-black text-slate-900 dark:text-slate-100">¡Pedido Enviado!</h3>
-                                    <p className="text-slate-500 font-medium">Revisalo en la pestaña "Solicitud de Pedidos"</p>
-                                </div>
-                            ) : cartFiltered.length === 0 ? (
-                                <div className="text-center py-20 text-slate-400">
-                                    <ShoppingCart className="w-16 h-16 mx-auto mb-4 opacity-20" strokeWidth={1} />
-                                    <p className="font-bold">Tu carrito está vacío</p>
-                                </div>
-                            ) : (
-                                <div className="space-y-6">
-                                    {cartFiltered.map((item, idx) => {
-                                        const price = item.producto.priceMinorista;
-                                        return (
-                                            <div key={idx} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800 animate-in slide-in-from-bottom-2">
-                                                <div className="flex-1 w-full text-center sm:text-left">
-                                                    <p className="font-black text-slate-900 dark:text-slate-100">{item.producto.name}</p>
-                                                    <p className="text-xs text-slate-400 font-bold tracking-tight">${price.toLocaleString()} c/u</p>
-                                                </div>
-                                                <div className="flex items-center justify-between sm:justify-end gap-4 w-full sm:w-auto">
-                                                    <div className="flex items-center bg-white dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 p-1">
-                                                        <button
-                                                            onClick={() => updateCartQuantity(item.producto.id, item.priceType, item.quantity - 1)}
-                                                            className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-rose-500 transition-colors font-bold"
-                                                        >-</button>
-                                                        <span className="w-10 text-center font-black text-slate-900 dark:text-slate-100">{item.quantity}</span>
-                                                        <button
-                                                            onClick={() => updateCartQuantity(item.producto.id, item.priceType, item.quantity + 1)}
-                                                            className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-emerald-600 transition-colors font-bold"
-                                                        >+</button>
+                                ) : cartFiltered.length === 0 ? (
+                                    <div className="text-center py-20 text-slate-400">
+                                        <ShoppingCart className="w-16 h-16 mx-auto mb-4 opacity-20" strokeWidth={1} />
+                                        <p className="font-bold">Tu carrito está vacío</p>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-6">
+                                        {cartFiltered.map((item, idx) => {
+                                            const price = item.producto.priceMinorista;
+                                            return (
+                                                <div key={idx} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800 animate-in slide-in-from-bottom-2">
+                                                    <div className="flex-1 w-full text-center sm:text-left">
+                                                        <p className="font-black text-slate-900 dark:text-slate-100">{item.producto.name}</p>
+                                                        <p className="text-xs text-slate-400 font-bold tracking-tight">${price.toLocaleString()} c/u</p>
                                                     </div>
-                                                    <p className="font-black text-emerald-600 dark:text-emerald-400 min-w-[100px] text-right">
-                                                        ${(price * item.quantity).toLocaleString()}
+                                                    <div className="flex items-center justify-between sm:justify-end gap-4 w-full sm:w-auto">
+                                                        <div className="flex items-center bg-white dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 p-1">
+                                                            <button
+                                                                onClick={() => updateCartQuantity(item.producto.id, item.priceType, item.quantity - 1)}
+                                                                className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-rose-500 transition-colors font-bold"
+                                                            >-</button>
+                                                            <span className="w-10 text-center font-black text-slate-900 dark:text-slate-100">{item.quantity}</span>
+                                                            <button
+                                                                onClick={() => updateCartQuantity(item.producto.id, item.priceType, item.quantity + 1)}
+                                                                className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-emerald-600 transition-colors font-bold"
+                                                            >+</button>
+                                                        </div>
+                                                        <p className="font-black text-emerald-600 dark:text-emerald-400 min-w-[100px] text-right">
+                                                            ${(price * item.quantity).toLocaleString()}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+
+                                        <form onSubmit={handleCheckout} className="mt-10 pt-10 border-t border-slate-100 dark:border-slate-800 space-y-6">
+                                            <div className="space-y-2">
+                                                <label className="text-xs font-black text-slate-400 uppercase tracking-widest pl-1">Nombre del Cliente / Referencia</label>
+                                                <input
+                                                    required
+                                                    type="text"
+                                                    placeholder="Ej: Cliente Final"
+                                                    value={(!isAdmin && currentUser) ? currentUser.username : customerName}
+                                                    onChange={e => setCustomerName(e.target.value)}
+                                                    readOnly={!isAdmin}
+                                                    className={`w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl py-4 px-6 text-slate-900 dark:text-slate-100 font-bold focus:ring-4 focus:ring-emerald-500/10 focus:outline-none transition-all ${!isAdmin ? 'opacity-70 cursor-not-allowed text-emerald-700 dark:text-emerald-400' : ''}`}
+                                                />
+                                            </div>
+                                            <div className="space-y-4 pt-4 border-t border-slate-100 dark:border-slate-800">
+                                                <label className="text-xs font-black text-slate-400 uppercase tracking-widest pl-1">Método de Pago</label>
+                                                <div className="grid grid-cols-2 gap-4">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setPaymentMethod('qr')}
+                                                        className={`p-4 rounded-2xl border-2 transition-all flex flex-col items-center justify-center gap-2 ${paymentMethod === 'qr'
+                                                            ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 ring-4 ring-emerald-500/20'
+                                                            : 'border-slate-200 dark:border-slate-800 hover:border-emerald-200 dark:hover:border-emerald-800 text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-950'
+                                                            }`}
+                                                    >
+                                                        <span className="font-black text-lg">Mercado Pago</span>
+                                                        <span className="text-[10px] font-bold opacity-70 uppercase tracking-widest">(Link / QR)</span>
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setPaymentMethod('transferencia')}
+                                                        className={`p-4 rounded-2xl border-2 transition-all flex flex-col items-center justify-center gap-2 ${paymentMethod === 'transferencia'
+                                                            ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 ring-4 ring-emerald-500/20'
+                                                            : 'border-slate-200 dark:border-slate-800 hover:border-emerald-200 dark:hover:border-emerald-800 text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-950'
+                                                            }`}
+                                                    >
+                                                        <span className="font-black text-lg">Transferencia</span>
+                                                    </button>
+                                                </div>
+                                            </div>
+
+                                            {/* Payment Details Display */}
+                                            {paymentMethod === 'qr' && (
+                                                <div className="p-6 bg-slate-50 dark:bg-slate-800/50 rounded-3xl border border-dashed border-emerald-500/30 flex flex-col items-center animate-in zoom-in-95 duration-300">
+                                                    <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">Escaneá para pagar</p>
+                                                    <div className="w-48 h-48 bg-white p-3 rounded-2xl shadow-lg border border-slate-100 flex items-center justify-center relative overflow-hidden">
+                                                        {isGeneratingQR ? (
+                                                            <div className="flex flex-col items-center gap-3">
+                                                                <Loader2 className="w-8 h-8 text-emerald-500 animate-spin" />
+                                                                <p className="text-[10px] font-bold text-slate-400 uppercase">Generando...</p>
+                                                            </div>
+                                                        ) : paymentLink ? (
+                                                            <QRCodeSVG
+                                                                value={paymentLink}
+                                                                size={160}
+                                                                level="H"
+                                                                includeMargin={false}
+                                                                imageSettings={{
+                                                                    src: "/favicon.ico",
+                                                                    x: undefined,
+                                                                    y: undefined,
+                                                                    height: 24,
+                                                                    width: 24,
+                                                                    excavate: true,
+                                                                }}
+                                                            />
+                                                        ) : (
+                                                            <p className="text-[10px] font-bold text-rose-500 uppercase text-center">Falta configurar <br />Token de MP</p>
+                                                        )}
+                                                    </div>
+                                                    {paymentLink && (
+                                                        <a
+                                                            href={paymentLink}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className="mt-6 w-full flex items-center justify-center gap-3 py-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl font-black text-sm transition-all shadow-lg active:scale-95 animate-in slide-in-from-top-2"
+                                                        >
+                                                            <ExternalLink className="w-5 h-5" />
+                                                            Pagar ahora con Mercado Pago
+                                                        </a>
+                                                    )}
+                                                    <p className="mt-4 text-slate-400 font-bold text-[10px] text-center px-6 italic">
+                                                        {paymentLink ? "Podés escanear el código o pulsar el botón para ir a Mercado Pago." : "Configurá tu cuenta para cobrar"}
                                                     </p>
                                                 </div>
-                                            </div>
-                                        );
-                                    })}
+                                            )}
 
-                                    <form onSubmit={handleCheckout} className="mt-10 pt-10 border-t border-slate-100 dark:border-slate-800 space-y-6">
-                                        <div className="space-y-2">
-                                            <label className="text-xs font-black text-slate-400 uppercase tracking-widest pl-1">Nombre del Cliente / Referencia</label>
-                                            <input
-                                                required
-                                                type="text"
-                                                placeholder="Ej: Cliente Final"
-                                                value={(!isAdmin && currentUser) ? currentUser.username : customerName}
-                                                onChange={e => setCustomerName(e.target.value)}
-                                                readOnly={!isAdmin}
-                                                className={`w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl py-4 px-6 text-slate-900 dark:text-slate-100 font-bold focus:ring-4 focus:ring-emerald-500/10 focus:outline-none transition-all ${!isAdmin ? 'opacity-70 cursor-not-allowed text-emerald-700 dark:text-emerald-400' : ''}`}
-                                            />
-                                        </div>
-                                        <div className="space-y-4 pt-4 border-t border-slate-100 dark:border-slate-800">
-                                            <label className="text-xs font-black text-slate-400 uppercase tracking-widest pl-1">Método de Pago</label>
-                                            <div className="grid grid-cols-2 gap-4">
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setPaymentMethod('qr')}
-                                                    className={`p-4 rounded-2xl border-2 transition-all flex flex-col items-center justify-center gap-2 ${paymentMethod === 'qr'
-                                                        ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 ring-4 ring-emerald-500/20'
-                                                        : 'border-slate-200 dark:border-slate-800 hover:border-emerald-200 dark:hover:border-emerald-800 text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-950'
-                                                        }`}
-                                                >
-                                                    <span className="font-black text-lg">Mercado Pago</span>
-                                                    <span className="text-[10px] font-bold opacity-70 uppercase tracking-widest">(Link / QR)</span>
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setPaymentMethod('transferencia')}
-                                                    className={`p-4 rounded-2xl border-2 transition-all flex flex-col items-center justify-center gap-2 ${paymentMethod === 'transferencia'
-                                                        ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 ring-4 ring-emerald-500/20'
-                                                        : 'border-slate-200 dark:border-slate-800 hover:border-emerald-200 dark:hover:border-emerald-800 text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-950'
-                                                        }`}
-                                                >
-                                                    <span className="font-black text-lg">Transferencia</span>
-                                                </button>
-                                            </div>
-                                        </div>
-
-                                        {/* Payment Details Display */}
-                                        {paymentMethod === 'qr' && (
-                                            <div className="p-6 bg-slate-50 dark:bg-slate-800/50 rounded-3xl border border-dashed border-emerald-500/30 flex flex-col items-center animate-in zoom-in-95 duration-300">
-                                                <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">Escaneá para pagar</p>
-                                                <div className="w-48 h-48 bg-white p-3 rounded-2xl shadow-lg border border-slate-100 flex items-center justify-center relative overflow-hidden">
-                                                    {isGeneratingQR ? (
-                                                        <div className="flex flex-col items-center gap-3">
-                                                            <Loader2 className="w-8 h-8 text-emerald-500 animate-spin" />
-                                                            <p className="text-[10px] font-bold text-slate-400 uppercase">Generando...</p>
+                                            {paymentMethod === 'transferencia' && (
+                                                <div className="p-6 bg-slate-50 dark:bg-slate-800/50 rounded-3xl border border-dashed border-emerald-500/30 animate-in slide-in-from-top-2 duration-300">
+                                                    <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">Datos de Transferencia</p>
+                                                    <div className="space-y-3">
+                                                        <div className="flex justify-between items-center bg-white dark:bg-slate-950 p-3 rounded-xl border border-slate-100 dark:border-slate-800">
+                                                            <span className="text-[10px] font-black text-slate-400 uppercase">Alias</span>
+                                                            <span className="font-black text-slate-900 dark:text-emerald-400 select-all">{paymentInfo.alias}</span>
                                                         </div>
-                                                    ) : paymentLink ? (
-                                                        <QRCodeSVG
-                                                            value={paymentLink}
-                                                            size={160}
-                                                            level="H"
-                                                            includeMargin={false}
-                                                            imageSettings={{
-                                                                src: "/favicon.ico",
-                                                                x: undefined,
-                                                                y: undefined,
-                                                                height: 24,
-                                                                width: 24,
-                                                                excavate: true,
-                                                            }}
-                                                        />
-                                                    ) : (
-                                                        <p className="text-[10px] font-bold text-rose-500 uppercase text-center">Falta configurar <br />Token de MP</p>
-                                                    )}
-                                                </div>
-                                                {paymentLink && (
-                                                    <a
-                                                        href={paymentLink}
-                                                        target="_blank"
-                                                        rel="noopener noreferrer"
-                                                        className="mt-6 w-full flex items-center justify-center gap-3 py-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl font-black text-sm transition-all shadow-lg active:scale-95 animate-in slide-in-from-top-2"
-                                                    >
-                                                        <ExternalLink className="w-5 h-5" />
-                                                        Pagar ahora con Mercado Pago
-                                                    </a>
-                                                )}
-                                                <p className="mt-4 text-slate-400 font-bold text-[10px] text-center px-6 italic">
-                                                    {paymentLink ? "Podés escanear el código o pulsar el botón para ir a Mercado Pago." : "Configurá tu cuenta para cobrar"}
-                                                </p>
-                                            </div>
-                                        )}
-
-                                        {paymentMethod === 'transferencia' && (
-                                            <div className="p-6 bg-slate-50 dark:bg-slate-800/50 rounded-3xl border border-dashed border-emerald-500/30 animate-in slide-in-from-top-2 duration-300">
-                                                <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">Datos de Transferencia</p>
-                                                <div className="space-y-3">
-                                                    <div className="flex justify-between items-center bg-white dark:bg-slate-950 p-3 rounded-xl border border-slate-100 dark:border-slate-800">
-                                                        <span className="text-[10px] font-black text-slate-400 uppercase">Alias</span>
-                                                        <span className="font-black text-slate-900 dark:text-emerald-400 select-all">{paymentInfo.alias}</span>
-                                                    </div>
-                                                    <div className="flex justify-between items-center bg-white dark:bg-slate-950 p-3 rounded-xl border border-slate-100 dark:border-slate-800">
-                                                        <span className="text-[10px] font-black text-slate-400 uppercase">CBU</span>
-                                                        <span className="font-black text-slate-900 dark:text-emerald-400 text-[11px] select-all">{paymentInfo.cbu}</span>
-                                                    </div>
-                                                    <div className="flex justify-between items-center bg-white dark:bg-slate-950 p-3 rounded-xl border border-slate-100 dark:border-slate-800">
-                                                        <span className="text-[10px] font-black text-slate-400 uppercase">Banco</span>
-                                                        <span className="font-black text-slate-900 dark:text-slate-100">{paymentInfo.banco}</span>
+                                                        <div className="flex justify-between items-center bg-white dark:bg-slate-950 p-3 rounded-xl border border-slate-100 dark:border-slate-800">
+                                                            <span className="text-[10px] font-black text-slate-400 uppercase">CBU</span>
+                                                            <span className="font-black text-slate-900 dark:text-emerald-400 text-[11px] select-all">{paymentInfo.cbu}</span>
+                                                        </div>
+                                                        <div className="flex justify-between items-center bg-white dark:bg-slate-950 p-3 rounded-xl border border-slate-100 dark:border-slate-800">
+                                                            <span className="text-[10px] font-black text-slate-400 uppercase">Banco</span>
+                                                            <span className="font-black text-slate-900 dark:text-slate-100">{paymentInfo.banco}</span>
+                                                        </div>
                                                     </div>
                                                 </div>
-                                            </div>
-                                        )}
+                                            )}
 
-                                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 bg-slate-900 dark:bg-white rounded-3xl text-white dark:text-slate-900">
-                                            <div className="text-center sm:text-left">
-                                                <p className="text-[10px] font-black uppercase tracking-widest opacity-60">Total a Pagar</p>
-                                                <p className="text-3xl font-black">${cartTotal.toLocaleString()}</p>
+                                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 bg-slate-900 dark:bg-white rounded-3xl text-white dark:text-slate-900">
+                                                <div className="text-center sm:text-left">
+                                                    <p className="text-[10px] font-black uppercase tracking-widest opacity-60">Total a Pagar</p>
+                                                    <p className="text-3xl font-black">${cartTotal.toLocaleString()}</p>
+                                                </div>
+                                                <button
+                                                    type="submit"
+                                                    className="px-8 py-4 bg-emerald-600 text-white rounded-2xl font-black hover:bg-emerald-700 transition-all shadow-xl"
+                                                >
+                                                    Finalizar Solicitud
+                                                </button>
                                             </div>
-                                            <button
-                                                type="submit"
-                                                className="px-8 py-4 bg-emerald-600 text-white rounded-2xl font-black hover:bg-emerald-700 transition-all shadow-xl"
-                                            >
-                                                Finalizar Solicitud
-                                            </button>
-                                        </div>
-                                    </form>
-                                </div>
-                            )}
+                                        </form>
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </div>
-                </div>
-            )}
-        </div>
+                )
+            }
+        </div >
     );
 }

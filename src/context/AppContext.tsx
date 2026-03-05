@@ -204,6 +204,7 @@ interface AppContextProps {
     setScraperStatus: React.Dispatch<React.SetStateAction<ScraperStatus>>;
     currentUser: Usuario | null;
     mounted: boolean;
+    isLoading: boolean;
     updateProducto: (updated: Producto) => void;
     deleteProducto: (id: string) => void;
     addUsuario: (user: Usuario) => void;
@@ -299,6 +300,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     });
 
     const [mounted, setMounted] = useState(false);
+    const [isLoading, setIsLoading] = useState(true);
 
     // ── Load all data: Supabase first, localStorage fallback ────────
     useEffect(() => {
@@ -414,8 +416,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                     setPaymentInfoState(prev => ({ ...prev, ...parsed }));
                 }
 
-            } catch (err) {
-                console.error("Error during app initialization:", err);
+            } finally {
+                setIsLoading(false);
             }
 
             setMounted(true);
@@ -1114,7 +1116,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             addPromotion,
             deletePromotion,
             paymentInfo,
-            setPaymentInfo: setPaymentInfoState
+            setPaymentInfo: setPaymentInfoState,
+            isLoading
         }}>
             {children}
         </AppContext.Provider>
