@@ -35,13 +35,10 @@ export default function LoginPage() {
 
                 // Actualiza el estado GLOBAL de la app antes de navegar
                 login(foundUser);
+                setLoading(false);
 
-                setTimeout(() => {
-                    setLoading(false);
-                    if (foundUser.role === "minorista") router.push("/minorista");
-                    else if (foundUser.role === "mayorista") router.push("/");
-                    else router.push("/");
-                }, 100);
+                // Forzamos recarga para que el AppContext levante la nueva sesión limpiamente
+                window.location.href = foundUser.role === "minorista" ? "/minorista" : "/";
                 return;
             }
         }
@@ -50,14 +47,46 @@ export default function LoginPage() {
         if (email === "facundo" && password === "admin123") {
             const adminUser = { id: "admin-facu", username: "facundo", role: "admin" as const, status: "Activo" as const };
             login(adminUser);
-            setTimeout(() => {
-                setLoading(false);
-                router.push("/");
-            }, 100);
+            setLoading(false);
+            window.location.href = "/";
             return;
         }
 
-        // 3. Try Supabase as last resort (for production users)
+        // 3. Try searching the custom 'usuarios' table (for non-admin users on new machines)
+        try {
+            const { data: dbUser, error: dbError } = await supabase
+                .from("usuarios")
+                .select("*")
+                .ilike("username", email)
+                .eq("password", password)
+                .single();
+
+            if (!dbError && dbUser) {
+                if (dbUser.status === "Inactivo") {
+                    setError("Tu cuenta está inactiva. Contactá al administrador.");
+                    setLoading(false);
+                    return;
+                }
+
+                const foundUser = {
+                    id: dbUser.id,
+                    username: dbUser.username,
+                    role: dbUser.role as any,
+                    status: dbUser.status as any
+                };
+
+                login(foundUser);
+                setLoading(false);
+
+                // Forzamos recarga para inicializar AppContext con el nuevo usuario
+                window.location.href = foundUser.role === "minorista" ? "/minorista" : "/";
+                return;
+            }
+        } catch (err) {
+            console.error("Error searching custom table:", err);
+        }
+
+        // 4. Try Supabase Auth as last resort (for production users)
         try {
             const { data, error: sbError } = await supabase.auth.signInWithPassword({
                 email, // Supabase expects email format
@@ -66,7 +95,7 @@ export default function LoginPage() {
 
             if (!sbError) {
                 // Supabase flow will trigger onAuthStateChange in AppContext
-                router.push("/");
+                window.location.href = "/";
                 return;
             }
 
