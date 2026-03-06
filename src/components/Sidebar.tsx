@@ -24,7 +24,8 @@ import {
     ClipboardList,
     Percent,
     PieChart,
-    StickyNote
+    StickyNote,
+    Terminal
 } from "lucide-react";
 import ThemeToggle from "@/components/ThemeToggle";
 
@@ -69,6 +70,7 @@ const menuSections = [
             { href: "/usuarios", label: "Gestión de Usuarios", icon: Users },
             { href: "/categoria-usuarios", label: "Categoría de Usuarios", icon: Tags },
             { href: "/porcentaje-ganancia", label: "Porcentaje de Ganancia", icon: Percent },
+            { href: "/logs", label: "Logs del Sistema", icon: Terminal },
         ]
     },
     {
