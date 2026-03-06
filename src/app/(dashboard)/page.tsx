@@ -23,6 +23,8 @@ import Image from "next/image";
 import { getOptimizedImageUrl } from "@/lib/image-optimizer";
 import { useState, useMemo, useEffect } from "react";
 import { useAppContext, Producto } from "@/context/AppContext";
+import { exportToExcel, exportToPDF } from "@/lib/export-utils";
+import { FileSpreadsheet, FileText } from "lucide-react";
 
 const extractBrand = (name: string) => {
     if (name.includes('(') && name.includes(')')) {
@@ -140,9 +142,29 @@ export default function ListaMayoristaPage() {
         if (isAdmin) setCustomerName("");
         setOrderSuccess(true);
         setTimeout(() => {
-            setOrderSuccess(false);
             setIsCartOpen(false);
         }, 2000);
+    };
+
+    const handleExportExcel = () => {
+        const data = filteredAndSortedProductos.map(p => ({
+            "Producto": p.name,
+            "Categoría": p.category,
+            "Género": p.gender,
+            "Precio Mayorista": `$${p.price.toLocaleString("es-AR")}`
+        }));
+        exportToExcel(data, "Lista_Precios_Mayorista_Scenta", "Scenta - Lista de Precios Mayorista");
+    };
+
+    const handleExportPDF = () => {
+        const headers = ["Producto", "Categoría", "Género", "Precio"];
+        const rows = filteredAndSortedProductos.map(p => [
+            p.name,
+            p.category,
+            p.gender,
+            `$${p.price.toLocaleString("es-AR")}`
+        ]);
+        exportToPDF("Lista de Precios Mayorista - Scenta", headers, rows, "Lista_Precios_Mayorista_Scenta");
     };
 
     const cartFiltered = useMemo(() => cart.filter(item => item.priceType === "mayorista"), [cart]);
@@ -186,6 +208,25 @@ export default function ListaMayoristaPage() {
                             </span>
                         )}
                     </button>
+
+                    <div className="flex gap-2">
+                        <button
+                            onClick={handleExportExcel}
+                            className="p-3.5 rounded-2xl bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-500/20 hover:scale-105 active:scale-95 transition-all shadow-sm flex items-center gap-2 font-bold text-sm"
+                            title="Exportar a Excel"
+                        >
+                            <FileSpreadsheet className="w-5 h-5" />
+                            <span>Excel</span>
+                        </button>
+                        <button
+                            onClick={handleExportPDF}
+                            className="p-3.5 rounded-2xl bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-100 dark:border-rose-500/20 hover:scale-105 active:scale-95 transition-all shadow-sm flex items-center gap-2 font-bold text-sm"
+                            title="Exportar a PDF"
+                        >
+                            <FileText className="w-5 h-5" />
+                            <span>PDF</span>
+                        </button>
+                    </div>
                 </div>
             </header>
 

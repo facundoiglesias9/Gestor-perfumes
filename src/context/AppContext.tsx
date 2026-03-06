@@ -233,6 +233,7 @@ interface AppContextProps {
     deletePromotion: (id: string) => Promise<void>;
     paymentInfo: { alias: string; cbu: string; banco: string; mpAccessToken: string };
     setPaymentInfo: (info: { alias: string; cbu: string; banco: string; mpAccessToken: string }) => void;
+    addSystemLog: (type: "info" | "error" | "db" | "auth", message: string, details?: any) => void;
 }
 
 const AppContext = createContext<AppContextProps | undefined>(undefined);
@@ -302,6 +303,47 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const [mounted, setMounted] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
 
+    // ── Global Logger with Realtime Broadcast ──────────────────────
+    const addSystemLog = (type: "info" | "error" | "db" | "auth", message: string, details?: any) => {
+        const newLog = {
+            id: Math.random().toString(36).substr(2, 9),
+            timestamp: new Date().toLocaleTimeString(),
+            type,
+            message,
+            details: details ? JSON.parse(JSON.stringify(details)) : null // Ensure serializable
+        };
+
+        // 1. Store locally for this machine
+        try {
+            const currentLogs = JSON.parse(localStorage.getItem("system_logs") || "[]");
+            const updatedLogs = [newLog, ...currentLogs].slice(0, 100);
+            localStorage.setItem("system_logs", JSON.stringify(updatedLogs));
+        } catch (e) { }
+
+        // 2. Broadcast via Supabase Realtime (Live Monitoring)
+        const channel = supabase.channel('system_logs_broadcast', {
+            config: { broadcast: { self: true } }
+        });
+        channel.subscribe((status) => {
+            if (status === 'SUBSCRIBED') {
+                channel.send({
+                    type: 'broadcast',
+                    event: 'new_log',
+                    payload: newLog
+                });
+            }
+        });
+
+        // 3. Trigger UI update if on Logs page (internal state sync)
+        if ((window as any).__onNewLog) (window as any).__onNewLog(newLog);
+    };
+
+    // Export to window for non-react parts / debugging
+    useEffect(() => {
+        (window as any).__addSystemLog = addSystemLog;
+        return () => { delete (window as any).__addSystemLog; };
+    }, []);
+
     // ── Load all data: Supabase first, localStorage fallback ────────
     useEffect(() => {
         const initializeApp = async () => {
@@ -353,11 +395,43 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                     provResult, escResult, insResult, invResult, transResult, basesResult, usersResult, ordersResult
                 ] = isAdmin ? results.slice(3) : [null, null, null, null, null, null, null, null];
 
+                // Diagnostic log for results array
+                addSystemLog("info", "Resultados de peticiones paralelas recibidos", {
+                    total_requests: results.length,
+                    isAdmin_context: isAdmin
+                });
+
                 // Helper: use Supabase if available, else localStorage. Returns {data, fromLS}
                 const resolve = <T,>(result: { data: any[] | null; error: any } | null, lsKey: string, mapper: (r: any) => T, fallback: T[] = []): { data: T[]; fromLS: boolean } => {
-                    if (result && !result.error && result.data !== null) return { data: result.data.map(mapper), fromLS: false };
+
+                    if (result && !result.error && result.data !== null) {
+                        addSystemLog("db", `Carga exitosa: ${lsKey} de Supabase`, { count: result.data.length });
+                        return { data: result.data.map(mapper), fromLS: false };
+                    }
+
+                    if (result?.error) {
+                        console.error(`Error fetching ${lsKey} from Supabase:`, result.error);
+                        addSystemLog("error", `Fallo en Supabase (${lsKey})`, {
+                            message: result.error?.message || "Error desconocido",
+                            code: result.error?.code,
+                            details: result.error?.details
+                        });
+                    } else if (result && result.data === null) {
+                        addSystemLog("error", `Supabase devolvió DATA NULL para ${lsKey}`);
+                    }
+
                     const stored = localStorage.getItem(lsKey);
-                    if (stored) { try { return { data: JSON.parse(stored) as T[], fromLS: true }; } catch {/* ignore */ } }
+                    if (stored) {
+                        try {
+                            const parsed = JSON.parse(stored);
+                            addSystemLog("info", `Cargando ${lsKey} desde LocalStorage (fallback)`);
+                            return { data: parsed as T[], fromLS: true };
+                        } catch (e) {
+                            addSystemLog("error", `Error parseando LocalStorage para ${lsKey}`, e);
+                        }
+                    }
+
+                    addSystemLog("info", `Usando fallback vacío para ${lsKey}`);
                     return { data: fallback, fromLS: false };
                 };
 
@@ -1117,7 +1191,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             deletePromotion,
             paymentInfo,
             setPaymentInfo: setPaymentInfoState,
-            isLoading
+            isLoading,
+            addSystemLog
         }}>
             {children}
         </AppContext.Provider>
