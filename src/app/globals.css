@@ -16,21 +16,28 @@
 
 @layer base {
   :root {
-    --background: #0f172a;
-    /* Slate 900 */
-    --foreground: #f8fafc;
-    /* Slate 50 */
-    --card: #1e293b;
-    /* Slate 800 */
-    --card-foreground: #f8fafc;
-    --primary: #c084fc;
-    /* Purple 400 - Perfume vibe */
+    --background: #f8fafc; /* Slate 50 */
+    --foreground: #0f172a; /* Slate 900 */
+    --card: #ffffff;
+    --card-foreground: #0f172a;
+    --primary: #c084fc; /* Purple 400 */
     --primary-foreground: #ffffff;
-    --border: #334155;
-    /* Slate 700 */
-    --input: #1e293b;
+    --border: #e2e8f0; /* Slate 200 */
+    --input: #ffffff;
     --ring: #c084fc;
     --radius: 0.75rem;
+  }
+
+  .dark {
+    --background: #0f172a; /* Slate 900 */
+    --foreground: #f8fafc; /* Slate 50 */
+    --card: #1e293b; /* Slate 800 */
+    --card-foreground: #f8fafc;
+    --primary: #c084fc;
+    --primary-foreground: #ffffff;
+    --border: #334155; /* Slate 700 */
+    --input: #1e293b;
+    --ring: #c084fc;
   }
 }
 

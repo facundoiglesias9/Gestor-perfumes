@@ -34,7 +34,7 @@ const menuSections = [
         title: "Gestión Comercial",
         key: "comercial",
         items: [
-            { href: "/", label: "Lista Mayorista", icon: Tags },
+            { href: "/lista-mayorista", label: "Lista Mayorista", icon: Tags },
             { href: "/minorista", label: "Lista Minorista", icon: Store },
             { href: "/bases", label: "Bases de Productos", icon: Layers },
             { href: "/crear-producto", label: "Crear Producto", icon: Plus },
@@ -68,8 +68,8 @@ const menuSections = [
             { href: "/categorias", label: "Categorías", icon: ListTree },
             { href: "/generos", label: "Géneros", icon: FlaskConical },
             { href: "/usuarios", label: "Gestión de Usuarios", icon: Users },
-            { href: "/categoria-usuarios", label: "Categoría de Usuarios", icon: Tags },
             { href: "/porcentaje-ganancia", label: "Porcentaje de Ganancia", icon: Percent },
+            { href: "/datos-pago", label: "Datos Bancarios", icon: Wallet },
             { href: "/logs", label: "Logs del Sistema", icon: Terminal },
         ]
     },
@@ -106,7 +106,7 @@ export default function Sidebar({ onClose }: { onClose?: () => void }) {
                 return item.href === "/minorista" || item.href === "/pedidos-solicitud";
             }
             if (currentUser.role === "mayorista") {
-                return ["/", "/pedidos-solicitud", "/historial-compras", "/dashboard-mayorista", "/notas"].includes(item.href);
+                return ["/lista-mayorista", "/pedidos-solicitud", "/historial-compras", "/dashboard-mayorista", "/notas"].includes(item.href);
             }
             return false;
         });

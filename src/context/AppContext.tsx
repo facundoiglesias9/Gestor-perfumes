@@ -41,7 +41,7 @@ export type Producto = {
 };
 
 export type UserRole = "admin" | "minorista" | "mayorista";
-export type Usuario = { id: string; username: string; password?: string; role: UserRole; status: "Activo" | "Inactivo" };
+export type Usuario = { id: string; username: string; email?: string; password?: string; role: UserRole; status: "Activo" | "Inactivo" };
 
 export type PermissionLevel = "Editor" | "Solo lectura" | "Sin acceso";
 export type CategoryPermissions = Record<string, PermissionLevel>;
@@ -158,6 +158,7 @@ function dbToUsuario(row: any): Usuario {
     return {
         id: row.id,
         username: row.username,
+        email: row.email,
         password: row.password,
         role: row.role,
         status: row.status,
@@ -370,11 +371,42 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
                 const isAdmin = resolvedUser?.role === "admin";
 
-                // 2. Parallel fetch essential vs admin data
+                // Optimistic Load from LocalStorage (Stale-While-Revalidate)
+                let localProductsLoaded = false;
+                try {
+                    const localCat = localStorage.getItem("categorias");
+                    if (localCat) setCategorias(JSON.parse(localCat));
+
+                    const localProd = localStorage.getItem("productos");
+                    if (localProd) {
+                        setProductos(JSON.parse(localProd));
+                        localProductsLoaded = true;
+                        setIsLoading(false); // Liberar la UI inmediatamente si ya tenemos productos
+                    }
+
+                    const localPromo = localStorage.getItem("promociones");
+                    if (localPromo) setPromotions(JSON.parse(localPromo));
+                } catch (e) { }
+
+                // Function with retry for large tables
+                const fetchWithRetry = async (query: any, retries = 2) => {
+                    for (let i = 0; i <= retries; i++) {
+                        const res = await query;
+                        if (!res.error) return res;
+                        if (i < retries) {
+                            addSystemLog("info", `Reintentando fetch (${i + 1}/${retries})...`);
+                            await new Promise(resolve => setTimeout(resolve, 1000));
+                        } else {
+                            return res;
+                        }
+                    }
+                };
+
+                // 2. Parallel fetch essential vs admin data (Supabase Refetch)
                 const essentialRequests = [
-                    supabase.from("categorias").select("*").order("name"),
-                    supabase.from("productos").select("*").order("name"),
-                    supabase.from("promociones").select("*"),
+                    fetchWithRetry(supabase.from("categorias").select("*").order("name")),
+                    fetchWithRetry(supabase.from("productos").select("id, name, category, price, price_minorista, stock, gender, image_url, base_id")),
+                    fetchWithRetry(supabase.from("promociones").select("*")),
                 ];
 
                 const adminRequests = isAdmin ? [
@@ -405,38 +437,31 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                 const resolve = <T,>(result: { data: any[] | null; error: any } | null, lsKey: string, mapper: (r: any) => T, fallback: T[] = []): { data: T[]; fromLS: boolean } => {
 
                     if (result && !result.error && result.data !== null) {
-                        addSystemLog("db", `Carga exitosa: ${lsKey} de Supabase`, { count: result.data.length });
                         return { data: result.data.map(mapper), fromLS: false };
                     }
 
                     if (result?.error) {
-                        console.error(`Error fetching ${lsKey} from Supabase:`, result.error);
+                        console.warn(`Error fetching ${lsKey} from Supabase:`, result.error);
                         addSystemLog("error", `Fallo en Supabase (${lsKey})`, {
                             message: result.error?.message || "Error desconocido",
                             code: result.error?.code,
-                            details: result.error?.details
                         });
-                    } else if (result && result.data === null) {
-                        addSystemLog("error", `Supabase devolvió DATA NULL para ${lsKey}`);
                     }
 
                     const stored = localStorage.getItem(lsKey);
                     if (stored) {
                         try {
                             const parsed = JSON.parse(stored);
-                            addSystemLog("info", `Cargando ${lsKey} desde LocalStorage (fallback)`);
                             return { data: parsed as T[], fromLS: true };
                         } catch (e) {
-                            addSystemLog("error", `Error parseando LocalStorage para ${lsKey}`, e);
                         }
                     }
 
-                    addSystemLog("info", `Usando fallback vacío para ${lsKey}`);
                     return { data: fallback, fromLS: false };
                 };
 
-                // Essential data
-                const catRes = resolve(catResult, "categorias", (r) => ({ id: r.id, name: r.name, count: r.count ?? 0 } as Categoria), [{ id: "1", name: "Perfumería Fina", count: 0 }, { id: "2", name: "Perfumes de Ambiente", count: 0 }]);
+                // Essential data Revalidation
+                const catRes = resolve(catResult, "categorias", (r) => ({ id: r.id, name: r.name, count: r.count ?? 0 } as Categoria), [{ id: "1", name: "Perfumería Fina", count: 0 }]);
                 const rawProdsRes = resolve(prodResult, "productos", dbToProducto, []);
                 const promoData = resolve(promoResult, "promociones", (r) => ({ id: r.id, productId: r.product_id, discountPercentage: r.discount_percentage, isActive: r.is_active, endDate: r.end_date } as Promotion), []);
 
@@ -446,11 +471,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                     priceMinorista: p.priceMinorista ?? (p.price * 1.5)
                 }));
 
+                // Actualizar DB sobre el render optimista
                 setCategorias(catRes.data);
                 setProductos(sanitizedProducts);
                 setPromotions(promoData.data);
 
-                // Admin-only data (load if admin, else use empty/local)
+                // Admin-only data
                 if (isAdmin) {
                     const provRes = resolve(provResult, "proveedores", (r) => ({ id: r.id, name: r.name, contact: r.contact ?? "" } as Proveedor), []);
                     const escRes = resolve(escResult, "esencias", dbToEsencia, []);
@@ -491,7 +517,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                 }
 
             } finally {
-                setIsLoading(false);
+                setIsLoading(false); // Terminar el flag normal para la base de datos completa.
             }
 
             setMounted(true);
@@ -537,7 +563,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
     useEffect(() => {
         if (!mounted) return;
-        localStorage.setItem("globalPermissions", JSON.stringify(globalPermissions));
+        try {
+            localStorage.setItem("globalPermissions", JSON.stringify(globalPermissions));
+        } catch (e) {
+            console.warn("Storage quota exceeded for permissions");
+        }
     }, [globalPermissions, mounted]);
 
     useEffect(() => {
@@ -547,8 +577,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
     useEffect(() => {
         if (!mounted) return;
-        localStorage.setItem("categoryMargins", JSON.stringify(categoryMargins));
+        try {
+            localStorage.setItem("categoryMargins", JSON.stringify(categoryMargins));
+        } catch (e) { }
     }, [categoryMargins, mounted]);
+
+    useEffect(() => {
+        if (!mounted) return;
+        try { localStorage.setItem("usuarios", JSON.stringify(usuarios)); } catch (e) { }
+        try { localStorage.setItem("productos", JSON.stringify(productos)); } catch (e) { }
+        try { localStorage.setItem("categorias", JSON.stringify(categorias)); } catch (e) { }
+        try { localStorage.setItem("promociones", JSON.stringify(promotions)); } catch (e) { }
+    }, [usuarios, productos, categorias, promotions, mounted]);
 
     // ── Auth ──────────────────────────────────────────────────────
     const login = (user: Usuario) => {
@@ -587,12 +627,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         await supabase.from("productos").delete().eq("id", id);
     };
 
-    // ── Usuarios ──────────────────────────────────────────────────
     const addUsuario = async (user: Usuario) => {
-        setUsuarios(prev => [user, ...prev]);
+        _setUsuarios(prev => [user, ...prev]);
         await supabase.from("usuarios").insert({
             id: user.id,
             username: user.username,
+            email: user.email,
             password: user.password,
             role: user.role,
             status: user.status,
@@ -600,10 +640,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     };
 
     const updateUsuario = async (updated: Usuario) => {
-        setUsuarios(prev => prev.map(u => u.id === updated.id ? updated : u));
+        _setUsuarios(prev => prev.map(u => u.id === updated.id ? updated : u));
         await supabase.from("usuarios").upsert({
             id: updated.id,
             username: updated.username,
+            email: updated.email,
             password: updated.password,
             role: updated.role,
             status: updated.status,
@@ -1097,6 +1138,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             syncDiffToSupabase("usuarios", prev, next, (u: Usuario) => ({
                 id: u.id,
                 username: u.username,
+                email: u.email,
                 password: u.password,
                 role: u.role,
                 status: u.status,

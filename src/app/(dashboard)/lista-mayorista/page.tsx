@@ -17,8 +17,12 @@ import {
     ChevronLeft,
     ChevronRight,
     ArrowUpRight,
-    Loader2
+    ExternalLink,
+    Loader2,
+    Copy,
+    Check
 } from "lucide-react";
+import { QRCodeSVG } from "qrcode.react";
 import Image from "next/image";
 import { getOptimizedImageUrl } from "@/lib/image-optimizer";
 import { useState, useMemo, useEffect } from "react";
@@ -59,7 +63,7 @@ const extractBrand = (name: string) => {
 };
 
 export default function ListaMayoristaPage() {
-    const { productos, categorias, deleteProducto, addToCart, cart, createOrder, updateCartQuantity, currentUser, generos, isLoading } = useAppContext();
+    const { productos, categorias, deleteProducto, addToCart, cart, createOrder, updateCartQuantity, currentUser, generos, paymentInfo, isLoading } = useAppContext();
     const [searchTerm, setSearchTerm] = useState("");
     const [categoryFilter, setCategoryFilter] = useState("Todas");
     const [genderFilter, setGenderFilter] = useState("Todos");
@@ -69,7 +73,18 @@ export default function ListaMayoristaPage() {
     const [orderSuccess, setOrderSuccess] = useState(false);
     const [currentPage, setCurrentPage] = useState(1);
     const [isRestored, setIsRestored] = useState(false);
+    const [paymentMethod, setPaymentMethod] = useState<'qr' | 'transferencia' | 'efectivo'>('qr');
+    const [paymentLink, setPaymentLink] = useState<string>("");
+    const [isGeneratingQR, setIsGeneratingQR] = useState(false);
+    const [copiedField, setCopiedField] = useState<string | null>(null);
     const itemsPerPage = 10;
+
+    const handleCopy = (text: string, field: string) => {
+        if (!text) return;
+        navigator.clipboard.writeText(text);
+        setCopiedField(field);
+        setTimeout(() => setCopiedField(null), 2000);
+    };
 
     // Restore filters + page from sessionStorage on mount
     useEffect(() => {
@@ -134,11 +149,48 @@ export default function ListaMayoristaPage() {
         return filteredAndSortedProductos.slice(start, start + itemsPerPage);
     }, [filteredAndSortedProductos, currentPage]);
 
+    // Generate MP Link when QR is selected
+    useEffect(() => {
+        if (paymentMethod === 'qr' && cart.length > 0 && paymentInfo?.mpAccessToken) {
+            const generateLink = async () => {
+                setIsGeneratingQR(true);
+                try {
+                    const response = await fetch('/api/create-preference', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            accessToken: paymentInfo.mpAccessToken.trim(),
+                            customerName: "Cliente Mayorista",
+                            items: cart.map(item => ({
+                                name: item.producto.name,
+                                quantity: item.quantity,
+                                price: (item.priceType === 'minorista' ? item.producto.priceMinorista : item.producto.price) * 1.10
+                            }))
+                        })
+                    });
+                    const data = await response.json();
+                    if (data.init_point) {
+                        setPaymentLink(data.init_point);
+                    } else {
+                        console.error("MP API Error:", data.error);
+                    }
+                } catch (error) {
+                    console.error("Error generating MP link:", error);
+                } finally {
+                    setIsGeneratingQR(false);
+                }
+            };
+            generateLink();
+        } else {
+            setPaymentLink("");
+        }
+    }, [paymentMethod, cart, paymentInfo?.mpAccessToken]);
+
     const handleCheckout = (e: React.FormEvent) => {
         e.preventDefault();
         const finalName = (!isAdmin && currentUser) ? currentUser.username : customerName;
         if (!finalName || cart.length === 0) return;
-        createOrder(finalName);
+        createOrder(finalName, paymentMethod);
         if (isAdmin) setCustomerName("");
         setOrderSuccess(true);
         setTimeout(() => {
@@ -532,10 +584,140 @@ export default function ListaMayoristaPage() {
                                                     className={`w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl py-4 px-6 text-slate-900 dark:text-slate-100 font-bold focus:ring-4 focus:ring-indigo-500/10 focus:outline-none transition-all ${!isAdmin ? 'opacity-70 cursor-not-allowed text-indigo-700 dark:text-indigo-400' : ''}`}
                                                 />
                                             </div>
+
+                                            <div className="space-y-6 pt-6 border-t border-slate-100 dark:border-slate-800">
+                                                <div className="space-y-3">
+                                                    <label className="text-xs font-black text-slate-400 uppercase tracking-widest pl-1">Método de Pago</label>
+                                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 cursor-pointer">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setPaymentMethod('efectivo')}
+                                                            className={`p-4 rounded-2xl border-2 transition-all flex flex-col items-center justify-center gap-2 ${paymentMethod === 'efectivo'
+                                                                ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 ring-4 ring-indigo-500/20'
+                                                                : 'border-slate-200 dark:border-slate-800 hover:border-indigo-200 dark:hover:border-indigo-800 text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-950'
+                                                                }`}
+                                                        >
+                                                            <span className="font-black text-lg">Efectivo</span>
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setPaymentMethod('qr')}
+                                                            className={`p-4 rounded-2xl border-2 transition-all flex flex-col items-center justify-center gap-1 ${paymentMethod === 'qr'
+                                                                ? 'border-blue-500 bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 ring-4 ring-blue-500/20'
+                                                                : 'border-slate-200 dark:border-slate-800 hover:border-blue-200 dark:hover:border-blue-800 text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-950'
+                                                                }`}
+                                                        >
+                                                            <span className="font-black text-lg">Mercado Pago</span>
+                                                            <span className="text-[10px] font-bold opacity-70 uppercase tracking-widest text-blue-500">(+10% RECARGO)</span>
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setPaymentMethod('transferencia')}
+                                                            className={`p-4 rounded-2xl border-2 transition-all flex flex-col items-center justify-center gap-2 ${paymentMethod === 'transferencia'
+                                                                ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 ring-4 ring-emerald-500/20'
+                                                                : 'border-slate-200 dark:border-slate-800 hover:border-emerald-200 dark:hover:border-emerald-800 text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-950'
+                                                                }`}
+                                                        >
+                                                            <span className="font-black text-lg">Transferencia</span>
+                                                        </button>
+                                                    </div>
+                                                </div>
+
+                                                {/* Payment Details Display */}
+                                                {paymentMethod === 'qr' && (
+                                                    <div className="p-6 bg-slate-50 dark:bg-slate-800/50 rounded-3xl border border-dashed border-blue-500/30 flex flex-col items-center animate-in zoom-in-95 duration-300">
+                                                        <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">Escaneá para pagar</p>
+                                                        <div className="w-48 h-48 bg-white p-3 rounded-2xl shadow-lg border border-slate-100 flex items-center justify-center relative overflow-hidden">
+                                                            {isGeneratingQR ? (
+                                                                <div className="flex flex-col items-center gap-3">
+                                                                    <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
+                                                                    <p className="text-[10px] font-bold text-slate-400 uppercase">Generando...</p>
+                                                                </div>
+                                                            ) : paymentLink ? (
+                                                                <QRCodeSVG
+                                                                    value={paymentLink}
+                                                                    size={160}
+                                                                    level="H"
+                                                                    includeMargin={false}
+                                                                    imageSettings={{
+                                                                        src: "/favicon.ico",
+                                                                        x: undefined,
+                                                                        y: undefined,
+                                                                        height: 24,
+                                                                        width: 24,
+                                                                        excavate: true,
+                                                                    }}
+                                                                />
+                                                            ) : (
+                                                                <p className="text-[10px] font-bold text-rose-500 uppercase text-center">Falta configurar <br />Token de MP</p>
+                                                            )}
+                                                        </div>
+                                                        {paymentLink && (
+                                                            <a
+                                                                href={paymentLink}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                className="mt-6 w-full flex items-center justify-center gap-3 py-4 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl font-black text-sm transition-all shadow-lg active:scale-95 animate-in slide-in-from-top-2"
+                                                            >
+                                                                <ExternalLink className="w-5 h-5" />
+                                                                Pagar ahora con Mercado Pago
+                                                            </a>
+                                                        )}
+                                                        <p className="mt-4 text-slate-400 font-bold text-[10px] text-center px-6 italic">
+                                                            {paymentLink ? "Podés escanear el código o pulsar el botón para ir a Mercado Pago." : "Configurá tu cuenta para cobrar"}
+                                                        </p>
+                                                    </div>
+                                                )}
+
+                                                {paymentMethod === 'transferencia' && (
+                                                    <div className="p-6 bg-slate-50 dark:bg-slate-800/50 rounded-3xl border border-dashed border-emerald-500/30 animate-in slide-in-from-top-2 duration-300">
+                                                        <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">Datos de Transferencia</p>
+                                                        <div className="space-y-3">
+                                                            <div className="flex justify-between items-center bg-white dark:bg-slate-950 p-3 rounded-xl border border-slate-100 dark:border-slate-800 group">
+                                                                <span className="text-[10px] font-black text-slate-400 uppercase">Alias</span>
+                                                                <div className="flex items-center gap-2">
+                                                                    <span className="font-black text-slate-900 dark:text-emerald-400 select-all">{paymentInfo?.alias}</span>
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => handleCopy(paymentInfo?.alias || '', 'alias')}
+                                                                        className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-emerald-500 transition-colors"
+                                                                        title="Copiar Alias"
+                                                                    >
+                                                                        {copiedField === 'alias' ? <Check className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                            <div className="flex justify-between items-center bg-white dark:bg-slate-950 p-3 rounded-xl border border-slate-100 dark:border-slate-800 group">
+                                                                <span className="text-[10px] font-black text-slate-400 uppercase">CBU</span>
+                                                                <div className="flex items-center gap-2">
+                                                                    <span className="font-black text-slate-900 dark:text-emerald-400 text-[11px] select-all">{paymentInfo?.cbu}</span>
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => handleCopy(paymentInfo?.cbu || '', 'cbu')}
+                                                                        className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-emerald-500 transition-colors"
+                                                                        title="Copiar CBU"
+                                                                    >
+                                                                        {copiedField === 'cbu' ? <Check className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                            <div className="flex justify-between items-center bg-white dark:bg-slate-950 p-3 rounded-xl border border-slate-100 dark:border-slate-800">
+                                                                <span className="text-[10px] font-black text-slate-400 uppercase">Banco</span>
+                                                                <span className="font-black text-slate-900 dark:text-slate-100">{paymentInfo?.banco}</span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+
                                             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 bg-slate-900 dark:bg-white rounded-3xl text-white dark:text-slate-900">
                                                 <div className="text-center sm:text-left">
-                                                    <p className="text-[10px] font-black uppercase tracking-widest opacity-60">Total a Pagar</p>
-                                                    <p className="text-3xl font-black">${cartTotal.toLocaleString()}</p>
+                                                    <p className="text-[10px] font-black uppercase tracking-widest opacity-60">
+                                                        Total a Pagar {paymentMethod === 'qr' && <span className="text-blue-500 ml-1">(+10% MP)</span>}
+                                                    </p>
+                                                    <p className="text-3xl font-black">
+                                                        ${(paymentMethod === 'qr' ? cartTotal * 1.10 : cartTotal).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                                                    </p>
                                                 </div>
                                                 <button
                                                     type="submit"

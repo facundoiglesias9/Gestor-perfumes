@@ -19,7 +19,9 @@ import {
     ArrowUpRight,
     Sparkles,
     ExternalLink,
-    Loader2
+    Loader2,
+    Copy,
+    Check
 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import Image from "next/image";
@@ -90,7 +92,15 @@ export default function ListaMinoristaPage() {
     const [paymentMethod, setPaymentMethod] = useState<'qr' | 'transferencia' | 'efectivo'>('qr');
     const [paymentLink, setPaymentLink] = useState<string>("");
     const [isGeneratingQR, setIsGeneratingQR] = useState(false);
+    const [copiedField, setCopiedField] = useState<string | null>(null);
     const itemsPerPage = 10;
+
+    const handleCopy = (text: string, field: string) => {
+        if (!text) return;
+        navigator.clipboard.writeText(text);
+        setCopiedField(field);
+        setTimeout(() => setCopiedField(null), 2000);
+    };
 
     // Restore filters + page from sessionStorage on mount
     useEffect(() => {
@@ -171,7 +181,7 @@ export default function ListaMinoristaPage() {
                             items: cart.map(item => ({
                                 name: item.producto.name,
                                 quantity: item.quantity,
-                                price: item.priceType === 'minorista' ? item.producto.priceMinorista : item.producto.price
+                                price: (item.priceType === 'minorista' ? item.producto.priceMinorista : item.producto.price) * 1.10
                             }))
                         })
                     });
@@ -639,7 +649,7 @@ export default function ListaMinoristaPage() {
                                                             }`}
                                                     >
                                                         <span className="font-black text-lg">Mercado Pago</span>
-                                                        <span className="text-[10px] font-bold opacity-70 uppercase tracking-widest">(Link / QR)</span>
+                                                        <span className="text-[10px] font-bold opacity-70 uppercase tracking-widest text-blue-500">(+10% RECARGO)</span>
                                                     </button>
                                                     <button
                                                         type="button"
@@ -704,13 +714,33 @@ export default function ListaMinoristaPage() {
                                                 <div className="p-6 bg-slate-50 dark:bg-slate-800/50 rounded-3xl border border-dashed border-emerald-500/30 animate-in slide-in-from-top-2 duration-300">
                                                     <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">Datos de Transferencia</p>
                                                     <div className="space-y-3">
-                                                        <div className="flex justify-between items-center bg-white dark:bg-slate-950 p-3 rounded-xl border border-slate-100 dark:border-slate-800">
+                                                        <div className="flex justify-between items-center bg-white dark:bg-slate-950 p-3 rounded-xl border border-slate-100 dark:border-slate-800 group">
                                                             <span className="text-[10px] font-black text-slate-400 uppercase">Alias</span>
-                                                            <span className="font-black text-slate-900 dark:text-emerald-400 select-all">{paymentInfo.alias}</span>
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="font-black text-slate-900 dark:text-emerald-400 select-all">{paymentInfo.alias}</span>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => handleCopy(paymentInfo.alias || '', 'alias')}
+                                                                    className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-emerald-500 transition-colors"
+                                                                    title="Copiar Alias"
+                                                                >
+                                                                    {copiedField === 'alias' ? <Check className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
+                                                                </button>
+                                                            </div>
                                                         </div>
-                                                        <div className="flex justify-between items-center bg-white dark:bg-slate-950 p-3 rounded-xl border border-slate-100 dark:border-slate-800">
+                                                        <div className="flex justify-between items-center bg-white dark:bg-slate-950 p-3 rounded-xl border border-slate-100 dark:border-slate-800 group">
                                                             <span className="text-[10px] font-black text-slate-400 uppercase">CBU</span>
-                                                            <span className="font-black text-slate-900 dark:text-emerald-400 text-[11px] select-all">{paymentInfo.cbu}</span>
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="font-black text-slate-900 dark:text-emerald-400 text-[11px] select-all">{paymentInfo.cbu}</span>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => handleCopy(paymentInfo.cbu || '', 'cbu')}
+                                                                    className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-emerald-500 transition-colors"
+                                                                    title="Copiar CBU"
+                                                                >
+                                                                    {copiedField === 'cbu' ? <Check className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
+                                                                </button>
+                                                            </div>
                                                         </div>
                                                         <div className="flex justify-between items-center bg-white dark:bg-slate-950 p-3 rounded-xl border border-slate-100 dark:border-slate-800">
                                                             <span className="text-[10px] font-black text-slate-400 uppercase">Banco</span>
@@ -722,8 +752,12 @@ export default function ListaMinoristaPage() {
 
                                             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 bg-slate-900 dark:bg-white rounded-3xl text-white dark:text-slate-900">
                                                 <div className="text-center sm:text-left">
-                                                    <p className="text-[10px] font-black uppercase tracking-widest opacity-60">Total a Pagar</p>
-                                                    <p className="text-3xl font-black">${cartTotal.toLocaleString()}</p>
+                                                    <p className="text-[10px] font-black uppercase tracking-widest opacity-60">
+                                                        Total a Pagar {paymentMethod === 'qr' && <span className="text-blue-500 ml-1">(+10% MP)</span>}
+                                                    </p>
+                                                    <p className="text-3xl font-black">
+                                                        ${(paymentMethod === 'qr' ? cartTotal * 1.10 : cartTotal).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                                                    </p>
                                                 </div>
                                                 <button
                                                     type="submit"
