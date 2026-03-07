@@ -78,7 +78,7 @@ function PedidosSolicitudContent() {
 
         // Role filter
         const isAdmin = currentUser?.role === "admin";
-        const isMine = o.customerName === currentUser?.username;
+        const isMine = o.customerName.trim().toLowerCase() === currentUser?.username.trim().toLowerCase();
 
         return matchesSearch && (isAdmin || isMine);
     });
@@ -169,7 +169,9 @@ function PedidosSolicitudContent() {
                                     <tr key={order.id} className="group hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-all">
                                         <td className="px-8 py-6">
                                             <p className="text-slate-900 dark:text-slate-100 font-black text-lg">#{order.id}</p>
-                                            <p className="text-xs text-slate-400 font-bold tracking-tight">{order.date}</p>
+                                            <p className="text-xs text-slate-400 font-bold tracking-tight">
+                                                {order.date.includes('T') ? new Date(order.date).toLocaleDateString() : order.date}
+                                            </p>
                                         </td>
                                         <td className="px-8 py-6">
                                             <p className="text-slate-900 dark:text-slate-100 font-bold">{order.customerName}</p>

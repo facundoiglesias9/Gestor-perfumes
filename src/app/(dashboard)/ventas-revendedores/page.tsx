@@ -26,8 +26,15 @@ export default function VentasRevendedoresPage() {
 
         const stats = resellers.map(reseller => {
             const resellerOrders = orders.filter(order => {
-                const orderDate = new Date(order.date);
-                const isMyOrder = order.customerName.toLowerCase() === reseller.username.toLowerCase();
+                // Robust date parsing for both formats
+                let orderDate: Date;
+                if (order.date.includes('/')) {
+                    const [d, m, y] = order.date.split('/');
+                    orderDate = new Date(Number(y), Number(m) - 1, Number(d));
+                } else {
+                    orderDate = new Date(order.date);
+                }
+                const isMyOrder = order.customerName.trim().toLowerCase() === reseller.username.trim().toLowerCase();
                 const isInPeriod = orderDate.getMonth() === selectedMonth && orderDate.getFullYear() === selectedYear;
                 return isMyOrder && isInPeriod;
             });
@@ -54,7 +61,13 @@ export default function VentasRevendedoresPage() {
         const productMap: Record<string, { name: string, qty: number, total: number }> = {};
 
         orders.forEach(order => {
-            const orderDate = new Date(order.date);
+            let orderDate: Date;
+            if (order.date.includes('/')) {
+                const [d, m, y] = order.date.split('/');
+                orderDate = new Date(Number(y), Number(m) - 1, Number(d));
+            } else {
+                orderDate = new Date(order.date);
+            }
             if (orderDate.getMonth() !== selectedMonth || orderDate.getFullYear() !== selectedYear) return;
 
             order.items.forEach(item => {
@@ -201,9 +214,9 @@ export default function VentasRevendedoresPage() {
                                     <tr key={stat.id} className="group hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-all">
                                         <td className="px-8 py-6">
                                             <span className={`w-8 h-8 rounded-lg flex items-center justify-center font-black text-sm ${stat.salesValue > 0 && index === 0 ? "bg-amber-100 text-amber-600 shadow-sm" :
-                                                    stat.salesValue > 0 && index === 1 ? "bg-slate-200 text-slate-600" :
-                                                        stat.salesValue > 0 && index === 2 ? "bg-orange-100 text-orange-600" :
-                                                            "text-slate-400"
+                                                stat.salesValue > 0 && index === 1 ? "bg-slate-200 text-slate-600" :
+                                                    stat.salesValue > 0 && index === 2 ? "bg-orange-100 text-orange-600" :
+                                                        "text-slate-400"
                                                 }`}>
                                                 {index + 1}
                                             </span>

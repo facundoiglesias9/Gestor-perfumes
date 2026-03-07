@@ -276,7 +276,19 @@ export default function EditarProductoPage() {
                                 <label className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest pl-1">Seleccionar Base (Opcional)</label>
                                 <select
                                     value={selectedBaseId}
-                                    onChange={(e) => setSelectedBaseId(e.target.value)}
+                                    onChange={(e) => {
+                                        const newBaseId = e.target.value;
+                                        setSelectedBaseId(newBaseId);
+                                        if (newBaseId) {
+                                            const confirmLoad = window.confirm("¿Deseas reemplazar la fórmula actual por los componentes de esta nueva base?\n\nLa esencia deberás agregarla manualmente.");
+                                            if (confirmLoad) {
+                                                const base = bases.find(b => b.id === newBaseId);
+                                                if (base) {
+                                                    setCurrentComponents([...base.components]);
+                                                }
+                                            }
+                                        }
+                                    }}
                                     className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl py-3.5 px-4 text-slate-900 dark:text-slate-50 font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-semibold"
                                 >
                                     <option value="">-- Sin Base (Carga Manual) --</option>

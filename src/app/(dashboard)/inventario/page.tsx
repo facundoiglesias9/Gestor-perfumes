@@ -6,7 +6,7 @@ import { useAppContext } from "@/context/AppContext";
 import ConfirmModal from "@/components/ConfirmModal";
 
 export default function InventarioPage() {
-    const { inventario, setInventario, esencias, insumos, getNextId } = useAppContext();
+    const { inventario, esencias, insumos, getNextId, addInventarioItem, deleteInventarioItem } = useAppContext();
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [itemToDelete, setItemToDelete] = useState<string | null>(null);
 
@@ -77,19 +77,16 @@ export default function InventarioPage() {
 
         if (!details) return;
 
-        setInventario([
-            {
-                id: getNextId(inventario, "INV-"),
-                name: details.name,
-                type: formData.type,
-                category: details.category || "Perfumería Fina",
-                qty: parseFloat(formData.qty),
-                lastUpdate: new Date().toLocaleDateString("es-AR"),
-                unit: formData.type === "Esencia" ? "g" : (details as any).unit || "un.",
-                gender: formData.type === "Esencia" ? ((details as any).gender || (details.category?.toLowerCase().includes("femenina") ? "Femenino" : "Masculino")) : undefined
-            },
-            ...inventario
-        ]);
+        addInventarioItem({
+            id: getNextId(inventario, "INV-"),
+            name: details.name,
+            type: formData.type,
+            category: details.category || "Perfumería Fina",
+            qty: parseFloat(formData.qty),
+            lastUpdate: new Date().toLocaleDateString("es-AR"),
+            unit: formData.type === "Esencia" ? "g" : (details as any).unit || "un.",
+            gender: formData.type === "Esencia" ? ((details as any).gender || (details.category?.toLowerCase().includes("femenina") ? "Femenino" : "Masculino")) : undefined
+        });
 
         setFormData({ type: "Esencia", item_id: "", qty: "" });
         setIsAddModalOpen(false);
@@ -102,7 +99,7 @@ export default function InventarioPage() {
 
     const confirmDelete = () => {
         if (itemToDelete) {
-            setInventario(inventario.filter(i => i.id !== itemToDelete));
+            deleteInventarioItem(itemToDelete);
             setItemToDelete(null);
         }
     };

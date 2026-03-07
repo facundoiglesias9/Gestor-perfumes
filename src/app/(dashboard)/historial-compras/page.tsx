@@ -47,7 +47,7 @@ export default function HistorialComprasPage() {
     // Only show completed orders of the current mayorista
     const myCompletedOrders = useMemo(() => {
         if (!currentUser) return [];
-        return orders.filter(o => o.customerName === currentUser.username && o.paymentStatus === "pagado");
+        return orders.filter(o => o.customerName.trim().toLowerCase() === currentUser.username.trim().toLowerCase() && o.paymentStatus === "pagado");
     }, [orders, currentUser]);
 
     // Flatten order items to track their individual sales
@@ -311,7 +311,9 @@ export default function HistorialComprasPage() {
                                         const profit = record.qty * (record.sellPrice - record.costPerUnit);
                                         return (
                                             <tr key={record.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/20 transition-colors">
-                                                <td className="px-6 py-4 font-bold text-slate-500">{record.date}</td>
+                                                <td className="px-6 py-4 font-bold text-slate-500">
+                                                    {record.date.includes('T') ? new Date(record.date).toLocaleDateString() : record.date}
+                                                </td>
                                                 <td className="px-6 py-4 font-black flex flex-col">
                                                     <span className="text-slate-900 dark:text-slate-100">{record.productName}</span>
                                                     <span className="text-[9px] uppercase tracking-widest text-emerald-500">+${profit.toLocaleString()} Gan.</span>
@@ -367,7 +369,9 @@ export default function HistorialComprasPage() {
                                         const totalItems = order.items.reduce((acc, i) => acc + i.quantity, 0);
                                         return (
                                             <tr key={order.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/20 transition-colors">
-                                                <td className="px-6 py-4 font-bold text-slate-500">{order.date}</td>
+                                                <td className="px-6 py-4 font-bold text-slate-500">
+                                                    {order.date.includes('T') ? new Date(order.date).toLocaleDateString() : order.date}
+                                                </td>
                                                 <td className="px-6 py-4 font-black">
                                                     <span className="text-slate-900 dark:text-slate-100 bg-slate-100 dark:bg-slate-800 px-3 py-1 rounded-lg">#{order.id}</span>
                                                 </td>

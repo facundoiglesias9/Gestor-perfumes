@@ -47,7 +47,7 @@ export type PermissionLevel = "Editor" | "Solo lectura" | "Sin acceso";
 export type CategoryPermissions = Record<string, PermissionLevel>;
 
 export type OrderStatus = "solicitud recibida" | "pedido confirmado" | "en preparacion" | "listo para entregar";
-export type CartItem = { producto: Producto; quantity: number; priceType: "mayorista" | "minorista" };
+export type CartItem = { producto: Producto; quantity: number; priceType: "mayorista" | "minorista"; customPrice?: number };
 export type Order = {
     id: string;
     items: CartItem[];
@@ -215,11 +215,17 @@ interface AppContextProps {
     addToCart: (producto: Producto, priceType: "mayorista" | "minorista") => void;
     removeFromCart: (productId: string, priceType: "mayorista" | "minorista") => void;
     updateCartQuantity: (productId: string, priceType: "mayorista" | "minorista", quantity: number) => void;
+    updateCartItemPrice: (productId: string, priceType: "mayorista" | "minorista", customPrice: number | undefined) => void;
     clearCart: () => void;
-    createOrder: (customerName: string, paymentMethod?: "qr" | "transferencia" | "efectivo") => void;
+    createOrder: (customerName: string, paymentMethod?: "qr" | "transferencia" | "efectivo" | "otro", cartType?: "mayorista" | "minorista") => void;
     updateOrderStatus: (orderId: string, status: OrderStatus) => Promise<void>;
     updateOrderPaymentStatus: (orderId: string, status: Order["paymentStatus"]) => Promise<void>;
     deleteOrder: (orderId: string) => Promise<void>;
+    addInsumo: (insumo: Insumo) => Promise<void>;
+    updateInsumo: (insumo: Insumo) => Promise<void>;
+    deleteInsumo: (id: string) => Promise<void>;
+    addInventarioItem: (item: InventarioItem) => Promise<void>;
+    deleteInventarioItem: (id: string) => Promise<void>;
     runScraper: () => Promise<void>;
     login: (user: Usuario) => void;
     logout: () => void;
@@ -290,7 +296,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const [cart, setCart] = useState<CartItem[]>([]);
     const [orders, setOrders] = useState<Order[]>([]);
     const [scraperStatus, setScraperStatus] = useState<ScraperStatus>({ lastRun: "-", status: "idle" });
-    const [currentUser, setCurrentUser] = useState<Usuario | null>(null);
+    const [currentUser, setCurrentUser] = useState<Usuario | null>(() => {
+        if (typeof window !== "undefined") {
+            const mock = localStorage.getItem("mockUser");
+            if (mock) {
+                try { return JSON.parse(mock); } catch (e) { return null; }
+            }
+        }
+        return null;
+    });
     const [generos, setGeneros] = useState<string[]>(["Femenino", "Masculino", "Unisex"]);
     const [categoryMargins, setCategoryMargins] = useState<Record<string, { mayorista: number; minorista: number }>>({});
     const [promotions, setPromotions] = useState<Promotion[]>([]);
@@ -381,7 +395,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                     if (localProd) {
                         setProductos(JSON.parse(localProd));
                         localProductsLoaded = true;
-                        setIsLoading(false); // Liberar la UI inmediatamente si ya tenemos productos
+                        // Only release UI once we have user context too, or if no user is coming
+                        if (resolvedUser || !localStorage.getItem("mockUser")) {
+                            setIsLoading(false);
+                        }
                     }
 
                     const localPromo = localStorage.getItem("promociones");
@@ -405,7 +422,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                 // 2. Parallel fetch essential vs admin data (Supabase Refetch)
                 const essentialRequests = [
                     fetchWithRetry(supabase.from("categorias").select("*").order("name")),
-                    fetchWithRetry(supabase.from("productos").select("id, name, category, price, price_minorista, stock, gender, image_url, base_id")),
+                    fetchWithRetry(supabase.from("productos").select("*")),
                     fetchWithRetry(supabase.from("promociones").select("*")),
                 ];
 
@@ -417,7 +434,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                     supabase.from("transacciones").select("*").order("created_at", { ascending: false }),
                     supabase.from("bases").select("*").order("name"),
                     supabase.from("usuarios").select("*").order("username"),
-                    supabase.from("orders").select("*").order("created_at", { ascending: false }),
+                    supabase.from("orders").select("*").order("date", { ascending: false }),
                 ] : [];
 
                 const results = await Promise.all([...essentialRequests, ...adminRequests]);
@@ -441,7 +458,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                     }
 
                     if (result?.error) {
-                        console.warn(`Error fetching ${lsKey} from Supabase:`, result.error);
+                        console.error(`Error fetching ${lsKey} from Supabase:`, result.error);
                         addSystemLog("error", `Fallo en Supabase (${lsKey})`, {
                             message: result.error?.message || "Error desconocido",
                             code: result.error?.code,
@@ -497,8 +514,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                     setOrders(ordersRes.data);
                 } else if (!isAdmin && resolvedUser) {
                     // Wholesalers/Retailers only need THEIR orders
-                    const { data: ownOrders } = await supabase.from("orders").select("*").eq("customer_name", resolvedUser.username).order("created_at", { ascending: false });
-                    if (ownOrders) setOrders(ownOrders.map(dbToOrder));
+                    // Use ilike for case-insensitive matching to avoid issues with typed vs stored names
+                    const { data: ownOrders, error: ordersErr } = await supabase
+                        .from("orders")
+                        .select("*")
+                        .ilike("customer_name", resolvedUser.username.trim())
+                        .order("date", { ascending: false });
+
+                    if (ordersErr) {
+                        console.error("Error fetching own orders:", ordersErr);
+                    } else if (ownOrders) {
+                        setOrders(ownOrders.map(dbToOrder));
+                    }
                 }
 
                 // Load ephemeral/local settings
@@ -652,8 +679,65 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     };
 
     const deleteUsuario = async (id: string) => {
-        setUsuarios(prev => prev.filter(u => u.id !== id));
+        _setUsuarios(prev => prev.filter(u => u.id !== id));
         await supabase.from("usuarios").delete().eq("id", id);
+    };
+
+    // ── Insumos e Inventario ──────────────────────────────────────
+    const addInsumo = async (insumo: Insumo) => {
+        setInsumos(prev => [insumo, ...prev]);
+        await supabase.from("insumos").insert({
+            id: insumo.id,
+            name: insumo.name,
+            category: insumo.category,
+            provider: insumo.provider,
+            cost: insumo.cost,
+            qty: insumo.qty,
+            stock: insumo.stock,
+            unit: insumo.unit
+        });
+    };
+
+    const updateInsumo = async (updated: Insumo) => {
+        setInsumos(prev => prev.map(i => i.id === updated.id ? updated : i));
+        await supabase.from("insumos").upsert({
+            id: updated.id,
+            name: updated.name,
+            category: updated.category,
+            provider: updated.provider,
+            cost: updated.cost,
+            qty: updated.qty,
+            stock: updated.stock,
+            unit: updated.unit
+        });
+    };
+
+    const deleteInsumo = async (id: string) => {
+        setInsumos(prev => prev.filter(i => i.id !== id));
+        await supabase.from("insumos").delete().eq("id", id);
+    };
+
+    const addInventarioItem = async (item: InventarioItem) => {
+        setInventario(prev => [item, ...prev]);
+        const { error } = await supabase.from("inventario").insert({
+            id: item.id,
+            name: item.name,
+            type: item.type,
+            category: item.category,
+            qty: item.qty,
+            last_update: item.lastUpdate,
+            unit: item.unit,
+            gender: item.gender
+        });
+        if (error) {
+            console.error("Error saving inventory item:", error);
+            addSystemLog("error", "Error al guardar en inventario", error);
+        }
+    };
+
+    const deleteInventarioItem = async (id: string) => {
+        setInventario(prev => prev.filter(i => i.id !== id));
+        await supabase.from("inventario").delete().eq("id", id);
     };
 
     // ── Permissions (localStorage only) ──────────────────────────
@@ -688,13 +772,28 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         ));
     };
 
+    const updateCartItemPrice = (productId: string, priceType: "mayorista" | "minorista", customPrice: number | undefined) => {
+        setCart(prev => prev.map(item =>
+            (item.producto.id === productId && item.priceType === priceType) ? { ...item, customPrice } : item
+        ));
+    };
+
     const clearCart = () => setCart([]);
 
-    const createOrder = async (customerName: string, paymentMethod: "qr" | "transferencia" | "efectivo" | "otro" = "efectivo") => {
-        const total = cart.reduce((acc, item) => {
-            const price = item.priceType === "mayorista" ? item.producto.price : item.producto.priceMinorista;
+    const createOrder = async (customerName: string, paymentMethod: "qr" | "transferencia" | "efectivo" | "otro" = "efectivo", cartType?: "mayorista" | "minorista") => {
+        const itemsToCheckout = cartType ? cart.filter(c => c.priceType === cartType) : cart;
+
+        if (itemsToCheckout.length === 0) return;
+
+        let total = itemsToCheckout.reduce((acc, item) => {
+            const price = item.customPrice !== undefined ? item.customPrice : (item.priceType === "mayorista" ? item.producto.price : item.producto.priceMinorista);
             return acc + (price * item.quantity);
         }, 0);
+
+        // Apply +10% surcharge for MP QR code
+        if (paymentMethod === 'qr') {
+            total = total * 1.1;
+        }
 
         const finalCustomerName = (currentUser && currentUser.role !== "admin")
             ? currentUser.username
@@ -703,28 +802,63 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         const newId = genId("ORD-");
         const newOrder: Order = {
             id: newId,
-            items: [...cart],
+            items: [...itemsToCheckout],
             total,
             customerName: finalCustomerName,
             status: "solicitud recibida",
-            date: new Date().toLocaleDateString(),
+            date: new Date().toISOString(),
             paymentMethod,
             paymentStatus: paymentMethod === 'transferencia' ? 'confirmacion_pendiente' : 'pendiente'
         };
         localStorage.setItem("lastCreatedOrderId", newId);
         setOrders(prev => [newOrder, ...prev]);
-        clearCart();
 
-        await supabase.from("orders").insert({
+        // Only clear from the cart those items that we are checking out
+        setCart(prev => prev.filter(c => cartType ? c.priceType !== cartType : false));
+
+        const payload = {
             id: newId,
             items: newOrder.items,
             total: newOrder.total,
-            customer_name: newOrder.customerName,
+            customer_name: String(newOrder.customerName || "Venta Manual").trim(),
             status: newOrder.status,
             date: newOrder.date,
             payment_method: newOrder.paymentMethod,
             payment_status: newOrder.paymentStatus
-        });
+        };
+
+        console.log("DEBUG: Sending order payload to Supabase:", payload);
+
+        let { error } = await supabase.from("orders").insert(payload);
+
+        // PGRST204: Column not found. Legacy schema fix.
+        if (error && error.code === 'PGRST204') {
+            const legacyPayload = { ...payload };
+            delete (legacyPayload as any).payment_method;
+            delete (legacyPayload as any).payment_status;
+            const retryRes = await supabase.from("orders").insert(legacyPayload);
+            error = retryRes.error;
+        }
+
+        if (error) {
+            console.error("CRITICAL: Error inserting order into Supabase:", {
+                message: error.message,
+                details: error.details,
+                hint: error.hint,
+                code: error.code
+            });
+            alert(`Error crítico al guardar pedido en la base de datos.\n\nMensaje: ${error.message || 'Error desconocido'}\nCódigo: ${error.code || 'N/A'}`);
+
+            // Rollback optimistic state
+            setOrders(prev => prev.filter(o => o.id !== newId));
+
+            addSystemLog("error", "Error crítico al guardar pedido", {
+                orderId: newId,
+                error
+            });
+        } else {
+            addSystemLog("info", `Pedido ${newId} guardado correctamente en Supabase`);
+        }
     };
 
     const updateOrderStatus = async (orderId: string, status: OrderStatus) => {
@@ -771,7 +905,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         }
 
         setOrders(prev => prev.map(o => o.id === orderId ? { ...o, paymentStatus } : o));
-        await supabase.from("orders").update({ payment_status: paymentStatus }).eq("id", orderId);
+        const { error } = await supabase.from("orders").update({ payment_status: paymentStatus }).eq("id", orderId);
+        if (error && error.code === 'PGRST204') {
+            console.warn("Ignored payment_status update due to missing column in Supabase.");
+            alert("⚠️ ERROR: No se guardó el pago.\n\nFaltan las columnas de pago en tu base de datos de Supabase. El cambio solo se ve en tu pantalla hasta que recargues.\n\nPor favor, ejecuta el código SQL que te pasé en el Dashboard de Supabase para arreglarlo definitivamente.");
+        }
     };
 
     const deleteOrder = async (orderId: string) => {
@@ -1002,12 +1140,51 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
         if (toDelete.length > 0) {
             supabase.from(table).delete().in("id", toDelete.map(d => d.id)).then(({ error }) => {
-                if (error) console.error(`Delete ${table} error:`, error);
+                if (error) {
+                    console.error(`Delete ${table} error:`, error);
+                    addSystemLog("error", `Error eliminando en ${table}`, { error });
+                }
             });
         }
         if (toUpsert.length > 0) {
-            supabase.from(table).upsert(toUpsert.map(mapFn)).then(({ error }) => {
-                if (error) console.error(`Upsert ${table} error:`, error);
+            const fullPayload = toUpsert.map(mapFn);
+            supabase.from(table).upsert(fullPayload).then(async ({ error }) => {
+                if (error) {
+                    console.error(`Upsert ${table} error:`, {
+                        message: error.message,
+                        code: error.code,
+                        details: error.details,
+                        table
+                    });
+
+                    // PGRST204: Column not found. Legacy schema fix for all tables.
+                    if (error.code === 'PGRST204') {
+                        console.warn(`Attempting legacy fallback for ${table}...`);
+                        const legacyPayload = fullPayload.map(item => {
+                            const clone = { ...item };
+                            // Remove common "new" columns that might be missing in older schemas
+                            delete clone.gender;
+                            delete clone.last_update;
+                            delete clone.payment_method;
+                            delete clone.payment_status;
+                            return clone;
+                        });
+
+                        const { error: retryError } = await supabase.from(table).upsert(legacyPayload);
+                        if (!retryError) {
+                            console.info(`Recovered ${table} upsert via legacy mode (some metadata might be lost). Please update DB schema.`);
+                            return;
+                        } else {
+                            console.error(`Retry failed for ${table}:`, retryError);
+                        }
+                    }
+
+                    addSystemLog("error", `Error guardando en ${table}`, {
+                        error: error.message,
+                        code: error.code,
+                        table
+                    });
+                }
             });
         }
     };
@@ -1077,6 +1254,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                 qty: i.qty,
                 last_update: i.lastUpdate,
                 unit: i.unit,
+                gender: i.gender || null
             }));
             return next;
         });
@@ -1212,11 +1390,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             addToCart,
             removeFromCart,
             updateCartQuantity,
+            updateCartItemPrice,
             clearCart,
             createOrder,
             updateOrderStatus,
             updateOrderPaymentStatus,
             deleteOrder,
+            addInsumo,
+            updateInsumo,
+            deleteInsumo,
+            addInventarioItem,
+            deleteInventarioItem,
             runScraper,
             login,
             currentUser,

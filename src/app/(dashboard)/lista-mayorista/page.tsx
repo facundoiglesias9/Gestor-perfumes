@@ -63,7 +63,7 @@ const extractBrand = (name: string) => {
 };
 
 export default function ListaMayoristaPage() {
-    const { productos, categorias, deleteProducto, addToCart, cart, createOrder, updateCartQuantity, currentUser, generos, paymentInfo, isLoading } = useAppContext();
+    const { productos, categorias, usuarios, deleteProducto, addToCart, cart, createOrder, updateCartQuantity, updateCartItemPrice, currentUser, generos, paymentInfo, isLoading } = useAppContext();
     const [searchTerm, setSearchTerm] = useState("");
     const [categoryFilter, setCategoryFilter] = useState("Todas");
     const [genderFilter, setGenderFilter] = useState("Todos");
@@ -77,6 +77,7 @@ export default function ListaMayoristaPage() {
     const [paymentLink, setPaymentLink] = useState<string>("");
     const [isGeneratingQR, setIsGeneratingQR] = useState(false);
     const [copiedField, setCopiedField] = useState<string | null>(null);
+    const [showUserDropdown, setShowUserDropdown] = useState(false);
     const itemsPerPage = 10;
 
     const handleCopy = (text: string, field: string) => {
@@ -161,11 +162,14 @@ export default function ListaMayoristaPage() {
                         body: JSON.stringify({
                             accessToken: paymentInfo.mpAccessToken.trim(),
                             customerName: "Cliente Mayorista",
-                            items: cart.map(item => ({
-                                name: item.producto.name,
-                                quantity: item.quantity,
-                                price: (item.priceType === 'minorista' ? item.producto.priceMinorista : item.producto.price) * 1.10
-                            }))
+                            items: cartFiltered.map(item => {
+                                const unitPrice = item.customPrice !== undefined ? item.customPrice : (item.priceType === 'minorista' ? item.producto.priceMinorista : item.producto.price);
+                                return {
+                                    name: item.producto.name,
+                                    quantity: item.quantity,
+                                    price: unitPrice * 1.10
+                                };
+                            })
                         })
                     });
                     const data = await response.json();
@@ -190,7 +194,7 @@ export default function ListaMayoristaPage() {
         e.preventDefault();
         const finalName = (!isAdmin && currentUser) ? currentUser.username : customerName;
         if (!finalName || cart.length === 0) return;
-        createOrder(finalName, paymentMethod);
+        createOrder(finalName, paymentMethod, "mayorista");
         if (isAdmin) setCustomerName("");
         setOrderSuccess(true);
         setTimeout(() => {
@@ -222,7 +226,8 @@ export default function ListaMayoristaPage() {
     const cartFiltered = useMemo(() => cart.filter(item => item.priceType === "mayorista"), [cart]);
 
     const cartTotal = cartFiltered.reduce((acc, item) => {
-        return acc + (item.producto.price * item.quantity);
+        const price = item.customPrice !== undefined ? item.customPrice : item.producto.price;
+        return acc + (price * item.quantity);
     }, 0);
 
     return (
@@ -544,12 +549,38 @@ export default function ListaMayoristaPage() {
                                 ) : (
                                     <div className="space-y-6">
                                         {cartFiltered.map((item, idx) => {
-                                            const price = item.producto.price;
+                                            const basePrice = item.producto.price;
+                                            const price = item.customPrice !== undefined ? item.customPrice : basePrice;
                                             return (
                                                 <div key={idx} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800 animate-in slide-in-from-bottom-2">
                                                     <div className="flex-1 w-full text-center sm:text-left">
                                                         <p className="font-black text-slate-900 dark:text-slate-100">{item.producto.name}</p>
-                                                        <p className="text-xs text-slate-400 font-bold tracking-tight">${price.toLocaleString()} c/u</p>
+                                                        <div className="flex items-center justify-center sm:justify-start gap-2 mt-1 mb-1.5">
+                                                            <span className={`px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-widest ${item.producto.gender === 'Femenino' ? 'bg-pink-100 text-pink-700 dark:bg-pink-500/20 dark:text-pink-400' : item.producto.gender === 'Masculino' ? 'bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400' : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400'}`}>
+                                                                {item.producto.gender}
+                                                            </span>
+                                                            <span className="px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 rounded text-[9px] font-bold uppercase tracking-widest">
+                                                                {item.producto.category}
+                                                            </span>
+                                                        </div>
+                                                        {isAdmin ? (
+                                                            <div className="flex items-center gap-2 mt-1 justify-center sm:justify-start">
+                                                                <span className="text-xs text-slate-400 font-bold tracking-tight">$</span>
+                                                                <input
+                                                                    type="number"
+                                                                    value={item.customPrice !== undefined ? item.customPrice : ''}
+                                                                    onChange={(e) => updateCartItemPrice(item.producto.id, item.priceType, e.target.value === '' ? undefined : Number(e.target.value))}
+                                                                    className="w-20 bg-transparent border-b border-slate-300 dark:border-slate-700 text-xs font-bold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-indigo-500 transition-colors"
+                                                                    placeholder={basePrice.toString()}
+                                                                />
+                                                                <span className="text-xs text-slate-400 font-bold tracking-tight">c/u</span>
+                                                                <span className={`text-[10px] ml-2 px-1.5 py-0.5 rounded-sm font-black ${price > item.producto.cost ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`} title={`Costo: $${item.producto.cost}`}>
+                                                                    Margen: ${(price - item.producto.cost).toLocaleString()}
+                                                                </span>
+                                                            </div>
+                                                        ) : (
+                                                            <p className="text-xs text-slate-400 font-bold tracking-tight">${price.toLocaleString()} c/u</p>
+                                                        )}
                                                     </div>
                                                     <div className="flex items-center justify-between sm:justify-end gap-4 w-full sm:w-auto">
                                                         <div className="flex items-center bg-white dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 p-1">
@@ -574,15 +605,52 @@ export default function ListaMayoristaPage() {
                                         <form onSubmit={handleCheckout} className="mt-10 pt-10 border-t border-slate-100 dark:border-slate-800 space-y-6">
                                             <div className="space-y-2">
                                                 <label className="text-xs font-black text-slate-400 uppercase tracking-widest pl-1">Nombre del Cliente / Referencia</label>
-                                                <input
-                                                    required
-                                                    type="text"
-                                                    placeholder="Ej: Mayorista San Juan"
-                                                    value={(!isAdmin && currentUser) ? currentUser.username : customerName}
-                                                    onChange={e => setCustomerName(e.target.value)}
-                                                    readOnly={!isAdmin}
-                                                    className={`w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl py-4 px-6 text-slate-900 dark:text-slate-100 font-bold focus:ring-4 focus:ring-indigo-500/10 focus:outline-none transition-all ${!isAdmin ? 'opacity-70 cursor-not-allowed text-indigo-700 dark:text-indigo-400' : ''}`}
-                                                />
+                                                <div className="relative">
+                                                    <input
+                                                        required
+                                                        type="text"
+                                                        placeholder="Ej: Mayorista San Juan"
+                                                        value={(!isAdmin && currentUser) ? currentUser.username : customerName}
+                                                        onChange={e => {
+                                                            setCustomerName(e.target.value);
+                                                            if (isAdmin) setShowUserDropdown(true);
+                                                        }}
+                                                        onFocus={() => {
+                                                            if (isAdmin) setShowUserDropdown(true);
+                                                        }}
+                                                        onBlur={() => {
+                                                            setTimeout(() => setShowUserDropdown(false), 200);
+                                                        }}
+                                                        readOnly={!isAdmin}
+                                                        className={`w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl py-4 px-6 text-slate-900 dark:text-slate-100 font-bold focus:ring-4 focus:ring-indigo-500/10 focus:outline-none transition-all ${!isAdmin ? 'opacity-70 cursor-not-allowed text-indigo-700 dark:text-indigo-400' : ''}`}
+                                                    />
+                                                    {isAdmin && showUserDropdown && (
+                                                        <div className="absolute z-50 w-full mt-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.3)] overflow-hidden max-h-60 overflow-y-auto animate-in slide-in-from-top-2">
+                                                            {usuarios.filter(u => (u.role === "mayorista" || u.role === "admin") && u.username.toLowerCase().includes(customerName.toLowerCase())).length > 0 ? (
+                                                                usuarios
+                                                                    .filter(u => (u.role === "mayorista" || u.role === "admin") && u.username.toLowerCase().includes(customerName.toLowerCase()))
+                                                                    .map(u => (
+                                                                        <button
+                                                                            key={u.id}
+                                                                            type="button"
+                                                                            className="w-full text-left px-6 py-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 text-slate-900 dark:text-slate-100 font-bold transition-colors border-b border-slate-100 dark:border-slate-800/50 last:border-0 flex justify-between items-center"
+                                                                            onClick={() => {
+                                                                                setCustomerName(u.username);
+                                                                                setShowUserDropdown(false);
+                                                                            }}
+                                                                        >
+                                                                            {u.username}
+                                                                            <span className="text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 px-2 py-0.5 rounded-full uppercase tracking-widest">{u.role}</span>
+                                                                        </button>
+                                                                    ))
+                                                            ) : (
+                                                                <div className="px-6 py-4 text-slate-500 text-xs font-medium">
+                                                                    Presioná <span className="font-bold">Enter</span> para usar el nombre "{customerName}" manual, o verificá que esté bien escrito para vincularlo a un usuario.
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    )}
+                                                </div>
                                             </div>
 
                                             <div className="space-y-6 pt-6 border-t border-slate-100 dark:border-slate-800">
