@@ -27,7 +27,7 @@ export type InventarioItem = { id: string; name: string; type: string; category:
 export type Transaccion = { id: string; type: "Ingreso" | "Egreso"; amount: number; description: string; date: string };
 
 export type BaseComponent = { id: string; name: string; qty: number; type: "Insumo" | "Esencia" };
-export type Base = { id: string; name: string; components: BaseComponent[]; essenceGender?: string; essenceGrams?: number };
+export type Base = { id: string; name: string; components: BaseComponent[]; essenceGender?: string; essenceGrams?: number; category?: string };
 export type Producto = {
     id: string;
     name: string;
@@ -45,7 +45,7 @@ export type Producto = {
 };
 
 export type UserRole = "admin" | "minorista" | "mayorista";
-export type Usuario = { id: string; username: string; email?: string; password?: string; role: UserRole; status: "Activo" | "Inactivo" };
+export type Usuario = { id: string; username: string; email?: string; password?: string; role: UserRole; status: "Activo" | "Inactivo"; lastLogin?: string };
 
 export type PermissionLevel = "Editor" | "Solo lectura" | "Sin acceso";
 export type CategoryPermissions = Record<string, PermissionLevel>;
@@ -118,6 +118,7 @@ function dbToBase(row: any): Base {
         components: row.components ?? [],
         essenceGender: row.essence_gender ?? undefined,
         essenceGrams: row.essence_grams ?? undefined,
+        category: row.category ?? undefined,
     };
 }
 
@@ -170,6 +171,7 @@ function dbToUsuario(row: any): Usuario {
         password: row.password,
         role: row.role,
         status: row.status,
+        lastLogin: row.last_login ?? undefined
     };
 }
 
@@ -239,7 +241,7 @@ interface AppContextProps {
     logout: () => void;
     generos: string[];
     setGeneros: React.Dispatch<React.SetStateAction<string[]>>;
-    generateProductsFromBase: (baseId: string, targetCategory: string) => Promise<{ created: number, updated: number } | undefined>;
+    generateProductsFromBase: (baseId: string, targetCategory?: string) => Promise<{ created: number, updated: number } | undefined>;
     getNextId: (items: any[], prefix: string) => string;
     categoryMargins: Record<string, { mayorista: number; minorista: number }>;
     setCategoryMargins: React.Dispatch<React.SetStateAction<Record<string, { mayorista: number; minorista: number }>>>;
@@ -725,19 +727,25 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             password: user.password,
             role: user.role,
             status: user.status,
+            last_login: user.lastLogin || null,
         });
     };
 
     const updateUsuario = async (updated: Usuario) => {
         _setUsuarios(prev => prev.map(u => u.id === updated.id ? updated : u));
-        await supabase.from("usuarios").upsert({
+        const { error } = await supabase.from("usuarios").upsert({
             id: updated.id,
             username: updated.username,
             email: updated.email,
             password: updated.password,
             role: updated.role,
             status: updated.status,
+            last_login: updated.lastLogin || null,
         });
+        if (error) {
+            console.error("Error upserting usuario natively:", error);
+            // Ignore missing column errors, but log others
+        }
     };
 
     const deleteUsuario = async (id: string) => {
@@ -1010,9 +1018,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     };
 
     // ── Generate Products from Base ───────────────────────────────
-    const generateProductsFromBase = async (baseId: string, targetCategory: string) => {
+    const generateProductsFromBase = async (baseId: string, overrideCategory?: string) => {
         const base = bases.find(b => b.id === baseId);
         if (!base) return;
+
+        const targetCategory = overrideCategory || base.category || "Perfumería Fina";
 
         // Filtramos esencias válidas. Para Limpia Pisos, checkeamos costo>0. Para otros, price100g>0
         const validEsencias = esencias.filter(e => {
@@ -1212,23 +1222,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             const fullPayload = toUpsert.map(mapFn);
             supabase.from(table).upsert(fullPayload).then(async ({ error }) => {
                 if (error) {
-                    console.error(`Upsert ${table} error:`, {
-                        message: error.message,
-                        code: error.code,
-                        details: error.details,
-                        table
-                    });
-
-                    // PGRST204: Column not found. Legacy schema fix for all tables.
-                    if (error.code === 'PGRST204') {
-                        console.warn(`Attempting legacy fallback for ${table}...`);
+                    // Check if it's a missing column error (code: PGRST204 / 42703) BEFORE logging as error
+                    // to avoid Next.js dev overlay from catching console.error for handled fallbacks.
+                    if (error.code === 'PGRST204' || error.code === '42703') {
+                        console.warn(`Attempting legacy fallback for ${table} due to missing columns...`);
                         const legacyPayload = fullPayload.map(item => {
                             const clone = { ...item };
-                            // Remove common "new" columns that might be missing in older schemas
                             delete clone.gender;
                             delete clone.last_update;
                             delete clone.payment_method;
                             delete clone.payment_status;
+                            if (table === "bases") delete clone.category;
                             return clone;
                         });
 
@@ -1239,6 +1243,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                         } else {
                             console.error(`Retry failed for ${table}:`, retryError);
                         }
+                    } else {
+                        console.error(`Upsert ${table} error:`, {
+                            message: error.message,
+                            code: error.code,
+                            details: error.details,
+                            table
+                        });
                     }
 
                     addSystemLog("error", `Error guardando en ${table}`, {
@@ -1348,6 +1359,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                 components: b.components,
                 essence_gender: b.essenceGender ?? null,
                 essence_grams: b.essenceGrams ?? null,
+                category: b.category ?? null,
             }));
             return next;
         });
@@ -1385,6 +1397,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                 password: u.password,
                 role: u.role,
                 status: u.status,
+                last_login: u.lastLogin || null,
             }));
             return next;
         });

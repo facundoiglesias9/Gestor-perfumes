@@ -20,6 +20,54 @@ export default function InsumosPage() {
         unit: "un." // Default a unidades
     });
 
+    const getColorClass = (str: string, isBadge: boolean) => {
+        if (!str) return isBadge ? 'bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700' : 'bg-slate-300 dark:bg-slate-600';
+
+        const colorsMap = {
+            blue: { bg: 'bg-blue-500', badge: 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-500/10 dark:text-blue-400 dark:border-blue-500/20' },
+            emerald: { bg: 'bg-emerald-500', badge: 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20' },
+            amber: { bg: 'bg-amber-500', badge: 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/20' },
+            violet: { bg: 'bg-violet-500', badge: 'bg-violet-50 text-violet-700 border-violet-200 dark:bg-violet-500/10 dark:text-violet-400 dark:border-violet-500/20' },
+            indigo: { bg: 'bg-indigo-500', badge: 'bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-500/10 dark:text-indigo-400 dark:border-indigo-500/20' },
+            rose: { bg: 'bg-rose-500', badge: 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-500/10 dark:text-rose-400 dark:border-rose-500/20' },
+            cyan: { bg: 'bg-cyan-500', badge: 'bg-cyan-50 text-cyan-700 border-cyan-200 dark:bg-cyan-500/10 dark:text-cyan-400 dark:border-cyan-500/20' },
+            lime: { bg: 'bg-lime-500', badge: 'bg-lime-50 text-lime-700 border-lime-200 dark:bg-lime-500/10 dark:text-lime-400 dark:border-lime-500/20' },
+            fuchsia: { bg: 'bg-fuchsia-500', badge: 'bg-fuchsia-50 text-fuchsia-700 border-fuchsia-200 dark:bg-fuchsia-500/10 dark:text-fuchsia-400 dark:border-fuchsia-500/20' },
+            orange: { bg: 'bg-orange-500', badge: 'bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-500/10 dark:text-orange-400 dark:border-orange-500/20' },
+            teal: { bg: 'bg-teal-500', badge: 'bg-teal-50 text-teal-700 border-teal-200 dark:bg-teal-500/10 dark:text-teal-400 dark:border-teal-500/20' }
+        };
+        const colorList = Object.values(colorsMap);
+
+        let colorObj;
+        const s = str.toLowerCase();
+
+        // Asignaciones fijas para categorías y proveedores conocidos
+        if (s.includes('perfumer')) colorObj = colorsMap.violet;
+        else if (s.includes('limpia pisos 1l') || s.includes('limpia pisos 1 l')) colorObj = colorsMap.indigo;
+        else if (s.includes('limpia pisos 5l') || s.includes('limpia pisos 5 l')) colorObj = colorsMap.amber;
+        else if (s.includes('limpia') || s.includes('piso')) colorObj = colorsMap.cyan;
+        else if (s.includes('aromatizante') || s.includes('auto')) colorObj = colorsMap.orange;
+        else if (s.includes('difusor')) colorObj = colorsMap.rose;
+        else if (s.includes('textil')) colorObj = colorsMap.emerald;
+        else if (s.includes('esencia')) colorObj = colorsMap.fuchsia;
+        // Proveedores conocidos para evitar repetidos
+        else if (s.includes('mercado libre') || s.includes('ml')) colorObj = colorsMap.blue;
+        else if (s.includes('multi-envase') || s.includes('multienvase')) colorObj = colorsMap.lime;
+        else if (s.includes('ezentie')) colorObj = colorsMap.teal;
+        else if (s.includes('pura vida')) colorObj = colorsMap.fuchsia;
+        else if (s.includes('van rossum')) colorObj = colorsMap.orange;
+        else {
+            let hash = 0;
+            for (let i = 0; i < str.length; i++) {
+                hash = str.charCodeAt(i) + ((hash << 5) - hash);
+            }
+            hash = Math.abs(hash);
+            colorObj = colorList[hash % colorList.length];
+        }
+
+        return isBadge ? colorObj.badge : colorObj.bg;
+    };
+
     const handleAddSubmit = (e: React.FormEvent) => {
         e.preventDefault();
 
@@ -153,45 +201,45 @@ export default function InsumosPage() {
                     <table className="w-full text-left border-collapse min-w-[700px]">
                         <thead>
                             <tr className="bg-slate-50/80 dark:bg-slate-950/50 border-b border-slate-200 dark:border-slate-800">
-                                <th className="px-8 py-6 text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest w-[10%]">Código</th>
-                                <th className="px-8 py-6 text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest w-[20%]">Insumo</th>
-                                <th className="px-8 py-6 text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest w-[15%]">Categoría</th>
-                                <th className="px-8 py-6 text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest w-[15%]">Proveedor</th>
-                                <th className="px-8 py-6 text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest w-[15%] text-right">Cant. x Bulto</th>
-                                <th className="px-8 py-6 text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest w-[15%] text-right">Costo / Bulto</th>
-                                <th className="px-8 py-6 text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest w-[10%]"></th>
+                                <th className="px-6 py-6 text-center text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest w-[10%]">Código</th>
+                                <th className="px-6 py-6 text-left text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest w-[25%]">Insumo</th>
+                                <th className="px-6 py-6 text-center text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest w-[15%]">Categoría</th>
+                                <th className="px-6 py-6 text-center text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest w-[20%]">Proveedor</th>
+                                <th className="px-6 py-6 text-center text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest w-[10%]">Cant. x Bulto</th>
+                                <th className="px-6 py-6 text-center text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest w-[10%]">Costo / Bulto</th>
+                                <th className="px-6 py-6 text-center text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest w-[10%]"></th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                             {insumos.map((item, idx) => (
                                 <tr key={idx} className="group hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors cursor-pointer">
-                                    <td className="px-8 py-6">
+                                    <td className="px-6 py-6 text-center">
                                         <span className="font-mono text-sm font-semibold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-lg group-hover:bg-white dark:group-hover:bg-slate-700 transition-all border border-transparent dark:border-slate-700">
                                             {item.id.slice(0, 5)}
                                         </span>
                                     </td>
-                                    <td className="px-8 py-6">
-                                        <p className="text-slate-900 dark:text-slate-100 font-bold text-lg group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">{item.name}</p>
+                                    <td className="px-6 py-6 text-left">
+                                        <p className="text-slate-900 dark:text-slate-100 font-bold text-lg group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors line-clamp-2">{item.name}</p>
                                     </td>
-                                    <td className="px-8 py-6">
-                                        <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-bold text-[11px] uppercase tracking-wider border border-slate-200 dark:border-slate-700">
+                                    <td className="px-6 py-6 text-center">
+                                        <span className={`inline-flex items-center px-2.5 py-1 rounded-md font-bold text-[11px] uppercase tracking-wider border whitespace-nowrap w-max mx-auto ${getColorClass(item.category, true)}`}>
                                             {item.category}
                                         </span>
                                     </td>
-                                    <td className="px-8 py-6">
-                                        <p className="text-slate-600 dark:text-slate-300 font-medium text-sm flex items-center gap-2">
-                                            <span className="w-1.5 h-1.5 rounded-full bg-slate-300 dark:bg-slate-600"></span>
-                                            {item.provider}
-                                        </p>
+                                    <td className="px-6 py-6 text-center">
+                                        <div className="inline-flex items-center justify-center gap-2 px-3 py-1.5 rounded-full bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800 group-hover:border-slate-200 dark:group-hover:border-slate-700 transition-colors">
+                                            <span className={`w-2 h-2 rounded-full ${getColorClass(item.provider, false)} shadow-sm`}></span>
+                                            <span className="text-slate-700 dark:text-slate-300 font-bold text-sm whitespace-nowrap">{item.provider}</span>
+                                        </div>
                                     </td>
-                                    <td className="px-8 py-6 text-right">
-                                        <p className="text-slate-900 dark:text-slate-100 font-bold text-[15px]">{item.qty || 'N/A'} {item.unit}</p>
+                                    <td className="px-6 py-6 text-center">
+                                        <p className="text-slate-900 dark:text-slate-100 font-extrabold text-[15px]">{item.qty || 'N/A'} <span className="text-xs text-slate-500 font-bold">{item.unit}</span></p>
                                     </td>
-                                    <td className="px-8 py-6 text-right">
-                                        <p className="text-emerald-600 dark:text-emerald-400 font-extrabold text-lg">${item.cost.toLocaleString()}</p>
+                                    <td className="px-6 py-6 text-center">
+                                        <p className="text-emerald-600 dark:text-emerald-400 font-black text-lg drop-shadow-sm">${item.cost.toLocaleString()}</p>
                                     </td>
-                                    <td className="px-8 py-6 text-right">
-                                        <div className="flex items-center justify-end gap-1">
+                                    <td className="px-6 py-6 text-center">
+                                        <div className="flex items-center justify-center gap-1 opacity-100 xl:opacity-0 xl:group-hover:opacity-100 transition-opacity">
                                             <button
                                                 onClick={() => openEditModal(item)}
                                                 className="p-2.5 text-slate-400 dark:text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 rounded-xl transition-colors"

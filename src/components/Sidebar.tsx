@@ -101,7 +101,10 @@ export default function Sidebar({ onClose }: { onClose?: () => void }) {
         // Filter items within the section
         const filteredItems = section.items.filter(item => {
             if (!currentUser) return true; // Show all while loading or if not role-restricted
-            if (currentUser.role === "admin") return true;
+            if (currentUser.role === "admin") {
+                if (item.href === "/historial-compras") return false;
+                return true;
+            }
             if (currentUser.role === "minorista") {
                 return item.href === "/minorista" || item.href === "/pedidos-solicitud";
             }

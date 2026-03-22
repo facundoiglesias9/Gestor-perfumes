@@ -22,7 +22,7 @@ import { useAppContext, Usuario, UserRole } from "@/context/AppContext";
 import { motion, AnimatePresence } from "framer-motion";
 
 export default function GestionUsuariosPage() {
-    const { usuarios, addUsuario, updateUsuario, deleteUsuario, isLoading } = useAppContext();
+    const { usuarios, addUsuario, updateUsuario, deleteUsuario, isLoading, currentUser } = useAppContext();
     const [searchTerm, setSearchTerm] = useState("");
     const [roleFilter, setRoleFilter] = useState<UserRole | "Todos">("Todos");
     const [statusFilter, setStatusFilter] = useState<"Todos" | "Activo" | "Inactivo">("Todos");
@@ -157,60 +157,81 @@ export default function GestionUsuariosPage() {
             </div>
 
             {/* Grilla de Usuarios */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredUsuarios.map(u => (
-                    <motion.div
-                        layout
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        key={u.id}
-                        className="bg-white dark:bg-slate-900 p-6 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-xl transition-all duration-300 group"
-                    >
-                        <div className="flex items-start justify-between mb-6">
-                            <div className="flex items-center gap-4">
-                                <div className="w-12 h-12 rounded-2xl bg-indigo-50 dark:bg-indigo-500/10 flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-black text-xl shadow-inner">
-                                    {u.username.charAt(0).toUpperCase()}
-                                </div>
-                                <div className="space-y-0.5">
-                                    <h3 className="font-black text-slate-900 dark:text-white tracking-tight">{u.username}</h3>
-                                    <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest truncate max-w-[150px]">{u.email || "Sin email"}</p>
-                                </div>
-                            </div>
-                            <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-[0.1em] border ${u.status === 'Activo'
-                                ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 border-emerald-100 dark:border-emerald-500/20'
-                                : 'bg-rose-50 dark:bg-rose-500/10 text-rose-600 border-rose-100 dark:border-rose-500/20'
-                                }`}>
-                                {u.status}
-                            </span>
-                        </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                {filteredUsuarios.map(u => {
+                    // Determinar colores basados en el rol
+                    let roleColors = { bg: "bg-slate-50", text: "text-slate-600", border: "border-slate-200", glow: "from-slate-500/0", icon: "text-slate-500" };
+                    if (u.role === "admin") roleColors = { bg: "bg-fuchsia-50 dark:bg-fuchsia-500/10", text: "text-fuchsia-600 dark:text-fuchsia-400", border: "border-fuchsia-200 dark:border-fuchsia-500/20", glow: "from-fuchsia-500/20 to-violet-500/0", icon: "text-fuchsia-500" };
+                    else if (u.role === "mayorista") roleColors = { bg: "bg-amber-50 dark:bg-amber-500/10", text: "text-amber-600 dark:text-amber-400", border: "border-amber-200 dark:border-amber-500/20", glow: "from-amber-500/20 to-orange-500/0", icon: "text-amber-500" };
+                    else if (u.role === "minorista") roleColors = { bg: "bg-indigo-50 dark:bg-indigo-500/10", text: "text-indigo-600 dark:text-indigo-400", border: "border-indigo-200 dark:border-indigo-500/20", glow: "from-indigo-500/20 to-blue-500/0", icon: "text-indigo-500" };
 
-                        <div className="space-y-3 mb-6">
-                            <div className="flex items-center justify-between text-xs font-bold text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800/50 p-3 rounded-xl">
-                                <span className="flex items-center gap-2 uppercase tracking-tighter"><ShieldAlert className="w-3.5 h-3.5" /> Rol de Acceso:</span>
-                                <span className="text-slate-900 dark:text-white uppercase">{u.role}</span>
-                            </div>
-                            <div className="flex items-center justify-between text-xs font-bold text-slate-500 dark:text-slate-400 p-3">
-                                <span className="flex items-center gap-2 uppercase tracking-tighter"><Clock className="w-3.5 h-3.5" /> Última Conexión:</span>
-                                <span className="text-slate-900 dark:text-white">24/02/2026</span>
-                            </div>
-                        </div>
+                    return (
+                        <motion.div
+                            layout
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            key={u.id}
+                            className={`relative bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.1)] hover:shadow-2xl transition-all duration-300 group overflow-hidden`}
+                        >
+                            <div className={`absolute inset-x-0 top-0 h-24 bg-gradient-to-b ${roleColors.glow} opacity-50 pointer-events-none`}></div>
+                            <div className="relative p-6 z-10">
+                                <div className="flex items-start justify-between mb-8">
+                                    <div className="flex items-center gap-4">
+                                        <div className={`w-14 h-14 rounded-2xl ${roleColors.bg} flex items-center justify-center font-black text-2xl shadow-inner border border-white/50 dark:border-white/5 ring-4 ring-transparent group-hover:ring-slate-100 dark:group-hover:ring-slate-800 transition-all ${roleColors.text}`}>
+                                            {u.username.charAt(0).toUpperCase()}
+                                        </div>
+                                        <div className="space-y-0.5">
+                                            <h3 className="font-extrabold text-xl text-slate-900 dark:text-white tracking-tight leading-tight">{u.username}</h3>
+                                            <p className="flex items-center gap-1.5 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest truncate max-w-[150px]">
+                                                <Mail className="w-3 h-3" />
+                                                {u.email || "Sin email"}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <span className={`flex justify-center shrink-0 px-2.5 py-1 rounded-md text-[9px] font-black uppercase tracking-[0.1em] border ${u.status === 'Activo'
+                                        ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 border-emerald-100 dark:border-emerald-500/20'
+                                        : 'bg-rose-50 dark:bg-rose-500/10 text-rose-600 border-rose-100 dark:border-rose-500/20'
+                                        }`}>
+                                        <span className={`w-1.5 h-1.5 my-auto mr-1.5 rounded-full ${u.status === 'Activo' ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`}></span>
+                                        {u.status}
+                                    </span>
+                                </div>
 
-                        <div className="flex gap-2">
-                            <button
-                                onClick={() => handleEdit(u)}
-                                className="flex-1 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-900 dark:text-white py-3 rounded-xl text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all active:scale-95"
-                            >
-                                <Edit3 className="w-3.5 h-3.5" /> Editar
-                            </button>
-                            <button
-                                onClick={() => deleteUsuario(u.id)}
-                                className="w-12 h-12 flex items-center justify-center bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400 rounded-xl hover:bg-rose-600 hover:text-white transition-all active:scale-90"
-                            >
-                                <Trash2 className="w-4 h-4" />
-                            </button>
-                        </div>
-                    </motion.div>
-                ))}
+                                <div className="space-y-3 mb-8">
+                                    <div className="flex items-center justify-between text-xs font-bold text-slate-500 dark:text-slate-400 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-700/50 shadow-sm">
+                                        <span className="flex items-center gap-2 uppercase tracking-tighter"><ShieldAlert className="w-4 h-4 text-slate-400" /> Nivel Acceso</span>
+                                        <span className={`inline-flex items-center px-2 py-0.5 rounded-md font-black uppercase border ${roleColors.bg} ${roleColors.text} ${roleColors.border}`}>
+                                            {u.role}
+                                        </span>
+                                    </div>
+                                    <div className="flex items-center justify-between text-xs font-bold text-slate-500 dark:text-slate-400 p-3 px-4">
+                                        <span className="flex items-center gap-2 uppercase tracking-tighter"><Clock className="w-4 h-4 text-slate-400" /> Última Conexión</span>
+                                        <span className="text-slate-900 dark:text-white font-black tracking-tight">
+                                            {u.id === currentUser?.id
+                                                ? <span className="text-emerald-500 font-black">Conectado (Tú)</span>
+                                                : (u.lastLogin || "Nunca")}
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <div className="flex gap-2">
+                                    <button
+                                        onClick={() => handleEdit(u)}
+                                        className="flex-1 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-900 dark:text-white py-3.5 rounded-xl text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all active:scale-95 shadow-sm border border-slate-200 dark:border-slate-700 hover:border-indigo-500/50 group/edit"
+                                    >
+                                        <Edit3 className="w-4 h-4 text-slate-400 group-hover/edit:text-indigo-500 transition-colors" /> Ajustes
+                                    </button>
+                                    <button
+                                        onClick={() => deleteUsuario(u.id)}
+                                        className="w-14 h-14 shrink-0 flex items-center justify-center bg-white dark:bg-slate-800 text-rose-500 rounded-xl hover:bg-rose-50 border border-slate-200 dark:border-slate-700 hover:border-rose-200 outline-none transition-all active:scale-90 shadow-sm group/del"
+                                    >
+                                        <Trash2 className="w-5 h-5 group-hover/del:fill-rose-500/20" />
+                                    </button>
+                                </div>
+                            </div>
+                        </motion.div>
+                    );
+                })}
             </div>
 
             {/* Modal de Creación/Edición */}

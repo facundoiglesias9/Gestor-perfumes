@@ -20,7 +20,8 @@ export default function BasesPage() {
         name: "",
         components: [] as BaseComponent[],
         essenceGender: "Todos",
-        essenceGrams: 10
+        essenceGrams: 10,
+        category: "Perfumería Fina"
     });
 
     const calculateComponentCost = useCallback((comp: BaseComponent) => {
@@ -62,7 +63,8 @@ export default function BasesPage() {
             name: finalName,
             components: formData.components,
             essenceGender: formData.essenceGender,
-            essenceGrams: formData.essenceGrams
+            essenceGrams: formData.essenceGrams,
+            category: formData.category
         };
 
         if (editingId) {
@@ -78,7 +80,7 @@ export default function BasesPage() {
     const handleCloseModal = () => {
         setIsAddModalOpen(false);
         setEditingId(null);
-        setFormData({ name: "", components: [], essenceGender: "Todos", essenceGrams: 10 });
+        setFormData({ name: "", components: [], essenceGender: "Todos", essenceGrams: 10, category: categorias[0]?.name || "Perfumería Fina" });
     };
 
     const openEditModal = (base: Base) => {
@@ -96,7 +98,8 @@ export default function BasesPage() {
             name: cleanedName,
             components: [...base.components],
             essenceGender: base.essenceGender || "Todos",
-            essenceGrams: base.essenceGrams || 10
+            essenceGrams: base.essenceGrams || 10,
+            category: base.category || categorias[0]?.name || "Perfumería Fina"
         });
         // Esencias válidas: tienen precio 100g numérico (soporta number o string numérico de Supabase)
         const validEsencias = esencias.filter(e => {
@@ -192,6 +195,13 @@ export default function BasesPage() {
                         <div className="space-y-3 mb-6">
                             <div className="flex justify-between items-center text-xs p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800">
                                 <span className="text-slate-500 flex items-center gap-2">
+                                    <Layers className="w-3 h-3 text-indigo-500" />
+                                    Categoría:
+                                </span>
+                                <span className="font-bold text-slate-900 dark:text-slate-100">{base.category || "No asignada"}</span>
+                            </div>
+                            <div className="flex justify-between items-center text-xs p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800">
+                                <span className="text-slate-500 flex items-center gap-2">
                                     <Sparkles className="w-3 h-3 text-amber-500" />
                                     Género Destino:
                                 </span>
@@ -253,12 +263,6 @@ export default function BasesPage() {
                             </div>
                             <button
                                 onClick={() => {
-                                    const isLP = base.essenceGender?.toLowerCase() === "limpia pisos";
-                                    if (isLP) {
-                                        setTargetCategory(base.name.includes("5L") ? "Limpia pisos 5L" : "Limpia pisos 1L");
-                                    } else {
-                                        setTargetCategory("Perfumería Fina");
-                                    }
                                     setIsGeneratingModalOpen(base.id);
                                 }}
                                 className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-[10px] uppercase tracking-widest rounded-xl transition-all shadow-lg shadow-indigo-600/20 active:scale-95 flex items-center justify-center gap-2"
@@ -303,7 +307,7 @@ export default function BasesPage() {
                                         />
                                     </div>
 
-                                    <div className="lg:col-span-4 space-y-2.5">
+                                    <div className="lg:col-span-3 space-y-2.5">
                                         <label className="flex items-center gap-2 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] pl-1">
                                             <Sparkles className="w-3 h-3" />
                                             Género
@@ -316,6 +320,25 @@ export default function BasesPage() {
                                             >
                                                 <option value="Todos">Todos</option>
                                                 {generos.map((g, i) => <option key={i} value={g}>{g}</option>)}
+                                            </select>
+                                            <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                                        </div>
+                                    </div>
+
+                                    <div className="lg:col-span-4 space-y-2.5">
+                                        <label className="flex items-center gap-2 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] pl-1">
+                                            <Layers className="w-3 h-3" />
+                                            Categoría asignada
+                                        </label>
+                                        <div className="relative">
+                                            <select
+                                                required
+                                                value={formData.category}
+                                                onChange={e => setFormData({ ...formData, category: e.target.value })}
+                                                className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl py-4 pl-5 pr-10 text-slate-900 dark:text-slate-50 font-bold focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all appearance-none cursor-pointer text-sm"
+                                            >
+                                                <option value="" disabled>Seleccionar...</option>
+                                                {categorias.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
                                             </select>
                                             <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
                                         </div>
@@ -504,25 +527,13 @@ export default function BasesPage() {
                         <div className="p-8 space-y-6">
                             {(() => {
                                 const activeBase = bases.find(b => b.id === isGeneratingModalOpen);
-                                const isLP = activeBase?.essenceGender?.toLowerCase() === "limpia pisos";
-                                return isLP ? (
+                                return (
                                     <div className="p-4 bg-indigo-50 dark:bg-indigo-500/10 rounded-2xl border border-indigo-100 dark:border-indigo-500/20">
-                                        <p className="text-indigo-700 dark:text-indigo-400 text-xs font-bold">
-                                            Categoría destino: <span className="uppercase">{targetCategory}</span>
+                                        <p className="text-indigo-700 dark:text-indigo-400 text-xs font-bold leading-relaxed flex flex-col gap-1.5 text-center">
+                                            <span className="font-extrabold text-sm mb-1 uppercase tracking-widest text-[#2f39c2] dark:text-indigo-300">
+                                                {activeBase?.category || targetCategory || "Perfumería Fina"}
+                                            </span>
                                         </p>
-                                    </div>
-                                ) : (
-                                    <div className="space-y-2">
-                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Categoría Destino</label>
-                                        <select
-                                            value={targetCategory}
-                                            onChange={(e) => setTargetCategory(e.target.value)}
-                                            className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl py-4 px-4 text-slate-900 dark:text-slate-100 font-bold"
-                                        >
-                                            {categorias.map(cat => (
-                                                <option key={cat.id} value={cat.name}>{cat.name}</option>
-                                            ))}
-                                        </select>
                                     </div>
                                 );
                             })()}
@@ -534,7 +545,9 @@ export default function BasesPage() {
                             <button
                                 onClick={async () => {
                                     if (!isGeneratingModalOpen) return;
-                                    const result = await generateProductsFromBase(isGeneratingModalOpen, targetCategory);
+                                    const activeBase = bases.find(b => b.id === isGeneratingModalOpen);
+                                    let cat = activeBase?.category || targetCategory || "Perfumería Fina";
+                                    const result = await generateProductsFromBase(isGeneratingModalOpen, cat);
                                     setIsGeneratingModalOpen(null);
                                     if (result) setGenerationResult(result);
                                 }}

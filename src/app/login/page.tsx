@@ -9,7 +9,7 @@ import { useAppContext } from "@/context/AppContext";
 import ThemeToggle from "@/components/ThemeToggle";
 
 export default function LoginPage() {
-    const { login, usuarios, addSystemLog } = useAppContext();
+    const { login, usuarios, addSystemLog, updateUsuario } = useAppContext();
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [loading, setLoading] = useState(false);
@@ -45,8 +45,15 @@ export default function LoginPage() {
                 else if (foundUser.role === "mayorista") targetPath = "/lista-mayorista";
                 else if (foundUser.role === "minorista") targetPath = "/minorista";
 
+                const updatedUser = { ...foundUser, lastLogin: new Date().toLocaleDateString("es-AR") };
+
+                // Actualiza la BD o array con el nuevo login usando updateUsuario
+                try {
+                    await updateUsuario(updatedUser);
+                } catch (e) { console.error("Error updating user:", e) }
+
                 // Actualiza el estado GLOBAL de la app antes de navegar
-                login(foundUser);
+                login(updatedUser);
                 setLoading(false);
 
                 // Forzamos recarga para que el AppContext levante la nueva sesión limpiamente
@@ -97,7 +104,14 @@ export default function LoginPage() {
                 else if (foundUser.role === "mayorista") targetPath = "/lista-mayorista";
                 else if (foundUser.role === "minorista") targetPath = "/minorista";
 
-                login(foundUser);
+                const updatedUser = { ...foundUser, lastLogin: new Date().toLocaleDateString("es-AR") };
+
+                // Actualiza la DB con nuevo login
+                try {
+                    await updateUsuario(updatedUser);
+                } catch (e) { console.error("Error updating user:", e) }
+
+                login(updatedUser);
                 setLoading(false);
 
                 window.location.href = targetPath;

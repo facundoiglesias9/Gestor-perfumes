@@ -21,6 +21,48 @@ export default function InventarioPage() {
     const [editingAlertItem, setEditingAlertItem] = useState<string | null>(null);
     const [tempThreshold, setTempThreshold] = useState("");
 
+    const getColorClass = (str: string, isBadge: boolean) => {
+        if (!str) return isBadge ? 'bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700' : 'bg-slate-300 dark:bg-slate-600';
+
+        const colorsMap = {
+            blue: { bg: 'bg-blue-500', badge: 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-500/10 dark:text-blue-400 dark:border-blue-500/20' },
+            emerald: { bg: 'bg-emerald-500', badge: 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20' },
+            amber: { bg: 'bg-amber-500', badge: 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/20' },
+            violet: { bg: 'bg-violet-500', badge: 'bg-violet-50 text-violet-700 border-violet-200 dark:bg-violet-500/10 dark:text-violet-400 dark:border-violet-500/20' },
+            indigo: { bg: 'bg-indigo-500', badge: 'bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-500/10 dark:text-indigo-400 dark:border-indigo-500/20' },
+            rose: { bg: 'bg-rose-500', badge: 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-500/10 dark:text-rose-400 dark:border-rose-500/20' },
+            cyan: { bg: 'bg-cyan-500', badge: 'bg-cyan-50 text-cyan-700 border-cyan-200 dark:bg-cyan-500/10 dark:text-cyan-400 dark:border-cyan-500/20' },
+            lime: { bg: 'bg-lime-500', badge: 'bg-lime-50 text-lime-700 border-lime-200 dark:bg-lime-500/10 dark:text-lime-400 dark:border-lime-500/20' },
+            fuchsia: { bg: 'bg-fuchsia-500', badge: 'bg-fuchsia-50 text-fuchsia-700 border-fuchsia-200 dark:bg-fuchsia-500/10 dark:text-fuchsia-400 dark:border-fuchsia-500/20' },
+            orange: { bg: 'bg-orange-500', badge: 'bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-500/10 dark:text-orange-400 dark:border-orange-500/20' },
+            teal: { bg: 'bg-teal-500', badge: 'bg-teal-50 text-teal-700 border-teal-200 dark:bg-teal-500/10 dark:text-teal-400 dark:border-teal-500/20' }
+        };
+        const colorList = Object.values(colorsMap);
+
+        let colorObj;
+        const s = str.toLowerCase();
+
+        if (s === 'esencia') colorObj = colorsMap.orange;
+        else if (s === 'insumo') colorObj = colorsMap.blue;
+        else if (s.includes('perfumer')) colorObj = colorsMap.violet;
+        else if (s.includes('limpia pisos 1l') || s.includes('limpia pisos 1 l')) colorObj = colorsMap.indigo;
+        else if (s.includes('limpia pisos 5l') || s.includes('limpia pisos 5 l')) colorObj = colorsMap.amber;
+        else if (s.includes('limpia') || s.includes('piso')) colorObj = colorsMap.cyan;
+        else if (s.includes('aromatizante') || s.includes('auto')) colorObj = colorsMap.orange;
+        else if (s.includes('difusor')) colorObj = colorsMap.rose;
+        else if (s.includes('textil')) colorObj = colorsMap.emerald;
+        else if (s.includes('esencia')) colorObj = colorsMap.fuchsia;
+        else if (s === 'femenino' || s === 'femenina') colorObj = colorsMap.rose;
+        else if (s === 'masculino') colorObj = colorsMap.blue;
+        else if (s === 'unisex') colorObj = colorsMap.teal;
+        else {
+            let hash = 0;
+            for (let i = 0; i < str.length; i++) hash = str.charCodeAt(i) + ((hash << 5) - hash);
+            colorObj = colorList[Math.abs(hash) % colorList.length];
+        }
+        return isBadge ? colorObj.badge : colorObj.bg;
+    };
+
     useEffect(() => {
         try {
             const saved = localStorage.getItem('inventario_alert_thresholds');
@@ -138,37 +180,44 @@ export default function InventarioPage() {
             </header>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-3xl shadow-[0_2px_10px_rgb(0,0,0,0.02)] flex items-center gap-5">
-                    <div className="p-4 bg-slate-100 dark:bg-slate-800 rounded-2xl text-slate-500 dark:text-slate-400">
-                        <Archive className="w-6 h-6" />
+                {/* Unidades */}
+                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-[2rem] shadow-[0_2px_10px_rgb(0,0,0,0.02)] flex items-center gap-5 hover:shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:hover:shadow-[0_8px_30px_rgb(0,0,0,0.2)] hover:border-indigo-200 dark:hover:border-indigo-900/50 transition-all group overflow-hidden relative">
+                    <div className="absolute -right-6 -top-6 w-24 h-24 bg-indigo-50 dark:bg-indigo-500/5 rounded-full blur-2xl group-hover:bg-indigo-100 dark:group-hover:bg-indigo-500/10 transition-colors"></div>
+                    <div className="p-4 bg-indigo-50 dark:bg-indigo-500/10 rounded-2xl text-indigo-600 dark:text-indigo-400 ring-4 ring-indigo-50/50 dark:ring-indigo-500/5 transition-all group-hover:scale-110">
+                        <Archive className="w-6 h-6" strokeWidth={2.5} />
                     </div>
-                    <div>
-                        <p className="text-sm font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Unidades/Gramos</p>
-                        <p className="text-2xl font-black text-slate-900 dark:text-slate-50">{totalUnidades}</p>
-                    </div>
-                </div>
-                {/* Placeholder stats */}
-                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-3xl opacity-50 flex items-center gap-5">
-                    <div className="p-4 bg-emerald-100 dark:bg-emerald-500/20 rounded-2xl text-emerald-600 dark:text-emerald-400">
-                        <MoveUpRight className="w-6 h-6" />
-                    </div>
-                    <div>
-                        <p className="text-sm font-bold text-slate-400 uppercase tracking-wider tracking-widest">Valorizado</p>
-                        <p className="text-2xl font-black text-slate-900 dark:text-slate-50">$0</p>
+                    <div className="relative z-10">
+                        <p className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1">Unidades / Gramos</p>
+                        <p className="text-3xl font-black text-slate-900 dark:text-slate-50 tabular-nums">{totalUnidades}</p>
                     </div>
                 </div>
-                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-3xl flex items-center justify-between gap-5 relative overflow-hidden transition-all">
-                    <div className="flex items-center gap-5">
-                        <div className={`p-4 rounded-2xl ${alertCount > 0 ? "bg-rose-100 dark:bg-rose-500/20 text-rose-600 dark:text-rose-400" : "bg-slate-100 dark:bg-slate-800 text-slate-400"}`}>
-                            <AlertCircle className="w-6 h-6" />
+
+                {/* Valorizado (Placeholder) */}
+                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-[2rem] shadow-[0_2px_10px_rgb(0,0,0,0.02)] flex items-center gap-5 hover:shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:hover:shadow-[0_8px_30px_rgb(0,0,0,0.2)] hover:border-emerald-200 dark:hover:border-emerald-900/50 transition-all group overflow-hidden relative opacity-60 hover:opacity-100">
+                    <div className="absolute -right-6 -top-6 w-24 h-24 bg-emerald-50 dark:bg-emerald-500/5 rounded-full blur-2xl group-hover:bg-emerald-100 dark:group-hover:bg-emerald-500/10 transition-colors"></div>
+                    <div className="p-4 bg-emerald-50 dark:bg-emerald-500/10 rounded-2xl text-emerald-600 dark:text-emerald-400 ring-4 ring-emerald-50/50 dark:ring-emerald-500/5 transition-all group-hover:scale-110">
+                        <MoveUpRight className="w-6 h-6" strokeWidth={2.5} />
+                    </div>
+                    <div className="relative z-10">
+                        <p className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1">Valorizado</p>
+                        <p className="text-3xl font-black text-slate-900 dark:text-slate-50 tabular-nums">$0</p>
+                    </div>
+                </div>
+
+                {/* Alertas */}
+                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-[2rem] shadow-[0_2px_10px_rgb(0,0,0,0.02)] flex items-center justify-between gap-5 hover:shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:hover:shadow-[0_8px_30px_rgb(0,0,0,0.2)] transition-all group overflow-hidden relative" style={{ borderColor: alertCount > 0 ? "rgba(225, 29, 72, 0.2)" : undefined }}>
+                    <div className={`absolute -right-6 -top-6 w-24 h-24 rounded-full blur-2xl transition-colors ${alertCount > 0 ? "bg-rose-100 dark:bg-rose-500/10" : "bg-slate-50 dark:bg-slate-500/5"}`}></div>
+                    <div className="flex items-center gap-5 relative z-10">
+                        <div className={`p-4 rounded-2xl ring-4 transition-all group-hover:scale-110 ${alertCount > 0 ? "bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400 ring-rose-50/50 dark:ring-rose-500/5" : "bg-slate-50 dark:bg-slate-800 text-slate-400 ring-slate-50/50 dark:ring-slate-800/50"}`}>
+                            <AlertCircle className="w-6 h-6" strokeWidth={2.5} />
                         </div>
                         <div>
-                            <p className="text-sm font-bold text-slate-400 uppercase tracking-widest leading-tight">
-                                Alertas
-                                <span className="block text-[10px] font-medium opacity-80 mt-0.5 lowercase text-slate-400/80 dark:text-slate-500">ítems bajo el límite</span>
+                            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest leading-tight mb-1">
+                                Stock Crítico
                             </p>
-                            <p className={`text-2xl font-black ${alertCount > 0 ? "text-rose-600 dark:text-rose-400" : "text-slate-900 dark:text-slate-50"}`}>
+                            <p className={`text-3xl font-black tabular-nums flex items-baseline gap-2 ${alertCount > 0 ? "text-rose-600 dark:text-rose-400" : "text-slate-900 dark:text-slate-50"}`}>
                                 {alertCount}
+                                <span className={`text-[10px] font-bold uppercase tracking-widest ${alertCount > 0 ? "text-rose-400" : "text-slate-400"}`}>ítems bajo límite</span>
                             </p>
                         </div>
                     </div>
@@ -188,15 +237,15 @@ export default function InventarioPage() {
                 </div>
 
                 <div className="overflow-x-auto flex-1">
-                    <table className="w-full text-left border-collapse min-w-[700px]">
+                    <table className="w-full text-left min-w-[1000px]">
                         <thead>
-                            <tr className="bg-slate-50/80 dark:bg-slate-950/50 border-b border-slate-200 dark:border-slate-800">
-                                <th className="px-8 py-6 text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest w-[15%]">Tipo</th>
-                                <th className="px-8 py-6 text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest w-[30%]">Item</th>
-                                <th className="px-8 py-6 text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest w-[20%]">Categoría</th>
-                                <th className="px-8 py-6 text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest w-[15%] text-center">Cantidad</th>
-                                <th className="px-8 py-6 text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest w-[10%]">Fecha</th>
-                                <th className="px-8 py-6 text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest w-[10%]"></th>
+                            <tr className="bg-slate-50 dark:bg-slate-950/50 border-b border-slate-100 dark:border-slate-800">
+                                <th className="px-6 py-6 text-center text-xs font-bold text-slate-400 uppercase tracking-widest min-w-[120px]">Tipo</th>
+                                <th className="px-6 py-6 text-left text-xs font-bold text-slate-400 uppercase tracking-widest min-w-[250px]">Nombre del Ítem</th>
+                                <th className="px-6 py-6 text-center text-xs font-bold text-slate-400 uppercase tracking-widest">Categoría</th>
+                                <th className="px-6 py-6 text-center text-xs font-bold text-slate-400 uppercase tracking-widest">Cantidad</th>
+                                <th className="px-6 py-6 text-center text-xs font-bold text-slate-400 uppercase tracking-widest">Act. Fecha</th>
+                                <th className="px-6 py-6 text-right text-xs font-bold text-slate-400 uppercase tracking-widest pr-12">Acciones</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -204,62 +253,61 @@ export default function InventarioPage() {
                                 const threshold = alertThresholds[item.name];
                                 const isAlert = threshold !== undefined && item.qty <= threshold;
                                 return (
-                                    <tr key={idx} className="group hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors cursor-pointer relative">
-                                        <td className="px-8 py-6 relative">
-                                            {isAlert && <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1.5 h-8 bg-rose-500 rounded-r-full" title="¡Stock bajo!" />}
-                                            <span className={`inline-flex items-center px-2.5 py-1 rounded-md font-bold text-[11px] uppercase tracking-wider border ${item.type === 'Esencia'
-                                                ? 'bg-orange-50 dark:bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-200 dark:border-orange-500/20'
-                                                : 'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-500/20'
-                                                }`}>
+                                    <tr key={idx} className={`group hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors relative ${isAlert ? "bg-rose-50/10 dark:bg-rose-500/5" : ""}`}>
+                                        <td className="px-6 py-6 text-center relative overflow-hidden">
+                                            {isAlert && <div className="absolute left-0 top-0 bottom-0 w-1 bg-rose-500 shadow-[0_0_10px_rgba(225,29,72,0.8)]" title="¡Stock crítico!" />}
+                                            <span className={`inline-flex items-center px-2.5 py-1 rounded-md font-bold text-[11px] uppercase tracking-wider border whitespace-nowrap w-max mx-auto ${getColorClass(item.type, true)}`}>
                                                 {item.type}
                                             </span>
                                         </td>
-                                        <td className="px-8 py-6">
-                                            <div className="flex flex-col gap-1 group/item">
-                                                <div className="flex items-center gap-2">
-                                                    {item.gender && (
-                                                        <span className={`text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded ${item.gender === 'Femenino' ? 'bg-rose-50 text-rose-500 border border-rose-200/50' : 'bg-indigo-50 text-indigo-500 border border-indigo-200/50'
-                                                            }`}>
-                                                            {item.gender === 'Femenino' ? 'F' : 'M'}
-                                                        </span>
-                                                    )}
-                                                    <p className="text-slate-900 dark:text-slate-100 font-extrabold text-lg group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors flex items-center gap-2">
-                                                        {item.name}
-                                                        {isAlert && <span title={`Límite: ${threshold}`}><AlertCircle className="w-4 h-4 text-rose-500 shrink-0" /></span>}
-                                                        {threshold !== undefined && !isAlert && <span className="text-[10px] font-medium text-slate-400 dark:text-slate-500 ml-1">(Aviso a los {threshold})</span>}
-                                                    </p>
-                                                </div>
+                                        <td className="px-6 py-6 text-left">
+                                            <div className="flex items-center gap-3">
+                                                <p className="text-slate-900 dark:text-slate-100 font-extrabold text-lg group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors line-clamp-2">
+                                                    {item.name}
+                                                </p>
+                                                {item.gender && (
+                                                    <span className={`inline-flex items-center px-2 py-0.5 rounded font-black text-[9px] uppercase tracking-widest border whitespace-nowrap ${getColorClass(item.gender, true)}`}>
+                                                        {item.gender === 'Femenino' ? 'FEM' : item.gender === 'Masculino' ? 'MASC' : item.gender}
+                                                    </span>
+                                                )}
+                                                {isAlert && <span title={`Límite: ${threshold}`} className="flex shrink-0 animate-pulse"><AlertCircle className="w-5 h-5 text-rose-500 drop-shadow-sm" /></span>}
+                                                {threshold !== undefined && !isAlert && <span className="text-[10px] font-bold text-slate-400/80 dark:text-slate-500 whitespace-nowrap uppercase tracking-widest ml-1 bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm">Límite: {threshold}</span>}
                                             </div>
                                         </td>
-                                        <td className="px-8 py-6">
-                                            <p className="text-slate-600 dark:text-slate-300 font-bold text-[10px] uppercase tracking-widest px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 w-fit">
+                                        <td className="px-6 py-6 text-center">
+                                            <span className={`inline-flex items-center px-2.5 py-1 rounded-md font-bold text-[11px] uppercase tracking-wider border whitespace-nowrap w-max mx-auto ${getColorClass(item.category, true)}`}>
                                                 {item.category}
-                                            </p>
+                                            </span>
                                         </td>
-                                        <td className="px-8 py-6 text-center">
-                                            <p className={`font-black text-xl ${isAlert ? "text-rose-600 dark:text-rose-400" : "text-slate-900 dark:text-slate-100"}`}>
-                                                {item.qty.toLocaleString()} <span className={`text-xs font-bold ${isAlert ? "text-rose-400" : "text-slate-400"}`}>{item.unit}</span>
-                                            </p>
+                                        <td className="px-6 py-6 text-center">
+                                            <div className="flex flex-col items-center justify-center">
+                                                <p className={`font-black text-xl tabular-nums drop-shadow-sm ${isAlert ? "text-rose-600 dark:text-rose-400" : "text-slate-900 dark:text-slate-100"}`}>
+                                                    {item.qty.toLocaleString()}
+                                                </p>
+                                                <span className={`text-[10px] uppercase font-bold tracking-widest mt-0.5 ${isAlert ? "text-rose-400" : "text-slate-400"}`}>{item.unit}</span>
+                                            </div>
                                         </td>
-                                        <td className="px-8 py-6">
-                                            <p className="text-slate-500 dark:text-slate-400 font-black text-[10px] uppercase">{item.lastUpdate}</p>
+                                        <td className="px-6 py-6 text-center">
+                                            <span className="text-slate-500 dark:text-slate-400 font-bold text-[11px] uppercase tracking-widest bg-slate-50 dark:bg-slate-900 px-3 py-1.5 rounded-full border border-slate-100 dark:border-slate-800">
+                                                {item.lastUpdate}
+                                            </span>
                                         </td>
-                                        <td className="px-8 py-6 text-right">
-                                            <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <td className="px-6 py-6 text-right pr-12">
+                                            <div className="flex items-center justify-end gap-1 opacity-100 xl:opacity-0 xl:group-hover:opacity-100 transition-opacity">
                                                 <button
                                                     onClick={() => {
                                                         setEditingAlertItem(item.name);
                                                         setTempThreshold(alertThresholds[item.name]?.toString() || "");
                                                         setIsAlertModalOpen(true);
                                                     }}
-                                                    className="p-2.5 text-slate-400 dark:text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 rounded-xl transition-colors"
+                                                    className={`p-2.5 rounded-xl transition-colors ${threshold !== undefined ? "text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-100 dark:border-indigo-500/20" : "text-slate-400 dark:text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-500/10"}`}
                                                     title="Configurar Alerta"
                                                 >
-                                                    {threshold !== undefined ? <Edit2 className="w-5 h-5 text-indigo-500" /> : <AlertCircle className="w-5 h-5" />}
+                                                    <AlertCircle className="w-5 h-5" />
                                                 </button>
                                                 <button
                                                     onClick={() => setItemToDelete(item.id)}
-                                                    className="p-2.5 text-slate-400 dark:text-slate-500 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl transition-colors"
+                                                    className="p-2.5 text-slate-400 dark:text-slate-500 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-xl transition-colors"
                                                     title="Eliminar"
                                                 >
                                                     <Trash2 className="w-5 h-5" />
