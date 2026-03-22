@@ -11,9 +11,13 @@ export type Esencia = {
     category: string;
     provider: string;
     cost: number;
+    costUsd?: number;
     qty: number;
     price30g?: number | "consultar";
     price100g?: number | "consultar";
+    price250g?: number | "consultar";
+    price100gUsd?: number;
+    price250gUsd?: number;
     lastUpdate?: string;
     gender?: string;
     source?: "manual" | "scraped" | "captured";
@@ -85,7 +89,11 @@ function dbToEsencia(row: any): Esencia {
         qty: row.qty ?? 0,
         price30g: row.price30g === null ? "consultar" : row.price30g,
         price100g: row.price100g === null ? "consultar" : row.price100g,
+        price250g: row.price250g === null ? "consultar" : row.price250g,
+        price100gUsd: row.price100g_usd ?? undefined,
+        price250gUsd: row.price250g_usd ?? undefined,
         lastUpdate: row.last_update ?? undefined,
+        costUsd: row.cost_usd ?? undefined,
         source: row.source ?? "manual",
     };
 }
@@ -241,6 +249,7 @@ interface AppContextProps {
     paymentInfo: { alias: string; cbu: string; banco: string; mpAccessToken: string };
     setPaymentInfo: (info: { alias: string; cbu: string; banco: string; mpAccessToken: string }) => void;
     addSystemLog: (type: "info" | "error" | "db" | "auth", message: string, details?: any) => void;
+    usdRate: number;
 }
 
 const AppContext = createContext<AppContextProps | undefined>(undefined);
@@ -315,14 +324,67 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         mpAccessToken: "APP_USR-155495615252903-022714-99162d4f5251c6825a4e8a791ba32942-691652994"
     });
 
+    const [usdRate, setUsdRate] = useState<number>(1000); // Default placeholder
     const [mounted, setMounted] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
+
+    // Fetch USD rate on mount
+    useEffect(() => {
+        fetch("https://dolarapi.com/v1/dolares/blue")
+            .then(res => res.json())
+            .then(data => {
+                if (data && data.venta) {
+                    setUsdRate(data.venta);
+                }
+            })
+            .catch(() => console.error("Could not fetch dollar rate"));
+    }, []);
+
+    // Keep USD costs in sync with the DolarAPI rate
+    useEffect(() => {
+        if (!mounted || !usdRate || esencias.length === 0) return;
+
+        let shouldUpdate = false;
+        const updatedEsencias = esencias.map(item => {
+            let itemChanged = false;
+            let newItem = { ...item };
+
+            if (newItem.costUsd) {
+                const targetCost = newItem.costUsd * usdRate;
+                if (Math.abs(newItem.cost - targetCost) > 0.1) {
+                    itemChanged = true;
+                    newItem.cost = targetCost;
+                }
+            }
+            if (newItem.price100gUsd) {
+                const targetCost = newItem.price100gUsd * usdRate;
+                if (Math.abs((newItem.price100g as number || 0) - targetCost) > 0.1) {
+                    itemChanged = true;
+                    newItem.price100g = targetCost;
+                }
+            }
+            if (newItem.price250gUsd) {
+                const targetCost = newItem.price250gUsd * usdRate;
+                if (Math.abs((newItem.price250g as number || 0) - targetCost) > 0.1) {
+                    itemChanged = true;
+                    newItem.price250g = targetCost;
+                }
+            }
+
+            if (itemChanged) shouldUpdate = true;
+            return newItem;
+        });
+
+        if (shouldUpdate) {
+            _setEsencias(updatedEsencias);
+        }
+    }, [usdRate, mounted, esencias]);
 
     // ── Global Logger with Realtime Broadcast ──────────────────────
     const addSystemLog = (type: "info" | "error" | "db" | "auth", message: string, details?: any) => {
         const newLog = {
             id: Math.random().toString(36).substr(2, 9),
-            timestamp: new Date().toLocaleTimeString(),
+            timestamp: new Date().toLocaleString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' }),
             type,
             message,
             details: details ? JSON.parse(JSON.stringify(details)) : null // Ensure serializable
@@ -1219,6 +1281,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                 qty: e.qty ?? 0,
                 price30g: e.price30g === "consultar" ? null : (e.price30g ?? null),
                 price100g: e.price100g === "consultar" ? null : (e.price100g ?? null),
+                price250g: e.price250g === "consultar" ? null : (e.price250g ?? null),
+                price100g_usd: e.price100gUsd ?? null,
+                price250g_usd: e.price250gUsd ?? null,
                 last_update: e.lastUpdate ?? null,
                 source: e.source ?? "manual",
             }));
@@ -1418,7 +1483,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             paymentInfo,
             setPaymentInfo: setPaymentInfoState,
             isLoading,
-            addSystemLog
+            addSystemLog,
+            usdRate
         }}>
             {children}
         </AppContext.Provider>
@@ -1427,7 +1493,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
 export function useAppContext() {
     const context = useContext(AppContext);
-    if (context === undefined) {
+    if (!context) {
         throw new Error("useAppContext must be used within an AppProvider");
     }
     return context;

@@ -47,10 +47,10 @@ export default function GeneracionEtiquetasPage() {
     const { productos } = useAppContext();
 
     // Parámetros de la etiqueta
-    const [labelWidth, setLabelWidth] = useState(50); // mm
-    const [labelHeight, setLabelHeight] = useState(65); // mm
-    const [gap, setGap] = useState(5); // mm
-    const [padding, setPadding] = useState(2); // mm
+    const [labelWidth, setLabelWidth] = useState(5); // cm
+    const [labelHeight, setLabelHeight] = useState(6.5); // cm
+    const [gap, setGap] = useState(0.5); // cm
+    const [padding, setPadding] = useState(0.2); // cm
     const [fontSizeName, setFontSizeName] = useState(14.5); // pt
     const [fontSizeBrand, setFontSizeBrand] = useState(7); // pt
     const [fontSizeId, setFontSizeId] = useState(14); // pt
@@ -64,7 +64,7 @@ export default function GeneracionEtiquetasPage() {
     const [showTitle, setShowTitle] = useState(true);
     const [showId, setShowId] = useState(true);
     const [customTitle, setCustomTitle] = useState("Scenta");
-    const [logoSize, setLogoSize] = useState(20); // mm
+    const [logoSize, setLogoSize] = useState(2); // cm
     const [customLogo, setCustomLogo] = useState<string | null>(null);
 
     const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -102,14 +102,14 @@ export default function GeneracionEtiquetasPage() {
             useManualLayout, logoOffset, titleOffset, brandOffset, idOffset, categoryOffset,
             labelBgColor, titleColor, brandColor, idBoxColor, idTextColor, categoryColor
         };
-        localStorage.setItem('labelConfigV3', JSON.stringify(config));
+        localStorage.setItem('labelConfigV5', JSON.stringify(config));
         setSaveSuccess(true);
         setTimeout(() => setSaveSuccess(false), 2000);
     };
 
     // Persistencia de configuración
     useEffect(() => {
-        const saved = localStorage.getItem('labelConfigV3');
+        const saved = localStorage.getItem('labelConfigV5');
         if (saved) {
             try {
                 const config = JSON.parse(saved);
@@ -219,9 +219,9 @@ export default function GeneracionEtiquetasPage() {
                     key={`${prod.id}-${idx}`}
                     className="border border-slate-300 flex flex-col items-center justify-center text-center overflow-hidden relative box-border"
                     style={{
-                        width: `${labelWidth}mm`,
-                        height: `${labelHeight}mm`,
-                        padding: `${padding}mm`,
+                        width: `${labelWidth}cm`,
+                        height: `${labelHeight}cm`,
+                        padding: `${padding}cm`,
                         backgroundColor: labelBgColor,
                         pageBreakInside: 'avoid',
                         breakInside: 'avoid'
@@ -236,13 +236,13 @@ export default function GeneracionEtiquetasPage() {
                     <div className={`flex flex-col items-center justify-center w-full h-full relative ${useManualLayout ? '' : 'pt-2'}`}>
                         {showLogo && (
                             <div
-                                className="mb-1 flex items-center justify-center rounded-full overflow-hidden border border-slate-100"
+                                className={`flex items-center justify-center rounded-full overflow-hidden border border-slate-100 ${useManualLayout ? '' : 'mb-1'}`}
                                 style={{
-                                    width: `${logoSize}mm`,
-                                    height: `${logoSize}mm`,
+                                    width: `${logoSize}cm`,
+                                    height: `${logoSize}cm`,
                                     position: useManualLayout ? 'absolute' : 'relative',
-                                    left: useManualLayout ? `calc(50% + ${logoOffset.x}mm)` : 'auto',
-                                    top: useManualLayout ? `calc(50% + ${logoOffset.y}mm)` : 'auto',
+                                    left: useManualLayout ? `calc(50% + ${logoOffset.x}cm)` : 'auto',
+                                    top: useManualLayout ? `calc(50% + ${logoOffset.y}cm)` : 'auto',
                                     transform: useManualLayout ? 'translate(-50%, -50%)' : 'none'
                                 }}
                             >
@@ -261,8 +261,8 @@ export default function GeneracionEtiquetasPage() {
                                     color: titleColor,
                                     fontSize: `${fontSizeName}pt`,
                                     position: useManualLayout ? 'absolute' : 'relative',
-                                    left: useManualLayout ? `calc(50% + ${titleOffset.x}mm)` : 'auto',
-                                    top: useManualLayout ? `calc(50% + ${titleOffset.y}mm)` : 'auto',
+                                    left: useManualLayout ? `calc(50% + ${titleOffset.x}cm)` : 'auto',
+                                    top: useManualLayout ? `calc(50% + ${titleOffset.y}cm)` : 'auto',
                                     transform: useManualLayout ? 'translate(-50%, -50%)' : 'none',
                                     width: useManualLayout ? '100%' : 'auto'
                                 }}
@@ -273,13 +273,13 @@ export default function GeneracionEtiquetasPage() {
 
                         {showBrand && brand && (
                             <span
-                                className="font-bold mt-0.5 leading-tight"
+                                className={`font-bold leading-tight ${useManualLayout ? '' : 'mt-0.5'}`}
                                 style={{
                                     color: brandColor,
                                     fontSize: `${fontSizeBrand}pt`,
                                     position: useManualLayout ? 'absolute' : 'relative',
-                                    left: useManualLayout ? `calc(50% + ${brandOffset.x}mm)` : 'auto',
-                                    top: useManualLayout ? `calc(50% + ${brandOffset.y}mm)` : 'auto',
+                                    left: useManualLayout ? `calc(50% + ${brandOffset.x}cm)` : 'auto',
+                                    top: useManualLayout ? `calc(50% + ${brandOffset.y}cm)` : 'auto',
                                     transform: useManualLayout ? 'translate(-50%, -50%)' : 'none',
                                     width: useManualLayout ? '100%' : 'auto'
                                 }}
@@ -290,15 +290,15 @@ export default function GeneracionEtiquetasPage() {
 
                         {showId && (
                             <div
-                                className="font-black mt-1 px-2 py-0.5 rounded-sm inline-block"
+                                className={`font-black px-2 py-0.5 rounded-sm inline-block ${useManualLayout ? '' : 'mt-1'}`}
                                 style={{
                                     backgroundColor: idBoxColor,
                                     color: idTextColor,
                                     fontSize: `${fontSizeId}pt`,
                                     lineHeight: 1,
                                     position: useManualLayout ? 'absolute' : 'relative',
-                                    left: useManualLayout ? `calc(50% + ${idOffset.x}mm)` : 'auto',
-                                    top: useManualLayout ? `calc(50% + ${idOffset.y}mm)` : 'auto',
+                                    left: useManualLayout ? `calc(50% + ${idOffset.x}cm)` : 'auto',
+                                    top: useManualLayout ? `calc(50% + ${idOffset.y}cm)` : 'auto',
                                     transform: useManualLayout ? 'translate(-50%, -50%)' : 'none'
                                 }}
                             >
@@ -308,13 +308,13 @@ export default function GeneracionEtiquetasPage() {
 
                         {showCategory && (
                             <div
-                                className="font-bold mt-1 flex items-center justify-center gap-1 uppercase tracking-wider w-full"
+                                className={`font-bold flex items-center justify-center gap-1 uppercase tracking-wider w-full ${useManualLayout ? '' : 'mt-1'}`}
                                 style={{
                                     color: categoryColor,
                                     fontSize: `${fontSizeCategory}pt`,
                                     position: useManualLayout ? 'absolute' : 'relative',
-                                    left: useManualLayout ? `calc(50% + ${categoryOffset.x}mm)` : 'auto',
-                                    top: useManualLayout ? `calc(50% + ${categoryOffset.y}mm)` : 'auto',
+                                    left: useManualLayout ? `calc(50% + ${categoryOffset.x}cm)` : 'auto',
+                                    top: useManualLayout ? `calc(50% + ${categoryOffset.y}cm)` : 'auto',
                                     transform: useManualLayout ? 'translate(-50%, -50%)' : 'none'
                                 }}
                             >
@@ -357,9 +357,9 @@ export default function GeneracionEtiquetasPage() {
                         position: fixed !important;
                         left: 0 !important;
                         top: 0 !important;
-                        width: 297mm !important;
-                        min-height: 420mm !important;
-                        padding: 10mm !important;
+                        width: 29.7cm !important;
+                        min-height: 42cm !important;
+                        padding: 1cm !important;
                         background: white !important;
                         z-index: 99999 !important;
                         margin: 0 !important;
@@ -467,7 +467,7 @@ export default function GeneracionEtiquetasPage() {
                             <div>
                                 <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-widest flex items-center gap-2 mb-4">
                                     <Grid3X3 className="w-4 h-4 text-indigo-500" />
-                                    Dimensiones (mm)
+                                    Dimensiones (cm)
                                 </h3>
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
@@ -491,22 +491,22 @@ export default function GeneracionEtiquetasPage() {
                                     <div className="col-span-2">
                                         <label className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">Separación (Gap)</label>
                                         <input
-                                            type="range" min="0" max="20" step="1"
+                                            type="range" min="0" max="2" step="0.1"
                                             value={gap}
                                             onChange={e => setGap(Number(e.target.value))}
                                             className="w-full accent-indigo-500"
                                         />
-                                        <div className="text-right text-xs font-bold text-slate-400 mt-1">{gap} mm</div>
+                                        <div className="text-right text-xs font-bold text-slate-400 mt-1">{gap} cm</div>
                                     </div>
                                     <div className="col-span-2">
                                         <label className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">Márgenes Internos (Padding)</label>
                                         <input
-                                            type="range" min="0" max="15" step="0.5"
+                                            type="range" min="0" max="1.5" step="0.05"
                                             value={padding}
                                             onChange={e => setPadding(Number(e.target.value))}
                                             className="w-full accent-indigo-500"
                                         />
-                                        <div className="text-right text-xs font-bold text-slate-400 mt-1">{padding} mm</div>
+                                        <div className="text-right text-xs font-bold text-slate-400 mt-1">{padding} cm</div>
                                     </div>
                                 </div>
                             </div>
@@ -606,9 +606,9 @@ export default function GeneracionEtiquetasPage() {
                                     {showLogo && (
                                         <div className="pl-8 pt-1 space-y-4">
                                             <div>
-                                                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 block">Tamaño del Logo ({logoSize}mm)</label>
+                                                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 block">Tamaño del Logo ({logoSize}cm)</label>
                                                 <input
-                                                    type="range" min="5" max="25" step="1"
+                                                    type="range" min="0.5" max="2.5" step="0.1"
                                                     value={logoSize}
                                                     onChange={e => setLogoSize(Number(e.target.value))}
                                                     className="w-full accent-indigo-500"
@@ -698,18 +698,18 @@ export default function GeneracionEtiquetasPage() {
                                                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{item.label}</p>
                                                 <div className="grid grid-cols-2 gap-2">
                                                     <div>
-                                                        <label className="text-[9px] font-bold text-slate-500 block">Eje X: {item.state.x}mm</label>
+                                                        <label className="text-[9px] font-bold text-slate-500 block">Eje X: {item.state.x}cm</label>
                                                         <input
-                                                            type="range" min="-30" max="30" step="0.5"
+                                                            type="range" min="-3" max="3" step="0.05"
                                                             value={item.state.x}
                                                             onChange={e => item.setter(prev => ({ ...prev, x: Number(e.target.value) }))}
                                                             className="w-full h-1.5 accent-slate-400"
                                                         />
                                                     </div>
                                                     <div>
-                                                        <label className="text-[9px] font-bold text-slate-500 block">Eje Y: {item.state.y}mm</label>
+                                                        <label className="text-[9px] font-bold text-slate-500 block">Eje Y: {item.state.y}cm</label>
                                                         <input
-                                                            type="range" min="-30" max="30" step="0.5"
+                                                            type="range" min="-3" max="3" step="0.05"
                                                             value={item.state.y}
                                                             onChange={e => item.setter(prev => ({ ...prev, y: Number(e.target.value) }))}
                                                             className="w-full h-1.5 accent-slate-400"
@@ -759,12 +759,12 @@ export default function GeneracionEtiquetasPage() {
                             <div
                                 className="bg-white text-black shadow-2xl relative screen-preview-sheet"
                                 style={{
-                                    width: '297mm',
-                                    minHeight: '420mm',
-                                    padding: '10mm',
+                                    width: '29.7cm',
+                                    minHeight: '42cm',
+                                    padding: '1cm',
                                 }}
                             >
-                                <div className="flex flex-wrap" style={{ gap: `${gap}mm` }}>
+                                <div className="flex flex-wrap" style={{ gap: `${gap}cm` }}>
                                     {renderEtiquetas()}
                                 </div>
                             </div>
@@ -775,209 +775,189 @@ export default function GeneracionEtiquetasPage() {
 
 
 
-            {/* APARTADO DE "JUEGO" / PLAYGROUND (Novedad) */}
-            <div className="mt-12 p-10 bg-gradient-to-br from-indigo-600 to-violet-700 rounded-[3rem] text-white print:hidden shadow-2xl overflow-hidden relative">
-                <div className="absolute top-0 right-0 p-10 opacity-10 pointer-events-none">
-                    <Move className="w-64 h-64" />
+            {/* EDITOR DE DISEÑO Y LAYOUT (Versión Pro) */}
+            <div className="mt-12 p-8 md:p-12 bg-[#0a0a0a] rounded-3xl border border-white/5 text-slate-300 print:hidden shadow-[0_30px_60px_-15px_rgba(0,0,0,0.5)]">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 mb-10 border-b border-white/10 pb-8">
+                    <div className="space-y-2">
+                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded bg-white/5 border border-white/10 text-slate-400 text-[10px] font-bold tracking-[0.2em] uppercase">
+                            <Move className="w-3 h-3" />
+                            Modo Avanzado
+                        </div>
+                        <h2 className="text-3xl font-light tracking-tight text-white mb-2">Diseñador de Layout.</h2>
+                        <p className="text-slate-500 font-normal text-sm max-w-xl">
+                            Ajustá la posición exacta de cada elemento en el lienzo de la etiqueta. Usá coordenadas (X, Y).
+                        </p>
+                    </div>
+                    <button
+                        onClick={saveAsDefault}
+                        className="bg-white text-black px-6 py-3 rounded-xl font-bold tracking-wide text-sm hover:bg-slate-200 transition-all flex items-center gap-2 shrink-0 shadow-lg shadow-white/5"
+                    >
+                        <Save className="w-4 h-4" />
+                        Aplicar y Guardar
+                    </button>
                 </div>
 
-                <div className="relative z-10 space-y-8">
-                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-                        <div>
-                            <h2 className="text-3xl font-black tracking-tight mb-2">Editor de Diseño Libre</h2>
-                            <p className="text-indigo-100 font-medium text-lg max-w-xl">
-                                Usá este espacio para jugar con las posiciones exactas de cada elemento. Una vez que encuentres el diseño perfecto, guardalo como predeterminado.
-                            </p>
-                        </div>
-                        <button
-                            onClick={saveAsDefault}
-                            className="bg-white text-indigo-600 px-8 py-4 rounded-2xl font-black tracking-widest uppercase hover:bg-indigo-50 active:scale-95 transition-all shadow-xl flex items-center gap-3 shrink-0"
-                        >
-                            <Save className="w-5 h-5" />
-                            Fijar este diseño
-                        </button>
-                    </div>
+                <div className="grid grid-cols-1 lg:grid-cols-5 gap-12 items-start">
 
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 items-center">
-                        <div className="bg-white/10 backdrop-blur-md p-8 rounded-[2rem] border border-white/20 space-y-8">
-                            <div>
-                                <h4 className="flex items-center gap-2 font-black uppercase tracking-widest text-xs opacity-70 mb-4">
-                                    <div className="w-4 h-4 rounded-full border border-white/20 bg-gradient-to-r from-red-200 via-green-200 to-blue-200"></div>
-                                    Fondo de Etiqueta (Pastel)
+                    {/* PANEL DE CONTROLES */}
+                    <div className="lg:col-span-3 space-y-10">
+                        {/* Control General */}
+                        <div className="bg-white/[0.02] p-6 rounded-2xl border border-white/5 flex flex-col sm:flex-row justify-between items-center gap-6">
+                            <div className="space-y-1">
+                                <h4 className="flex items-center gap-2 font-medium text-white text-sm">
+                                    <Layers className="w-4 h-4 text-slate-500" />
+                                    Posicionamiento Absoluto
                                 </h4>
-                                <div className="flex flex-wrap gap-3">
-                                    {[
-                                        '#ffffff', '#ffe4e6', '#ffedd5', '#fef9c3', '#dcfce7', '#ccfbf1', '#dbeafe', '#e0e7ff', '#ede9fe', '#fae8ff', '#f1f5f9'
-                                    ].map(color => (
-                                        <button
-                                            key={color}
-                                            onClick={() => setLabelBgColor(color)}
-                                            className={`w-12 h-12 rounded-2xl border-4 transition-all duration-300 ${labelBgColor === color ? 'border-indigo-400 scale-110 shadow-xl' : 'border-white/20 hover:border-white/50'}`}
-                                            style={{ backgroundColor: color }}
-                                            title={`Seleccionar color: ${color}`}
-                                        />
-                                    ))}
-                                    <div className="flex items-center gap-3 bg-white/10 rounded-2xl px-4 border border-white/20">
-                                        <span className="text-[10px] font-black uppercase tracking-widest opacity-60">Personalizado:</span>
-                                        <input
-                                            type="color"
-                                            value={labelBgColor}
-                                            onChange={e => setLabelBgColor(e.target.value)}
-                                            className="w-8 h-8 bg-transparent cursor-pointer rounded-lg overflow-hidden border-0"
-                                        />
-                                    </div>
-                                </div>
+                                <p className="text-xs text-slate-500">Sobreescribe el flujo automático de elementos por tus coordenadas exactas.</p>
                             </div>
+                            <button
+                                onClick={() => setUseManualLayout(!useManualLayout)}
+                                className={`px-5 py-2.5 rounded-lg text-xs font-bold tracking-wider uppercase transition-all flex items-center gap-2 ${useManualLayout ? 'bg-white text-black hover:bg-slate-200' : 'bg-transparent text-slate-400 border border-slate-700 hover:border-slate-500 hover:text-white'}`}
+                            >
+                                {useManualLayout ? (
+                                    <>
+                                        <CheckCircle2 className="w-4 h-4" />
+                                        Activado
+                                    </>
+                                ) : 'Inactivo'}
+                            </button>
+                        </div>
 
-                            <div className="h-px bg-white/10 w-full"></div>
-
-                            <div className="flex flex-col sm:flex-row justify-between items-center bg-white/5 p-4 rounded-2xl border border-white/10 gap-4">
-                                <div className="space-y-1">
-                                    <h4 className="flex items-center gap-2 font-black uppercase tracking-widest text-[10px] text-indigo-100">
-                                        <Layers className="w-3.5 h-3.5" />
-                                        Modo de Layout
-                                    </h4>
-                                    <p className="text-[10px] opacity-60">Si activás el Modo Libre, las etiquetas de arriba usarán tus posiciones personalizadas.</p>
-                                </div>
-                                <button
-                                    onClick={() => setUseManualLayout(!useManualLayout)}
-                                    className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${useManualLayout ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/20' : 'bg-white/10 text-white/50 border border-white/10 hover:bg-white/20'}`}
-                                >
-                                    {useManualLayout ? (
-                                        <>
-                                            <CheckCircle2 className="w-4 h-4" />
-                                            Diseño Libre Activado
-                                        </>
-                                    ) : 'Usar Diseño Fijo'}
-                                </button>
-                            </div>
-
-                            <div className="h-px bg-white/10 w-full"></div>
-
-                            <h4 className="flex items-center gap-2 font-black uppercase tracking-widest text-xs opacity-70">
-                                <Layers className="w-4 h-4" />
-                                Controles de Precisión
+                        {/* Paleta de Fondos */}
+                        <div>
+                            <h4 className="font-semibold text-xs tracking-widest uppercase text-slate-500 mb-4 flex items-center gap-2">
+                                Fondo del Lienzo
                             </h4>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                            <div className="flex flex-wrap gap-2 items-center">
                                 {[
-                                    { label: 'Logo', state: logoOffset, setter: setLogoOffset, show: showLogo, setShow: setShowLogo, size: logoSize, setSize: setLogoSize, sizeLabel: 'Tamaño (mm)', min: 5, max: 50 },
+                                    '#ffffff', '#f8fafc', '#f1f5f9', '#e2e8f0', '#ffe4e6', '#ffedd5', '#fef9c3', '#dcfce7', '#ccfbf1', '#e0e7ff', '#fae8ff'
+                                ].map(color => (
+                                    <button
+                                        key={color}
+                                        onClick={() => setLabelBgColor(color)}
+                                        className={`w-8 h-8 rounded-full border-2 transition-all duration-300 ${labelBgColor === color ? 'border-indigo-400 scale-110 shadow-[0_0_15px_rgba(255,255,255,0.2)]' : 'border-transparent hover:border-slate-600'}`}
+                                        style={{ backgroundColor: color }}
+                                    />
+                                ))}
+                                <div className="h-6 w-px bg-slate-800 mx-2"></div>
+                                <div className="flex items-center gap-2 bg-slate-900 rounded-lg px-2 border border-slate-800 overflow-hidden">
+                                    <input
+                                        type="color"
+                                        value={labelBgColor}
+                                        onChange={e => setLabelBgColor(e.target.value)}
+                                        className="w-6 h-6 bg-transparent cursor-pointer rounded-full overflow-hidden border-0 p-0"
+                                    />
+                                    <span className="text-[10px] font-mono opacity-50 uppercase">{labelBgColor}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Controles Individuales de Precisión */}
+                        <div>
+                            <h4 className="font-semibold text-xs tracking-widest uppercase text-slate-500 mb-4 border-b border-white/5 pb-2">
+                                Propiedades de Elementos
+                            </h4>
+                            <div className="flex flex-col gap-3">
+                                {[
+                                    { label: 'Imagotipo / Logo', state: logoOffset, setter: setLogoOffset, show: showLogo, setShow: setShowLogo, size: logoSize, setSize: setLogoSize, sizeLabel: 'Escala (cm)', min: 0.5, max: 5 },
                                     {
-                                        label: 'Nombre Fragancia', state: titleOffset, setter: setTitleOffset, show: showTitle, setShow: setShowTitle, size: fontSizeName, setSize: setFontSizeName, sizeLabel: 'Fuente (pt)', min: 6, max: 36,
+                                        label: 'Nombre de Producto', state: titleOffset, setter: setTitleOffset, show: showTitle, setShow: setShowTitle, size: fontSizeName, setSize: setFontSizeName, sizeLabel: 'Tamaño (pt)', min: 6, max: 36,
                                         color: titleColor, setColor: setTitleColor
                                     },
                                     {
-                                        label: 'Marca / Subtítulo', state: brandOffset, setter: setBrandOffset, show: showBrand, setShow: setShowBrand, size: fontSizeBrand, setSize: setFontSizeBrand, sizeLabel: 'Fuente (pt)', min: 4, max: 24,
+                                        label: 'Marca Comercial', state: brandOffset, setter: setBrandOffset, show: showBrand, setShow: setShowBrand, size: fontSizeBrand, setSize: setFontSizeBrand, sizeLabel: 'Tamaño (pt)', min: 4, max: 24,
                                         color: brandColor, setColor: setBrandColor
                                     },
                                     {
-                                        label: 'Cód. Identificador', state: idOffset, setter: setIdOffset, show: showId, setShow: setShowId, size: fontSizeId, setSize: setFontSizeId, sizeLabel: 'Fuente (pt)', min: 4, max: 24,
+                                        label: 'Código SKU', state: idOffset, setter: setIdOffset, show: showId, setShow: setShowId, size: fontSizeId, setSize: setFontSizeId, sizeLabel: 'Tamaño (pt)', min: 4, max: 24,
                                         color: idTextColor, setColor: setIdTextColor, hasBox: true, boxColor: idBoxColor, setBoxColor: setIdBoxColor
                                     },
                                     {
-                                        label: 'Info Categoría', state: categoryOffset, setter: setCategoryOffset, show: showCategory, setShow: setShowCategory, size: fontSizeCategory, setSize: setFontSizeCategory, sizeLabel: 'Fuente (pt)', min: 4, max: 18,
+                                        label: 'Taxonomía (Cat/Gén)', state: categoryOffset, setter: setCategoryOffset, show: showCategory, setShow: setShowCategory, size: fontSizeCategory, setSize: setFontSizeCategory, sizeLabel: 'Tamaño (pt)', min: 4, max: 18,
                                         color: categoryColor, setColor: setCategoryColor
                                     },
                                 ].map((item, idx) => (
-                                    <div key={idx} className={`space-y-4 p-6 rounded-[1.5rem] border transition-all duration-300 ${item.show ? 'bg-white/5 border-white/10 shadow-inner' : 'bg-black/20 border-white/5 opacity-50'}`}>
-                                        <div className="flex justify-between items-center">
-                                            <p className="text-xs font-black uppercase tracking-[0.2em] text-indigo-200">{item.label}</p>
+                                    <div key={idx} className={`p-5 rounded-2xl border transition-all duration-300 ${item.show ? 'bg-white/[0.02] border-white/10' : 'bg-transparent border-dashed border-white/5 opacity-40'}`}>
+                                        <div className="flex justify-between items-center mb-5">
+                                            <p className="text-xs font-semibold tracking-wide text-white">{item.label}</p>
                                             <button
                                                 onClick={() => item.setShow(!item.show)}
-                                                className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest transition-all ${item.show ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-slate-500/20 text-slate-400 border border-slate-500/30'}`}
+                                                className={`px-3 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider transition-all ${item.show ? 'bg-slate-800 text-white hover:bg-slate-700' : 'border border-slate-700 text-slate-500 hover:text-white'}`}
                                             >
                                                 {item.show ? 'Visible' : 'Oculto'}
                                             </button>
                                         </div>
 
                                         {item.show && (
-                                            <div className="space-y-5 animate-in fade-in zoom-in-95 duration-300">
-                                                {/* Control de Tamaño */}
-                                                <div className="space-y-2 pb-4 border-b border-white/5">
-                                                    <div className="flex justify-between items-center px-1">
-                                                        <span className="text-[10px] font-black opacity-60 uppercase text-indigo-100">{item.sizeLabel}</span>
-                                                        <div className="flex items-center gap-1 bg-white/10 rounded-lg px-2 py-0.5 border border-white/10">
+                                            <div className="space-y-4 animate-in fade-in zoom-in-95 duration-200">
+                                                {/* Controles de Escala / Estilo */}
+                                                <div className="grid grid-cols-2 gap-3 pb-3 border-b border-white/5">
+                                                    <div className="space-y-1">
+                                                        <span className="text-[10px] text-slate-500">{item.sizeLabel}</span>
+                                                        <input
+                                                            type="number" step="0.5" min={item.min} max={item.max}
+                                                            value={item.size}
+                                                            onChange={e => item.setSize(Number(e.target.value))}
+                                                            className="w-full bg-slate-900 border border-slate-800 rounded px-2 py-1.5 text-xs text-white outline-none focus:border-slate-500"
+                                                        />
+                                                    </div>
+
+                                                    {item.setColor && (
+                                                        <div className="space-y-1">
+                                                            <span className="text-[10px] text-slate-500">Color Primario</span>
                                                             <input
-                                                                type="number" step="0.5"
-                                                                value={item.size}
-                                                                onChange={e => item.setSize(Number(e.target.value))}
-                                                                className="bg-transparent w-10 text-right text-xs font-bold outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                                                type="color"
+                                                                value={item.color}
+                                                                onChange={e => item.setColor(e.target.value)}
+                                                                className="w-full h-[26px] bg-slate-900 border border-slate-800 rounded cursor-pointer overflow-hidden p-0"
                                                             />
                                                         </div>
-                                                    </div>
-                                                    <input
-                                                        type="range" min={item.min} max={item.max} step="0.5"
-                                                        value={item.size}
-                                                        onChange={e => item.setSize(Number(e.target.value))}
-                                                        className="w-full accent-emerald-400 h-1.5 cursor-pointer"
-                                                    />
+                                                    )}
+                                                    {item.setBoxColor && (
+                                                        <div className="space-y-1 col-span-2">
+                                                            <span className="text-[10px] text-slate-500">Color de Bloque Secundario</span>
+                                                            <input
+                                                                type="color"
+                                                                value={item.boxColor}
+                                                                onChange={e => item.setBoxColor(e.target.value)}
+                                                                className="w-full h-[26px] bg-slate-900 border border-slate-800 rounded cursor-pointer overflow-hidden p-0"
+                                                            />
+                                                        </div>
+                                                    )}
                                                 </div>
 
-                                                {/* Colores (Excepto Logo) */}
-                                                {(item.setColor || item.setBoxColor) && (
-                                                    <div className="flex items-center gap-4 pb-4 border-b border-white/5">
-                                                        {item.setColor && (
-                                                            <div className="flex-1 space-y-1">
-                                                                <span className="text-[9px] font-black opacity-50 uppercase block">Color Texto</span>
-                                                                <input
-                                                                    type="color"
-                                                                    value={item.color}
-                                                                    onChange={e => item.setColor(e.target.value)}
-                                                                    className="w-full h-8 bg-transparent cursor-pointer rounded overflow-hidden"
-                                                                />
-                                                            </div>
-                                                        )}
-                                                        {item.setBoxColor && (
-                                                            <div className="flex-1 space-y-1">
-                                                                <span className="text-[9px] font-black opacity-50 uppercase block">Color Caja</span>
-                                                                <input
-                                                                    type="color"
-                                                                    value={item.boxColor}
-                                                                    onChange={e => item.setBoxColor(e.target.value)}
-                                                                    className="w-full h-8 bg-transparent cursor-pointer rounded overflow-hidden"
-                                                                />
-                                                            </div>
-                                                        )}
+                                                {/* Coordenadas XY */}
+                                                <div className="space-y-3">
+                                                    <div className="flex items-center justify-between gap-3">
+                                                        <span className="text-[10px] font-mono text-slate-500 w-10">X(cm)</span>
+                                                        <input
+                                                            type="range" min="-4" max="4" step="0.01"
+                                                            value={item.state.x}
+                                                            onChange={e => item.setter(prev => ({ ...prev, x: Number(e.target.value) }))}
+                                                            className="flex-1 h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:rounded-full"
+                                                        />
+                                                        <input
+                                                            type="number" step="0.01"
+                                                            value={item.state.x}
+                                                            onChange={e => item.setter(prev => ({ ...prev, x: Number(e.target.value) }))}
+                                                            className="w-[50px] bg-slate-900 border border-slate-800 rounded px-1.5 py-1 text-[10px] text-center text-white outline-none"
+                                                        />
                                                     </div>
-                                                )}
-                                                <div className="space-y-2">
-                                                    <div className="flex justify-between items-center px-1">
-                                                        <span className="text-[10px] font-black opacity-60 uppercase">Eje Horizontal (X)</span>
-                                                        <div className="flex items-center gap-1 bg-white/10 rounded-lg px-2 py-0.5 border border-white/10">
-                                                            <input
-                                                                type="number" step="0.5"
-                                                                value={item.state.x}
-                                                                onChange={e => item.setter(prev => ({ ...prev, x: Number(e.target.value) }))}
-                                                                className="bg-transparent w-10 text-right text-xs font-bold outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                                            />
-                                                            <span className="text-[10px] opacity-40 font-bold">mm</span>
-                                                        </div>
+                                                    <div className="flex items-center justify-between gap-3">
+                                                        <span className="text-[10px] font-mono text-slate-500 w-10">Y(cm)</span>
+                                                        <input
+                                                            type="range" min="-4" max="4" step="0.01"
+                                                            value={item.state.y}
+                                                            onChange={e => item.setter(prev => ({ ...prev, y: Number(e.target.value) }))}
+                                                            className="flex-1 h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:rounded-full"
+                                                        />
+                                                        <input
+                                                            type="number" step="0.01"
+                                                            value={item.state.y}
+                                                            onChange={e => item.setter(prev => ({ ...prev, y: Number(e.target.value) }))}
+                                                            className="w-[50px] bg-slate-900 border border-slate-800 rounded px-1.5 py-1 text-[10px] text-center text-white outline-none"
+                                                        />
                                                     </div>
-                                                    <input
-                                                        type="range" min="-40" max="40" step="0.1"
-                                                        value={item.state.x}
-                                                        onChange={e => item.setter(prev => ({ ...prev, x: Number(e.target.value) }))}
-                                                        className="w-full accent-white h-1.5 cursor-pointer"
-                                                    />
-                                                </div>
-                                                <div className="space-y-2">
-                                                    <div className="flex justify-between items-center px-1">
-                                                        <span className="text-[10px] font-black opacity-60 uppercase">Eje Vertical (Y)</span>
-                                                        <div className="flex items-center gap-1 bg-white/10 rounded-lg px-2 py-0.5 border border-white/10">
-                                                            <input
-                                                                type="number" step="0.5"
-                                                                value={item.state.y}
-                                                                onChange={e => item.setter(prev => ({ ...prev, y: Number(e.target.value) }))}
-                                                                className="bg-transparent w-10 text-right text-xs font-bold outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                                            />
-                                                            <span className="text-[10px] opacity-40 font-bold">mm</span>
-                                                        </div>
-                                                    </div>
-                                                    <input
-                                                        type="range" min="-40" max="40" step="0.1"
-                                                        value={item.state.y}
-                                                        onChange={e => item.setter(prev => ({ ...prev, y: Number(e.target.value) }))}
-                                                        className="w-full accent-white h-1.5 cursor-pointer"
-                                                    />
                                                 </div>
                                             </div>
                                         )}
@@ -985,33 +965,46 @@ export default function GeneracionEtiquetasPage() {
                                 ))}
                             </div>
                         </div>
+                    </div>
 
-                        <div className="flex flex-col items-center justify-center space-y-6">
-                            <h4 className="font-black uppercase tracking-widest text-xs opacity-70">Vista en Tiempo Real</h4>
-                            <div className="bg-white p-1 rounded-sm shadow-[0_20px_50px_rgba(0,0,0,0.3)] transition-all duration-300">
+                    {/* VISTA PREVIA DEL LAYOUT */}
+                    <div className="lg:col-span-2 sticky top-[10%] flex flex-col items-center justify-center space-y-4">
+                        <div className="w-full flex justify-between items-center mb-2 px-2">
+                            <h4 className="font-semibold text-xs tracking-widest uppercase text-slate-500">Previsualización</h4>
+                            <span className="text-[10px] bg-slate-800 px-2 py-0.5 rounded text-white">{labelWidth} x {labelHeight} cm</span>
+                        </div>
+                        <div className="bg-[#111] p-12 rounded-[2rem] border border-white/5 w-full flex items-center justify-center shadow-inner relative overflow-hidden">
+                            <div className="absolute inset-0 opacity-[0.03] pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)', backgroundSize: '20px 20px' }}></div>
+
+                            {/* Papel Simulador */}
+                            <div className="transition-all duration-300 shadow-[0_10px_40px_rgba(0,0,0,0.8)]" style={{ zIndex: 10 }}>
                                 <div
-                                    className="border border-slate-200 flex flex-col items-center justify-center text-center overflow-hidden relative box-border"
+                                    className="border border-black/10 flex flex-col items-center justify-center text-center overflow-hidden relative box-border"
                                     style={{
-                                        width: `${labelWidth}mm`,
-                                        height: `${labelHeight}mm`,
-                                        padding: `${padding}mm`,
+                                        width: `${labelWidth}cm`,
+                                        height: `${labelHeight}cm`,
+                                        padding: `${padding}cm`,
                                         backgroundColor: labelBgColor
                                     }}
                                 >
                                     <div className="flex flex-col items-center justify-center w-full h-full relative">
                                         {showLogo && (
                                             <div
-                                                className="flex items-center justify-center rounded-full overflow-hidden border border-slate-100"
+                                                className="flex items-center justify-center rounded-full overflow-hidden border border-slate-200/50"
                                                 style={{
-                                                    width: `${logoSize}mm`,
-                                                    height: `${logoSize}mm`,
+                                                    width: `${logoSize}cm`,
+                                                    height: `${logoSize}cm`,
                                                     position: 'absolute',
-                                                    left: `calc(50% + ${logoOffset.x}mm)`,
-                                                    top: `calc(50% + ${logoOffset.y}mm)`,
+                                                    left: `calc(50% + ${logoOffset.x}cm)`,
+                                                    top: `calc(50% + ${logoOffset.y}cm)`,
                                                     transform: 'translate(-50%, -50%)'
                                                 }}
                                             >
-                                                <img src="/logo-scenta.png" alt="" className="w-full h-full object-cover scale-[1.6]" />
+                                                <img
+                                                    src={customLogo || "/logo-scenta.png"}
+                                                    alt="Logo"
+                                                    className={`w-full h-full ${customLogo ? 'object-contain' : 'object-cover scale-[1.6]'}`}
+                                                />
                                             </div>
                                         )}
                                         {showTitle && (
@@ -1021,13 +1014,13 @@ export default function GeneracionEtiquetasPage() {
                                                     color: titleColor,
                                                     fontSize: `${fontSizeName}pt`,
                                                     position: 'absolute',
-                                                    left: `calc(50% + ${titleOffset.x}mm)`,
-                                                    top: `calc(50% + ${titleOffset.y}mm)`,
+                                                    left: `calc(50% + ${titleOffset.x}cm)`,
+                                                    top: `calc(50% + ${titleOffset.y}cm)`,
                                                     transform: 'translate(-50%, -50%)',
                                                     width: '100%'
                                                 }}
                                             >
-                                                EJEMPLO
+                                                {flattenedProducts.length > 0 ? extractBrand(flattenedProducts[0].name).title : "NOMBRE FRAG."}
                                             </span>
                                         )}
                                         {showBrand && (
@@ -1037,29 +1030,31 @@ export default function GeneracionEtiquetasPage() {
                                                     color: brandColor,
                                                     fontSize: `${fontSizeBrand}pt`,
                                                     position: 'absolute',
-                                                    left: `calc(50% + ${brandOffset.x}mm)`,
-                                                    top: `calc(50% + ${brandOffset.y}mm)`,
+                                                    left: `calc(50% + ${brandOffset.x}cm)`,
+                                                    top: `calc(50% + ${brandOffset.y}cm)`,
                                                     transform: 'translate(-50%, -50%)',
                                                     width: '100%'
                                                 }}
                                             >
-                                                MARCA / SUB
+                                                {flattenedProducts.length > 0 && extractBrand(flattenedProducts[0].name).brand
+                                                    ? extractBrand(flattenedProducts[0].name).brand
+                                                    : (flattenedProducts.length === 0 ? "MARCA" : "")}
                                             </span>
                                         )}
                                         {showId && (
                                             <div
-                                                className="font-black px-2 py-0.5 rounded-sm inline-block"
+                                                className="font-black px-2 py-0.5 rounded inline-block"
                                                 style={{
                                                     backgroundColor: idBoxColor,
                                                     color: idTextColor,
                                                     fontSize: `${fontSizeId}pt`,
                                                     position: 'absolute',
-                                                    left: `calc(50% + ${idOffset.x}mm)`,
-                                                    top: `calc(50% + ${idOffset.y}mm)`,
+                                                    left: `calc(50% + ${idOffset.x}cm)`,
+                                                    top: `calc(50% + ${idOffset.y}cm)`,
                                                     transform: 'translate(-50%, -50%)'
                                                 }}
                                             >
-                                                COD. 000
+                                                COD. {flattenedProducts.length > 0 ? flattenedProducts[0].id : "000"}
                                             </div>
                                         )}
                                         {showCategory && (
@@ -1069,20 +1064,29 @@ export default function GeneracionEtiquetasPage() {
                                                     color: categoryColor,
                                                     fontSize: `${fontSizeCategory}pt`,
                                                     position: 'absolute',
-                                                    left: `calc(50% + ${categoryOffset.x}mm)`,
-                                                    top: `calc(50% + ${categoryOffset.y}mm)`,
+                                                    left: `calc(50% + ${categoryOffset.x}cm)`,
+                                                    top: `calc(50% + ${categoryOffset.y}cm)`,
                                                     transform: 'translate(-50%, -50%)'
                                                 }}
                                             >
-                                                <span>INFO</span>
-                                                <span>•</span>
-                                                <span>CAT</span>
+                                                {flattenedProducts.length > 0 ? (
+                                                    <>
+                                                        <span>{flattenedProducts[0].category || "INFO"}</span>
+                                                        <span className="opacity-50">•</span>
+                                                        <span>{flattenedProducts[0].gender || "GENERO"}</span>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <span>CATEGORIA</span>
+                                                        <span className="opacity-50">•</span>
+                                                        <span>GENERO</span>
+                                                    </>
+                                                )}
                                             </div>
                                         )}
                                     </div>
                                 </div>
                             </div>
-                            <p className="text-[10px] font-bold opacity-50 uppercase tracking-[0.3em]">Vista Previa de una sola etiqueta</p>
                         </div>
                     </div>
                 </div>
@@ -1170,7 +1174,7 @@ export default function GeneracionEtiquetasPage() {
 
             {/* VISTA EXPLÍCITA EXCLUSIVA PARA IMPRESIÓN */}
             <div className="print-area hidden">
-                <div className="flex flex-wrap" style={{ gap: `${gap}mm` }}>
+                <div className="flex flex-wrap" style={{ gap: `${gap}cm` }}>
                     {renderEtiquetas()}
                 </div>
             </div>

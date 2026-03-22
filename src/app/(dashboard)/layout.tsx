@@ -9,7 +9,7 @@ import { Menu, X, CheckCircle2, Loader2 } from "lucide-react";
 function DashboardContent({ children }: { children: ReactNode }) {
     const pathname = usePathname();
     const router = useRouter();
-    const { currentUser, mounted } = useAppContext();
+    const { currentUser, mounted, usdRate } = useAppContext();
     const [isAuthorized, setIsAuthorized] = useState(false);
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
@@ -120,6 +120,27 @@ function DashboardContent({ children }: { children: ReactNode }) {
             <main className="flex-1 overflow-y-auto w-full relative transition-colors duration-300 print:overflow-visible print:h-auto print:bg-white print:text-black">
                 {/* Background Grid Pattern */}
                 <div className="absolute inset-0 bg-[radial-gradient(#e2e8f0_1px,transparent_1px)] dark:bg-[radial-gradient(#334155_1px,transparent_1px)] [background-size:24px_24px] opacity-40 dark:opacity-20 pointer-events-none print:hidden"></div>
+
+                {/* Live USD Widget */}
+                {isAuthorized && currentUser?.role === "admin" && (
+                    <div className="fixed top-5 right-6 lg:top-8 lg:right-10 z-[60] print:hidden flex flex-col items-end group animate-in slide-in-from-top-10 fade-in duration-700">
+                        <div className="flex items-center gap-2.5 bg-slate-900/80 dark:bg-black/80 backdrop-blur-xl px-4 py-2.5 rounded-2xl border border-emerald-500/20 shadow-xl shadow-emerald-500/10 hover:border-emerald-500/50 hover:bg-slate-900 dark:hover:bg-black transition-all cursor-default">
+                            <span className="flex h-2 w-2 relative">
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                            </span>
+                            <span className="text-emerald-500 font-bold text-xs tracking-widest uppercase">USD BLUE</span>
+                            <div className="h-4 w-[1px] bg-slate-700 mx-1"></div>
+                            <span className="text-white font-black text-sm tabular-nums">
+                                ${usdRate?.toLocaleString('es-AR') || "---"}
+                            </span>
+                        </div>
+                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-2 mr-2 opacity-0 group-hover:opacity-100 transition-opacity drop-shadow-md">
+                            Auto-sync DolarAPI
+                        </span>
+                    </div>
+                )}
+
                 <div className="p-10 max-w-7xl mx-auto xl:px-16 2xl:max-w-screen-2xl relative z-10 w-full transition-all print:p-0 print:max-w-none print:m-0">
                     {children}
                 </div>

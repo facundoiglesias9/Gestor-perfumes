@@ -150,9 +150,16 @@ export default function ListaMayoristaPage() {
         return filteredAndSortedProductos.slice(start, start + itemsPerPage);
     }, [filteredAndSortedProductos, currentPage]);
 
+    const cartFiltered = useMemo(() => cart.filter(item => item.priceType === "mayorista"), [cart]);
+
+    const cartTotal = cartFiltered.reduce((acc, item) => {
+        const price = item.customPrice !== undefined ? item.customPrice : item.producto.price;
+        return acc + (price * item.quantity);
+    }, 0);
+
     // Generate MP Link when QR is selected
     useEffect(() => {
-        if (paymentMethod === 'qr' && cart.length > 0 && paymentInfo?.mpAccessToken) {
+        if (paymentMethod === 'qr' && cartFiltered.length > 0 && paymentInfo?.mpAccessToken) {
             const generateLink = async () => {
                 setIsGeneratingQR(true);
                 try {
@@ -188,7 +195,7 @@ export default function ListaMayoristaPage() {
         } else {
             setPaymentLink("");
         }
-    }, [paymentMethod, cart, paymentInfo?.mpAccessToken]);
+    }, [paymentMethod, cartFiltered, paymentInfo?.mpAccessToken]);
 
     const handleCheckout = (e: React.FormEvent) => {
         e.preventDefault();
@@ -223,12 +230,7 @@ export default function ListaMayoristaPage() {
         exportToPDF("Lista de Precios Mayorista - Scenta", headers, rows, "Lista_Precios_Mayorista_Scenta");
     };
 
-    const cartFiltered = useMemo(() => cart.filter(item => item.priceType === "mayorista"), [cart]);
 
-    const cartTotal = cartFiltered.reduce((acc, item) => {
-        const price = item.customPrice !== undefined ? item.customPrice : item.producto.price;
-        return acc + (price * item.quantity);
-    }, 0);
 
     return (
         <div className="space-y-8 pb-12 animate-in fade-in duration-700">

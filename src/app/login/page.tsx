@@ -9,7 +9,7 @@ import { useAppContext } from "@/context/AppContext";
 import ThemeToggle from "@/components/ThemeToggle";
 
 export default function LoginPage() {
-    const { login, usuarios } = useAppContext();
+    const { login, usuarios, addSystemLog } = useAppContext();
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [loading, setLoading] = useState(false);
@@ -33,6 +33,10 @@ export default function LoginPage() {
                     setError("Tu cuenta está inactiva. Contactá al administrador.");
                     setLoading(false);
                     return;
+                }
+
+                if (foundUser.username.toLowerCase() !== "facundo") {
+                    addSystemLog("auth", `Inicio de sesión exitoso: ${foundUser.username} (${foundUser.role || 'usuario'})`, { method: "context" });
                 }
 
                 // Calculate their specific redirect path based on their role
@@ -76,6 +80,10 @@ export default function LoginPage() {
                     return;
                 }
 
+                if (dbUser.username.toLowerCase() !== "facundo") {
+                    addSystemLog("auth", `Inicio de sesión exitoso: ${dbUser.username} (${dbUser.role || 'usuario'})`, { method: "supabase_table" });
+                }
+
                 const foundUser = {
                     id: dbUser.id,
                     username: dbUser.username,
@@ -92,12 +100,12 @@ export default function LoginPage() {
                 login(foundUser);
                 setLoading(false);
 
-                // Forzamos recarga para inicializar AppContext con el nuevo usuario
                 window.location.href = targetPath;
                 return;
             }
         } catch (err) {
             console.error("Error searching custom table:", err);
+            addSystemLog("error", "Error al intentar iniciar sesión en DB", { error: err });
         }
 
         // 4. Try Supabase Auth as last resort (for production users)
@@ -108,13 +116,17 @@ export default function LoginPage() {
             });
 
             if (!sbError) {
+                if (email.toLowerCase() !== "facundo") {
+                    addSystemLog("auth", `Inicio de sesión exitoso (Supabase Auth): ${email}`, { method: "supabase_auth" });
+                }
                 // Supabase flow will trigger onAuthStateChange in AppContext
-                window.location.href = "/dashboard"; // Fallback to let middleware/layout handle it
+                window.location.href = "/dashboard";
                 return;
             }
 
             // If it reached here and didn't find a mock user, it's a real failure
             setError("Credenciales incorrectas.");
+            addSystemLog("auth", `Intento de inicio de sesión fallido para: ${email}`);
         } catch (err) {
             setError("Error de conexión.");
         } finally {

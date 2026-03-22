@@ -11,7 +11,7 @@ interface AIExtractModalProps {
 }
 
 export default function AIExtractModal({ isOpen, onClose, onConfirm }: AIExtractModalProps) {
-    const { generos } = useAppContext();
+    const { generos, usdRate } = useAppContext();
     const [isProcessing, setIsProcessing] = useState(false);
     const [extractedData, setExtractedData] = useState<Esencia[]>([]);
     const [dragActive, setDragActive] = useState(false);
@@ -44,54 +44,44 @@ export default function AIExtractModal({ isOpen, onClose, onConfirm }: AIExtract
         }
     };
 
-    const processFile = (file: File) => {
+    const processFile = async (file: File) => {
         setIsProcessing(true);
-        // Simulate AI extraction delay
-        setTimeout(() => {
-            const mockData: Esencia[] = [
-                {
-                    id: `E-AI-${Date.now()}-1`,
-                    name: "INVictus (Paco Rabanne)",
-                    category: "Perfumería Fina",
-                    gender: "Masculino",
-                    provider: "Van Rossum",
-                    cost: 12500,
-                    price30g: 12500,
-                    price100g: 32000,
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+
+            const req = await fetch('/api/parse-puroil', {
+                method: 'POST',
+                body: formData
+            });
+
+            const result = await req.json();
+
+            if (result.success && result.data && result.data.length > 0) {
+                const liveData: Esencia[] = result.data.map((item: any, idx: number) => ({
+                    id: `E-AI-${Date.now()}-${idx}`,
+                    name: item.name,
+                    category: "Esencia de Ambiente",
+                    gender: "Ambiente",
+                    provider: "Ezentie",
+                    cost: 0,
+                    price100gUsd: item.price100gUsd,
+                    price250gUsd: item.price250gUsd,
                     qty: 0,
                     lastUpdate: new Date().toLocaleDateString(),
                     source: "captured"
-                },
-                {
-                    id: `E-AI-${Date.now()}-2`,
-                    name: "Good Girl (Carolina Herrera)",
-                    category: "Perfumería Fina",
-                    gender: "Femenino",
-                    provider: "Van Rossum",
-                    cost: 15300,
-                    price30g: 15300,
-                    price100g: 39100,
-                    qty: 0,
-                    lastUpdate: new Date().toLocaleDateString(),
-                    source: "captured"
-                },
-                {
-                    id: `E-AI-${Date.now()}-3`,
-                    name: "Sauvage (Dior)",
-                    category: "Perfumería Fina",
-                    gender: "Masculino",
-                    provider: "Van Rossum",
-                    cost: 18900,
-                    price30g: 18900,
-                    price100g: 48500,
-                    qty: 0,
-                    lastUpdate: new Date().toLocaleDateString(),
-                    source: "captured"
-                }
-            ];
-            setExtractedData(mockData);
+                }));
+                setExtractedData(liveData);
+            } else {
+                alert("No se pudieron detectar productos con los precios correctos en este PDF de Puroil.");
+                setExtractedData([]);
+            }
+        } catch (e) {
+            console.error(e);
+            alert("Error procesando este archivo PDF. Verifique que sea un texto extraible");
+        } finally {
             setIsProcessing(false);
-        }, 2000);
+        }
     };
 
     const updateItem = (id: string, field: string, value: any) => {
@@ -105,7 +95,13 @@ export default function AIExtractModal({ isOpen, onClose, onConfirm }: AIExtract
     };
 
     const handleConfirm = () => {
-        onConfirm(extractedData);
+        const processedList = extractedData.map(item => ({
+            ...item,
+            cost: 0, // Not used strictly if we rely on 100g/250g, but kept for legacy compat
+            price100g: item.price100gUsd ? Math.round(item.price100gUsd * usdRate) : 0,
+            price250g: item.price250gUsd ? Math.round(item.price250gUsd * usdRate) : 0
+        }));
+        onConfirm(processedList);
         setExtractedData([]);
     };
 
@@ -194,10 +190,10 @@ export default function AIExtractModal({ isOpen, onClose, onConfirm }: AIExtract
                                     <thead className="sticky top-0 bg-white dark:bg-slate-900 z-10">
                                         <tr className="border-b border-slate-100 dark:border-white/5 text-[10px] font-black text-slate-400 uppercase tracking-widest">
                                             <th className="px-8 py-6">Nombre de la Esencia</th>
-                                            <th className="px-8 py-6">Género</th>
-                                            <th className="px-8 py-6 text-right">Precio 30g</th>
-                                            <th className="px-8 py-6 text-right">Precio 100g</th>
-                                            <th className="px-8 py-6"></th>
+                                            <th className="px-8 py-6 hidden">Género</th>
+                                            <th className="px-8 py-6 text-right">100 Gramos (USD)</th>
+                                            <th className="px-8 py-6 text-right">250 Gramos (USD)</th>
+                                            <th className="px-8 py-6 w-12 text-center"></th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-100 dark:divide-white/5 font-bold">
@@ -211,7 +207,7 @@ export default function AIExtractModal({ isOpen, onClose, onConfirm }: AIExtract
                                                         className="w-full bg-transparent border-none focus:ring-0 text-slate-900 dark:text-white p-0 font-bold"
                                                     />
                                                 </td>
-                                                <td className="px-8 py-4">
+                                                <td className="px-8 py-4 hidden">
                                                     <select
                                                         value={item.gender}
                                                         onChange={(e) => updateItem(item.id, 'gender', e.target.value)}
@@ -225,29 +221,29 @@ export default function AIExtractModal({ isOpen, onClose, onConfirm }: AIExtract
                                                 </td>
                                                 <td className="px-8 py-4 text-right">
                                                     <div className="flex items-center justify-end gap-1">
-                                                        <span className="text-slate-400">$</span>
+                                                        <span className="text-emerald-500 font-bold">u$s</span>
                                                         <input
                                                             type="number"
-                                                            value={item.price30g}
+                                                            value={item.price100gUsd}
                                                             onFocus={(e) => e.target.select()}
-                                                            onChange={(e) => updateItem(item.id, 'price30g', parseFloat(e.target.value) || 0)}
-                                                            className="w-24 bg-transparent border-none focus:ring-0 text-right p-0 font-black text-emerald-600 dark:text-emerald-400"
+                                                            onChange={(e) => updateItem(item.id, 'price100gUsd', parseFloat(e.target.value) || 0)}
+                                                            className="w-24 bg-transparent border-none focus:ring-0 text-right p-0 font-black text-emerald-600 dark:text-emerald-400 tabular-nums"
                                                         />
                                                     </div>
                                                 </td>
                                                 <td className="px-8 py-4 text-right">
                                                     <div className="flex items-center justify-end gap-1">
-                                                        <span className="text-slate-400">$</span>
+                                                        <span className="text-emerald-500 font-bold">u$s</span>
                                                         <input
                                                             type="number"
-                                                            value={item.price100g}
+                                                            value={item.price250gUsd}
                                                             onFocus={(e) => e.target.select()}
-                                                            onChange={(e) => updateItem(item.id, 'price100g', parseFloat(e.target.value) || 0)}
-                                                            className="w-28 bg-transparent border-none focus:ring-0 text-right p-0 font-black text-indigo-600 dark:text-indigo-400"
+                                                            onChange={(e) => updateItem(item.id, 'price250gUsd', parseFloat(e.target.value) || 0)}
+                                                            className="w-24 bg-transparent border-none focus:ring-0 text-right p-0 font-black text-emerald-600 dark:text-emerald-400 tabular-nums"
                                                         />
                                                     </div>
                                                 </td>
-                                                <td className="px-8 py-4 text-right">
+                                                <td className="px-8 py-4 w-12 text-center">
                                                     <button
                                                         onClick={() => removeItem(item.id)}
                                                         className="p-2 text-slate-300 hover:text-rose-500 transition-colors opacity-0 group-hover:opacity-100"

@@ -1,6 +1,6 @@
 "use client";
 
-import { Search, Plus, Filter, FlaskConical, Trash2, X, Edit2, RefreshCw, ChevronDown, ChevronLeft, ChevronRight, Droplet } from "lucide-react";
+import { Search, Plus, Filter, FlaskConical, Trash2, X, Edit2, RefreshCw, ChevronDown, ChevronLeft, ChevronRight, Droplet, Wind } from "lucide-react";
 import { useState, useMemo, useEffect } from "react";
 import { useAppContext } from "@/context/AppContext";
 import ConfirmModal from "@/components/ConfirmModal";
@@ -18,7 +18,7 @@ export default function EsenciasPage() {
     const [priceFilter, setPriceFilter] = useState("Todos");
     const [providerFilter, setProviderFilter] = useState("Todos");
     const [categoryFilter, setCategoryFilter] = useState("Todos");
-    const [activeTab, setActiveTab] = useState<"Perfumería" | "Limpia Pisos">("Perfumería");
+    const [activeTab, setActiveTab] = useState<"Perfumería" | "Limpia Pisos" | "Ambiente">("Perfumería");
     const [currentPage, setCurrentPage] = useState(1);
     const [isInitialMount, setIsInitialMount] = useState(true);
     const [isCustomProvider, setIsCustomProvider] = useState(false);
@@ -126,8 +126,8 @@ export default function EsenciasPage() {
         setEditingId(null);
         setFormData({
             name: "",
-            category: activeTab === "Limpia Pisos" ? "Limpia pisos" : "Perfumería Fina",
-            gender: activeTab === "Limpia Pisos" ? "Limpia pisos" : "Femenino",
+            category: activeTab === "Limpia Pisos" ? "Limpia pisos" : (activeTab === "Ambiente" ? "Esencia de Ambiente" : "Perfumería Fina"),
+            gender: activeTab === "Limpia Pisos" ? "Limpia pisos" : (activeTab === "Ambiente" ? "Ambiente" : "Femenino"),
             provider: "Van Rossum",
             cost: "",
             qty: ""
@@ -170,12 +170,16 @@ export default function EsenciasPage() {
     const filteredEsencias = useMemo(() => {
         return esencias.filter(e => {
             const isLimpiaPisos = e.gender?.toLowerCase() === "limpia pisos" || e.category?.toLowerCase()?.includes("limpia pisos");
-            if (activeTab === "Perfumería" && isLimpiaPisos) return false;
+            const isAmbiente = e.gender?.toLowerCase() === "ambiente" || e.category?.toLowerCase()?.includes("ambiente");
+            const isPerfumeria = !isLimpiaPisos && !isAmbiente;
+
+            if (activeTab === "Perfumería" && !isPerfumeria) return false;
             if (activeTab === "Limpia Pisos" && !isLimpiaPisos) return false;
+            if (activeTab === "Ambiente" && !isAmbiente) return false;
 
             const matchesSearch = e.name.toLowerCase().includes(searchTerm.toLowerCase());
 
-            if (activeTab === "Limpia Pisos") {
+            if (activeTab === "Limpia Pisos" || activeTab === "Ambiente") {
                 const matchesCategory = categoryFilter === "Todos" || (e.category?.toLowerCase() === categoryFilter.toLowerCase());
                 return matchesSearch && matchesCategory;
             }
@@ -242,13 +246,15 @@ export default function EsenciasPage() {
                         <RefreshCw className={`w-5 h-5 ${scraperStatus.status === "loading" ? "animate-spin" : ""}`} strokeWidth={2.5} />
                         Sincronizar
                     </button>
-                    <button
-                        onClick={() => setIsAIModalOpen(true)}
-                        className="flex items-center gap-2.5 px-6 py-3.5 rounded-2xl bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 font-bold hover:bg-indigo-100 dark:hover:bg-indigo-500/20 transition-all border border-indigo-100 dark:border-indigo-500/20"
-                    >
-                        <Search className="w-5 h-5" strokeWidth={2.5} />
-                        Escanear PDF / Captura
-                    </button>
+                    {activeTab === "Ambiente" && (
+                        <button
+                            onClick={() => setIsAIModalOpen(true)}
+                            className="flex items-center gap-2.5 px-6 py-3.5 rounded-2xl bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 font-bold hover:bg-indigo-100 dark:hover:bg-indigo-500/20 transition-all border border-indigo-100 dark:border-indigo-500/20"
+                        >
+                            <Search className="w-5 h-5" strokeWidth={2.5} />
+                            Escanear PDF / Captura
+                        </button>
+                    )}
                     <button
                         onClick={openAddModal}
                         className="flex items-center gap-2.5 px-7 py-3.5 rounded-2xl bg-orange-600 text-white font-bold hover:bg-orange-700 hover:shadow-xl hover:shadow-orange-600/20 active:scale-95 transition-all"
@@ -263,7 +269,43 @@ export default function EsenciasPage() {
                 isOpen={isAIModalOpen}
                 onClose={() => setIsAIModalOpen(false)}
                 onConfirm={(newEsencias: Esencia[]) => {
-                    setEsencias([...newEsencias, ...esencias]);
+                    setEsencias(prev => {
+                        const merged = [...prev];
+
+                        const normalize = (val: string) => {
+                            return val?.trim().toLowerCase().replace(/\s+/g, ' ') || "";
+                        };
+
+                        newEsencias.forEach(newE => {
+                            const newNorm = normalize(newE.name);
+                            // Rastrear TODOS los clones viejos que encuentre bajo el mismo nombre
+                            const matchingIndices = merged
+                                .map((e, idx) =>
+                                    normalize(e.name) === newNorm &&
+                                        (e.category === "Esencia de Ambiente" || e.category === newE.category)
+                                        ? idx : -1
+                                )
+                                .filter(idx => idx !== -1);
+
+                            if (matchingIndices.length > 0) {
+                                // Actualizar el primer match y conservar su ID original
+                                const firstIdx = matchingIndices[0];
+                                merged[firstIdx] = { ...merged[firstIdx], ...newE, id: merged[firstIdx].id };
+
+                                // Si hay más de un clon antiguo de este producto, marcar los sobrantes para eliminarlos
+                                if (matchingIndices.length > 1) {
+                                    for (let i = 1; i < matchingIndices.length; i++) {
+                                        (merged[matchingIndices[i]] as any)._toBeDeleted = true;
+                                    }
+                                }
+                            } else {
+                                merged.push(newE);
+                            }
+                        });
+
+                        // Eliminar definitivamente los sobrantes del array, esto forzará un delete en Supabase
+                        return merged.filter(e => !(e as any)._toBeDeleted);
+                    });
                     setIsAIModalOpen(false);
                 }}
             />
@@ -273,8 +315,8 @@ export default function EsenciasPage() {
                 <button
                     onClick={() => { setActiveTab("Perfumería"); setCurrentPage(1); }}
                     className={`relative flex items-center gap-2.5 px-6 py-3 rounded-xl font-bold text-sm transition-all duration-300 ${activeTab === "Perfumería"
-                            ? "bg-white dark:bg-slate-800 text-orange-600 dark:text-orange-400 shadow-[0_2px_10px_rgb(0,0,0,0.06)] dark:shadow-[0_2px_10px_rgb(0,0,0,0.2)] ring-1 ring-slate-200/50 dark:ring-slate-700 hover:scale-[1.02]"
-                            : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-white/50 dark:hover:bg-slate-800/50"
+                        ? "bg-white dark:bg-slate-800 text-orange-600 dark:text-orange-400 shadow-[0_2px_10px_rgb(0,0,0,0.06)] dark:shadow-[0_2px_10px_rgb(0,0,0,0.2)] ring-1 ring-slate-200/50 dark:ring-slate-700 hover:scale-[1.02]"
+                        : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-white/50 dark:hover:bg-slate-800/50"
                         }`}
                 >
                     <FlaskConical className={`w-4 h-4 transition-transform duration-300 ${activeTab === "Perfumería" ? "scale-110" : ""}`} />
@@ -283,12 +325,22 @@ export default function EsenciasPage() {
                 <button
                     onClick={() => { setActiveTab("Limpia Pisos"); setCurrentPage(1); }}
                     className={`relative flex items-center gap-2.5 px-6 py-3 rounded-xl font-bold text-sm transition-all duration-300 ${activeTab === "Limpia Pisos"
-                            ? "bg-white dark:bg-slate-800 text-emerald-600 dark:text-emerald-400 shadow-[0_2px_10px_rgb(0,0,0,0.06)] dark:shadow-[0_2px_10px_rgb(0,0,0,0.2)] ring-1 ring-slate-200/50 dark:ring-slate-700 hover:scale-[1.02]"
-                            : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-white/50 dark:hover:bg-slate-800/50"
+                        ? "bg-white dark:bg-slate-800 text-emerald-600 dark:text-emerald-400 shadow-[0_2px_10px_rgb(0,0,0,0.06)] dark:shadow-[0_2px_10px_rgb(0,0,0,0.2)] ring-1 ring-slate-200/50 dark:ring-slate-700 hover:scale-[1.02]"
+                        : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-white/50 dark:hover:bg-slate-800/50"
                         }`}
                 >
                     <Droplet className={`w-4 h-4 transition-transform duration-300 ${activeTab === "Limpia Pisos" ? "scale-110" : ""}`} />
                     Limpia Pisos
+                </button>
+                <button
+                    onClick={() => { setActiveTab("Ambiente"); setCurrentPage(1); }}
+                    className={`relative flex items-center gap-2.5 px-6 py-3 rounded-xl font-bold text-sm transition-all duration-300 ${activeTab === "Ambiente"
+                        ? "bg-white dark:bg-slate-800 text-sky-600 dark:text-sky-400 shadow-[0_2px_10px_rgb(0,0,0,0.06)] dark:shadow-[0_2px_10px_rgb(0,0,0,0.2)] ring-1 ring-slate-200/50 dark:ring-slate-700 hover:scale-[1.02]"
+                        : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-white/50 dark:hover:bg-slate-800/50"
+                        }`}
+                >
+                    <Wind className={`w-4 h-4 transition-transform duration-300 ${activeTab === "Ambiente" ? "scale-110" : ""}`} />
+                    Esencia de Ambiente
                 </button>
             </div>
 
@@ -375,12 +427,19 @@ export default function EsenciasPage() {
                             <th className="px-8 py-6 text-xs font-bold text-slate-400 uppercase tracking-widest">Género</th>
                             <th className="px-8 py-6 text-xs font-bold text-slate-400 uppercase tracking-widest text-[10px]">Categoría</th>
                             <th className="px-8 py-6 text-xs font-bold text-slate-400 uppercase tracking-widest">Proveedor</th>
-                            {activeTab === "Perfumería" ? (
+                            {activeTab === "Perfumería" && (
                                 <>
                                     <th className="px-8 py-6 text-xs font-bold text-slate-400 uppercase tracking-widest text-center">30 Gramos</th>
                                     <th className="px-8 py-6 text-xs font-bold text-slate-400 uppercase tracking-widest text-center">100 Gramos</th>
                                 </>
-                            ) : (
+                            )}
+                            {activeTab === "Ambiente" && (
+                                <>
+                                    <th className="px-8 py-6 text-xs font-bold text-slate-400 uppercase tracking-widest text-center">100 Gramos</th>
+                                    <th className="px-8 py-6 text-xs font-bold text-slate-400 uppercase tracking-widest text-center">250 Gramos</th>
+                                </>
+                            )}
+                            {activeTab === "Limpia Pisos" && (
                                 <>
                                     <th className="px-8 py-6 text-xs font-bold text-slate-400 uppercase tracking-widest text-center">Costo</th>
                                     <th className="px-8 py-6 text-xs font-bold text-slate-400 uppercase tracking-widest text-center">Stock (ml)</th>
@@ -419,7 +478,7 @@ export default function EsenciasPage() {
                                     <td className="px-8 py-6">
                                         <p className="text-slate-500 dark:text-slate-400 font-black text-xs uppercase tracking-widest">{item.provider || "Van Rossum"}</p>
                                     </td>
-                                    {activeTab === "Perfumería" ? (
+                                    {activeTab === "Perfumería" && (
                                         <>
                                             <td className="px-8 py-6 text-center">
                                                 <p className={`font-black text-lg ${item.price30g === "consultar" ? "text-slate-400 italic" : "text-slate-900 dark:text-slate-100"}`}>
@@ -432,15 +491,52 @@ export default function EsenciasPage() {
                                                 </p>
                                             </td>
                                         </>
-                                    ) : (
+                                    )}
+                                    {activeTab === "Ambiente" && (
                                         <>
                                             <td className="px-8 py-6 text-center">
-                                                <p className="font-black text-lg text-slate-900 dark:text-slate-100">
+                                                {item.price100gUsd ? (
+                                                    <div className="flex flex-col items-center">
+                                                        <span className="font-extrabold text-lg text-slate-900 dark:text-slate-100 tabular-nums">
+                                                            ${(item.price100g || 0).toLocaleString()}
+                                                        </span>
+                                                        <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-widest mt-1">
+                                                            (u$s {item.price100gUsd.toLocaleString()})
+                                                        </span>
+                                                    </div>
+                                                ) : (
+                                                    <p className={`font-black text-lg ${item.price100g === "consultar" ? "text-slate-400 italic" : "text-slate-900 dark:text-slate-100 tabular-nums"}`}>
+                                                        {typeof item.price100g === "number" ? `$${item.price100g.toLocaleString()}` : "Consultar"}
+                                                    </p>
+                                                )}
+                                            </td>
+                                            <td className="px-8 py-6 text-center">
+                                                {item.price250gUsd ? (
+                                                    <div className="flex flex-col items-center">
+                                                        <span className="font-extrabold text-lg text-slate-900 dark:text-slate-100 tabular-nums">
+                                                            ${(item.price250g || 0).toLocaleString()}
+                                                        </span>
+                                                        <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-widest mt-1">
+                                                            (u$s {item.price250gUsd.toLocaleString()})
+                                                        </span>
+                                                    </div>
+                                                ) : (
+                                                    <p className={`font-black text-lg ${item.price250g === "consultar" ? "text-slate-400 italic" : "text-slate-900 dark:text-slate-100 tabular-nums"}`}>
+                                                        {typeof item.price250g === "number" ? `$${item.price250g.toLocaleString()}` : "Consultar"}
+                                                    </p>
+                                                )}
+                                            </td>
+                                        </>
+                                    )}
+                                    {activeTab === "Limpia Pisos" && (
+                                        <>
+                                            <td className="px-8 py-6 text-center">
+                                                <p className="font-black text-lg text-slate-900 dark:text-slate-100 tabular-nums">
                                                     ${(item.cost || 0).toLocaleString()}
                                                 </p>
                                             </td>
                                             <td className="px-8 py-6 text-center">
-                                                <p className="font-black text-lg text-slate-900 dark:text-slate-100">
+                                                <p className="font-black text-lg text-slate-900 dark:text-slate-100 tabular-nums">
                                                     {(item.qty || 0).toLocaleString()} ml
                                                 </p>
                                             </td>
@@ -667,7 +763,7 @@ export default function EsenciasPage() {
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
                                     <label className="text-xs font-black text-slate-400 uppercase tracking-widest pl-1">
-                                        {formData.gender?.toLowerCase()?.includes("limpia pisos") ? "Costo por litro ($)" : "Costo (30g)"}
+                                        {formData.gender?.toLowerCase()?.includes("limpia pisos") || formData.gender?.toLowerCase()?.includes("ambiente") ? "Costo por litro/kilo ($)" : "Costo (30g)"}
                                     </label>
                                     <input
                                         required
@@ -680,7 +776,7 @@ export default function EsenciasPage() {
                                 </div>
                                 <div className="space-y-2">
                                     <label className="text-xs font-black text-slate-400 uppercase tracking-widest pl-1">
-                                        {formData.gender?.toLowerCase()?.includes("limpia pisos") ? "Stock (mililitros)" : "Stock (g)"}
+                                        {formData.gender?.toLowerCase()?.includes("limpia pisos") || formData.gender?.toLowerCase()?.includes("ambiente") ? "Stock (unidades de medida)" : "Stock (g)"}
                                     </label>
                                     <input
                                         required
