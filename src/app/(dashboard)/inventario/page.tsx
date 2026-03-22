@@ -1,6 +1,6 @@
 "use client";
 
-import { Search, Filter, Plus, Archive, MoveUpRight, AlertCircle, Trash2, X, FlaskConical, ChevronDown, Edit2 } from "lucide-react";
+import { Search, Filter, Plus, Archive, MoveUpRight, AlertCircle, Trash2, X, FlaskConical, ChevronDown, Edit2, ListTree } from "lucide-react";
 import { useState, useMemo, useEffect } from "react";
 import { useAppContext } from "@/context/AppContext";
 import ConfirmModal from "@/components/ConfirmModal";
@@ -91,6 +91,7 @@ export default function InventarioPage() {
         setEditingAlertItem(null);
     };
 
+    const [searchTerm, setSearchTerm] = useState("");
     const [isEsenciaSearchOpen, setIsEsenciaSearchOpen] = useState(false);
     const [esenciaSearch, setEsenciaSearch] = useState("");
     const [esenciaGenderFilter, setEsenciaGenderFilter] = useState("Todos");
@@ -103,6 +104,15 @@ export default function InventarioPage() {
             return matchesSearch && matchesGender;
         });
     }, [esencias, esenciaSearch, esenciaGenderFilter]);
+
+    const filteredInventario = useMemo(() => {
+        return inventario.filter(item => {
+            const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                item.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                item.type.toLowerCase().includes(searchTerm.toLowerCase());
+            return matchesSearch;
+        });
+    }, [inventario, searchTerm]);
 
     const getSelectedItemDetails = () => {
         if (formData.type === "Esencia") {
@@ -146,11 +156,26 @@ export default function InventarioPage() {
         }
     };
 
-    const totalUnidades = inventario.reduce((acc, item) => acc + item.qty, 0);
+    const totalItems = inventario.length;
     const alertCount = inventario.filter(item => {
         const threshold = alertThresholds[item.name];
         return threshold !== undefined && item.qty <= threshold;
     }).length;
+
+    // Calcular Valorizado Real
+    const valorizadoTotal = useMemo(() => {
+        return inventario.reduce((acc, item) => {
+            let itemCost = 0;
+            if (item.type === "Esencia") {
+                const esc = esencias.find(e => e.name === item.name);
+                if (esc) itemCost = esc.cost * item.qty;
+            } else {
+                const ins = insumos.find(i => i.name === item.name);
+                if (ins) itemCost = ins.cost * item.qty;
+            }
+            return acc + itemCost;
+        }, 0);
+    }, [inventario, esencias, insumos]);
 
     return (
         <div className="space-y-8 pb-12 animate-in fade-in duration-700 relative">
@@ -164,7 +189,7 @@ export default function InventarioPage() {
                         Inventario Físico
                     </h1>
                     <p className="text-slate-500 dark:text-slate-400 text-lg max-w-xl leading-relaxed font-medium transition-colors">
-                        Controlá el stock real de tus materias primas e insumos para evitar quiebres.
+                        Sincronizá el stock de esencias e insumos para mantener tu producción bajo control.
                     </p>
                 </div>
 
@@ -180,27 +205,27 @@ export default function InventarioPage() {
             </header>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {/* Unidades */}
+                {/* Total Productos */}
                 <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-[2rem] shadow-[0_2px_10px_rgb(0,0,0,0.02)] flex items-center gap-5 hover:shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:hover:shadow-[0_8px_30px_rgb(0,0,0,0.2)] hover:border-indigo-200 dark:hover:border-indigo-900/50 transition-all group overflow-hidden relative">
                     <div className="absolute -right-6 -top-6 w-24 h-24 bg-indigo-50 dark:bg-indigo-500/5 rounded-full blur-2xl group-hover:bg-indigo-100 dark:group-hover:bg-indigo-500/10 transition-colors"></div>
                     <div className="p-4 bg-indigo-50 dark:bg-indigo-500/10 rounded-2xl text-indigo-600 dark:text-indigo-400 ring-4 ring-indigo-50/50 dark:ring-indigo-500/5 transition-all group-hover:scale-110">
-                        <Archive className="w-6 h-6" strokeWidth={2.5} />
+                        <ListTree className="w-6 h-6" strokeWidth={2.5} />
                     </div>
                     <div className="relative z-10">
-                        <p className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1">Unidades / Gramos</p>
-                        <p className="text-3xl font-black text-slate-900 dark:text-slate-50 tabular-nums">{totalUnidades}</p>
+                        <p className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1">Ítems Totales</p>
+                        <p className="text-3xl font-black text-slate-900 dark:text-slate-50 tabular-nums">{totalItems}</p>
                     </div>
                 </div>
 
-                {/* Valorizado (Placeholder) */}
-                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-[2rem] shadow-[0_2px_10px_rgb(0,0,0,0.02)] flex items-center gap-5 hover:shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:hover:shadow-[0_8px_30px_rgb(0,0,0,0.2)] hover:border-emerald-200 dark:hover:border-emerald-900/50 transition-all group overflow-hidden relative opacity-60 hover:opacity-100">
+                {/* Valorizado (Real) */}
+                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-[2rem] shadow-[0_2px_10px_rgb(0,0,0,0.02)] flex items-center gap-5 hover:shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:hover:shadow-[0_8px_30px_rgb(0,0,0,0.2)] hover:border-emerald-200 dark:hover:border-emerald-900/50 transition-all group overflow-hidden relative">
                     <div className="absolute -right-6 -top-6 w-24 h-24 bg-emerald-50 dark:bg-emerald-500/5 rounded-full blur-2xl group-hover:bg-emerald-100 dark:group-hover:bg-emerald-500/10 transition-colors"></div>
                     <div className="p-4 bg-emerald-50 dark:bg-emerald-500/10 rounded-2xl text-emerald-600 dark:text-emerald-400 ring-4 ring-emerald-50/50 dark:ring-emerald-500/5 transition-all group-hover:scale-110">
                         <MoveUpRight className="w-6 h-6" strokeWidth={2.5} />
                     </div>
                     <div className="relative z-10">
-                        <p className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1">Valorizado</p>
-                        <p className="text-3xl font-black text-slate-900 dark:text-slate-50 tabular-nums">$0</p>
+                        <p className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1">Valorizado Total</p>
+                        <p className="text-3xl font-black text-slate-900 dark:text-slate-50 tabular-nums">${valorizadoTotal.toLocaleString()}</p>
                     </div>
                 </div>
 
@@ -230,7 +255,9 @@ export default function InventarioPage() {
                         <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 dark:text-slate-500 group-focus-within:text-emerald-500 dark:group-focus-within:text-emerald-400 transition-colors" />
                         <input
                             type="text"
-                            placeholder="Buscar en inventario..."
+                            placeholder="Buscar por nombre, categoría o tipo..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
                             className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl py-3.5 pl-14 pr-6 text-slate-900 dark:text-slate-50 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 dark:focus:border-emerald-500 transition-all font-semibold"
                         />
                     </div>
@@ -244,7 +271,7 @@ export default function InventarioPage() {
                                 <th className="px-6 py-6 text-left text-xs font-bold text-slate-400 uppercase tracking-widest min-w-[250px]">Nombre del Ítem</th>
                                 <th className="px-6 py-6 text-center text-xs font-bold text-slate-400 uppercase tracking-widest">Categoría</th>
                                 <th className="px-6 py-6 text-center text-xs font-bold text-slate-400 uppercase tracking-widest">Cantidad</th>
-                                <th className="px-6 py-6 text-center text-xs font-bold text-slate-400 uppercase tracking-widest">Act. Fecha</th>
+                                <th className="px-6 py-6 text-center text-xs font-bold text-slate-400 uppercase tracking-widest">Fecha Act.</th>
                                 <th className="px-6 py-6 text-right text-xs font-bold text-slate-400 uppercase tracking-widest pr-12">Acciones</th>
                             </tr>
                         </thead>
@@ -280,11 +307,11 @@ export default function InventarioPage() {
                                             </span>
                                         </td>
                                         <td className="px-6 py-6 text-center">
-                                            <div className="flex flex-col items-center justify-center">
+                                            <div className="flex items-center justify-center gap-1.5">
                                                 <p className={`font-black text-xl tabular-nums drop-shadow-sm ${isAlert ? "text-rose-600 dark:text-rose-400" : "text-slate-900 dark:text-slate-100"}`}>
                                                     {item.qty.toLocaleString()}
                                                 </p>
-                                                <span className={`text-[10px] uppercase font-bold tracking-widest mt-0.5 ${isAlert ? "text-rose-400" : "text-slate-400"}`}>{item.unit}</span>
+                                                <span className={`text-xs uppercase font-black tracking-widest ${isAlert ? "text-rose-400" : "text-slate-400"}`}>{item.unit}</span>
                                             </div>
                                         </td>
                                         <td className="px-6 py-6 text-center">
@@ -395,14 +422,14 @@ export default function InventarioPage() {
                         <form onSubmit={handleAddSubmit} className="p-6 space-y-5">
                             <div className="space-y-4">
                                 <div className="space-y-1.5">
-                                    <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest pl-1">¿Qué ingresa?</label>
+                                    <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest pl-1">Seleccionar Tipo</label>
                                     <div className="grid grid-cols-2 gap-2">
                                         <button
                                             type="button"
                                             onClick={() => setFormData({ ...formData, type: "Esencia", item_id: "" })}
                                             className={`py-2.5 rounded-xl font-bold text-sm transition-all border-2 ${formData.type === "Esencia"
                                                 ? "bg-orange-50 dark:bg-orange-500/10 text-orange-600 border-orange-500"
-                                                : "bg-slate-50 dark:bg-slate-800 text-slate-400 border-transparent"
+                                                : "bg-slate-50 dark:bg-slate-800 text-slate-400 border-transparent text-slate-600 dark:text-slate-400 font-bold"
                                                 }`}
                                         >
                                             Esencia
@@ -412,7 +439,7 @@ export default function InventarioPage() {
                                             onClick={() => setFormData({ ...formData, type: "Insumo", item_id: "" })}
                                             className={`py-2.5 rounded-xl font-bold text-sm transition-all border-2 ${formData.type === "Insumo"
                                                 ? "bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 border-indigo-500"
-                                                : "bg-slate-50 dark:bg-slate-800 text-slate-400 border-transparent"
+                                                : "bg-slate-50 dark:bg-slate-800 text-slate-400 border-transparent text-slate-600 dark:text-slate-400 font-bold"
                                                 }`}
                                         >
                                             Insumo

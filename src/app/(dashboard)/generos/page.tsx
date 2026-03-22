@@ -1,9 +1,10 @@
 "use client";
 
-import { Search, Plus, Sparkles, Trash2, X, Edit2 } from "lucide-react";
-import { useState } from "react";
+import { Search, Plus, Sparkles, Trash2, X, Edit2, Users, User, UserCheck, ChevronRight, Filter } from "lucide-react";
+import { useState, useMemo } from "react";
 import { useAppContext } from "@/context/AppContext";
 import ConfirmModal from "@/components/ConfirmModal";
+import { motion, AnimatePresence } from "framer-motion";
 
 export default function GenerosPage() {
     const { generos, setGeneros, productos, setProductos } = useAppContext();
@@ -11,6 +12,7 @@ export default function GenerosPage() {
     const [editingIndex, setEditingIndex] = useState<number | null>(null);
     const [formData, setFormData] = useState({ name: "" });
     const [indexToDelete, setIndexToDelete] = useState<number | null>(null);
+    const [searchTerm, setSearchTerm] = useState("");
 
     const handleAddSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -23,7 +25,6 @@ export default function GenerosPage() {
             updatedGeneros[editingIndex] = newName;
             setGeneros(updatedGeneros);
 
-            // Cascade update in products
             setProductos(productos.map(p => p.gender === oldName ? { ...p, gender: newName } : p));
             setEditingIndex(null);
         } else {
@@ -55,110 +56,223 @@ export default function GenerosPage() {
         }
     };
 
-    return (
-        <div className="space-y-8 pb-12 animate-in fade-in duration-700 relative">
-            <header className="flex flex-col md:flex-row md:justify-between md:items-end gap-6 bg-white dark:bg-slate-900 p-8 md:p-10 rounded-[2.5rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.2)] border border-slate-100 dark:border-slate-800 transition-colors duration-300">
-                <div className="space-y-3">
-                    <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 text-xs font-bold tracking-widest uppercase mb-1">
-                        <Sparkles className="w-3.5 h-3.5" />
-                        Configurador
-                    </div>
-                    <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight text-slate-900 dark:text-slate-50 transition-colors">
-                        Géneros de Fragancias
-                    </h1>
-                    <p className="text-slate-500 dark:text-slate-400 text-lg max-w-xl leading-relaxed font-medium transition-colors">
-                        Definí los géneros disponibles para tus productos y segmentá tu catálogo.
-                    </p>
-                </div>
+    const filteredGeneros = useMemo(() => {
+        return generos.filter(name =>
+            name.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+    }, [generos, searchTerm]);
 
-                <div className="flex flex-wrap items-center gap-3">
-                    <button
-                        onClick={() => setIsAddModalOpen(true)}
-                        className="flex items-center gap-2.5 px-7 py-3.5 rounded-2xl bg-emerald-600 text-white font-bold hover:bg-emerald-700 hover:shadow-xl hover:shadow-emerald-600/20 active:scale-95 transition-all"
+    const getGenderIcon = (name: string) => {
+        const n = name.toLowerCase();
+        if (n.includes("fem") || n.includes("mujer")) return <User className="w-8 h-8 rotate-[-10deg]" />;
+        if (n.includes("masc") || n.includes("hombre")) return <UserCheck className="w-8 h-8 rotate-[10deg]" />;
+        return <Users className="w-8 h-8" />;
+    };
+
+    const getGenderColor = (name: string) => {
+        const n = name.toLowerCase();
+        if (n.includes("fem") || n.includes("mujer")) return "from-pink-500 to-rose-600 shadow-pink-500/20";
+        if (n.includes("masc") || n.includes("hombre")) return "from-blue-500 to-indigo-600 shadow-blue-500/20";
+        return "from-slate-500 to-slate-700 shadow-slate-500/20";
+    };
+
+    return (
+        <div className="space-y-10 pb-20 max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8">
+            <header className="relative overflow-hidden bg-white/70 dark:bg-slate-900/70 backdrop-blur-xl p-8 md:p-12 rounded-[3rem] shadow-[0_20px_50px_rgba(0,0,0,0.05)] dark:shadow-[0_20px_50px_rgba(0,0,0,0.3)] border border-white dark:border-slate-800 transition-all duration-500">
+                <div className="absolute top-0 right-0 -mt-20 -mr-20 w-80 h-80 bg-emerald-500/5 dark:bg-emerald-500/10 rounded-full blur-[100px] pointer-events-none"></div>
+
+                <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-8">
+                    <div className="space-y-4">
+                        <motion.div
+                            initial={{ opacity: 0, y: -20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-xs font-black tracking-[0.2em] uppercase"
+                        >
+                            <Sparkles className="w-4 h-4" />
+                            Segmentación de Aroma
+                        </motion.div>
+                        <motion.h1
+                            initial={{ opacity: 0, x: -20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: 0.1 }}
+                            className="text-5xl md:text-6xl font-black tracking-tighter text-slate-900 dark:text-white leading-[0.9]"
+                        >
+                            Géneros
+                        </motion.h1>
+                        <motion.p
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            transition={{ delay: 0.2 }}
+                            className="text-slate-500 dark:text-slate-400 text-lg max-w-xl leading-relaxed font-medium transition-colors"
+                        >
+                            Configurá los perfiles de tus fragancias. Esto facilita el filtrado para tus clientes en el catálogo.
+                        </motion.p>
+                    </div>
+
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ delay: 0.3 }}
+                        className="flex flex-col sm:flex-row items-center gap-4"
                     >
-                        <Plus className="w-5 h-5" strokeWidth={2.5} />
-                        Nuevo Género
-                    </button>
+                        <div className="relative group w-full sm:w-80">
+                            <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 group-focus-within:text-emerald-500 transition-colors" />
+                            <input
+                                type="text"
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                placeholder="Buscar géneros..."
+                                className="w-full bg-slate-100 dark:bg-slate-800/50 border-none rounded-[2rem] py-4 pl-14 pr-8 text-slate-900 dark:text-white placeholder:text-slate-400 focus:ring-4 focus:ring-emerald-500/10 transition-all font-bold"
+                            />
+                        </div>
+                        <button
+                            onClick={() => setIsAddModalOpen(true)}
+                            className="w-full sm:w-auto flex items-center justify-center gap-3 px-10 py-5 rounded-[2rem] bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-black hover:scale-[1.03] active:scale-95 transition-all shadow-xl group"
+                        >
+                            <Plus className="w-6 h-6 group-hover:rotate-90 transition-transform duration-300" strokeWidth={3} />
+                            Nuevo Género
+                        </button>
+                    </motion.div>
                 </div>
             </header>
 
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[2.5rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.2)] overflow-hidden transition-colors duration-300 relative min-h-[400px] flex flex-col">
-                <div className="overflow-x-auto flex-1">
-                    <table className="w-full text-left border-collapse min-w-[600px]">
-                        <thead>
-                            <tr className="bg-slate-50/80 dark:bg-slate-950/50 border-b border-slate-200 dark:border-slate-800">
-                                <th className="px-8 py-6 text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest w-[80%]">Nombre</th>
-                                <th className="px-8 py-6 text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest w-[20%]"></th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                            {generos.map((name, idx) => (
-                                <tr key={idx} className="group hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors cursor-pointer">
-                                    <td className="px-8 py-6">
-                                        <p className="text-slate-900 dark:text-slate-100 font-bold text-lg group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">{name}</p>
-                                    </td>
-                                    <td className="px-8 py-6 text-right">
-                                        <div className="flex items-center justify-end gap-1">
-                                            <button
-                                                onClick={() => openEditModal(name, idx)}
-                                                className="p-2.5 text-slate-400 dark:text-slate-500 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-500/10 rounded-xl transition-colors"
-                                                title="Editar"
-                                            >
-                                                <Edit2 className="w-5 h-5" />
-                                            </button>
-                                            <button
-                                                onClick={() => setIndexToDelete(idx)}
-                                                className="p-2.5 text-slate-400 dark:text-slate-500 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl transition-colors"
-                                                title="Eliminar"
-                                            >
-                                                <Trash2 className="w-5 h-5" />
-                                            </button>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <AnimatePresence mode="popLayout">
+                    {filteredGeneros.map((name, idx) => (
+                        <motion.div
+                            key={name}
+                            layout
+                            initial={{ opacity: 0, scale: 0.9 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.9 }}
+                            transition={{ delay: idx * 0.05 }}
+                            className="group relative bg-white dark:bg-slate-900 rounded-[3rem] p-10 border border-slate-100 dark:border-slate-800 hover:border-emerald-500/30 shadow-[0_10px_40px_rgba(0,0,0,0.03)] hover:shadow-[0_40px_80px_rgba(0,0,0,0.1)] transition-all duration-500"
+                        >
+                            <div className="absolute top-8 right-8 flex gap-2 opacity-0 group-hover:opacity-100 transition-all duration-300 translate-y-[-10px] group-hover:translate-y-0">
+                                <button
+                                    onClick={() => openEditModal(name, idx)}
+                                    className="w-10 h-10 flex items-center justify-center bg-slate-100/10 hover:bg-emerald-500/20 text-slate-400 hover:text-emerald-400 rounded-xl backdrop-blur-md border border-white/5 transition-all"
+                                    title="Editar nombre"
+                                >
+                                    <Edit2 className="w-4 h-4" />
+                                </button>
+                                <button
+                                    onClick={() => setIndexToDelete(idx)}
+                                    className="w-10 h-10 flex items-center justify-center bg-slate-100/10 hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 rounded-xl backdrop-blur-md border border-white/5 transition-all"
+                                    title="Eliminar género"
+                                >
+                                    <Trash2 className="w-4 h-4" />
+                                </button>
+                            </div>
+
+                            <div className="space-y-8">
+                                <div className={`w-20 h-20 rounded-[2rem] bg-gradient-to-br ${getGenderColor(name)} flex items-center justify-center text-white shadow-2xl group-hover:scale-110 transition-transform duration-500`}>
+                                    {getGenderIcon(name)}
+                                </div>
+
+                                <div className="space-y-2">
+                                    <h3 className="text-4xl font-black text-slate-900 dark:text-white leading-tight">
+                                        {name}
+                                    </h3>
+                                    <div className="flex items-center gap-2">
+                                        <div className="h-1.5 w-12 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+                                            <div className={`h-full bg-gradient-to-r ${getGenderColor(name)} w-full`}></div>
                                         </div>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
+                                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Segmento Perfilado</span>
+                                    </div>
+                                </div>
+
+                                <div className="flex items-center justify-between pt-10 border-t border-slate-50 dark:border-slate-800">
+                                    <div className="flex flex-col">
+                                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Estado</span>
+                                        <span className="text-sm font-black text-emerald-500 uppercase tracking-tighter">Disponible en App</span>
+                                    </div>
+                                    <div className="w-14 h-14 rounded-3xl bg-slate-50 dark:bg-slate-800 flex items-center justify-center text-slate-200 group-hover:bg-slate-900 group-hover:text-white transition-all duration-500">
+                                        <ChevronRight className="w-7 h-7" strokeWidth={3} />
+                                    </div>
+                                </div>
+                            </div>
+                        </motion.div>
+                    ))}
+                </AnimatePresence>
             </div>
+
+            {filteredGeneros.length === 0 && (
+                <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="py-32 flex flex-col items-center justify-center bg-white/50 dark:bg-slate-900/50 rounded-[4rem] border-2 border-dashed border-slate-200 dark:border-slate-800"
+                >
+                    <Search className="w-20 h-20 text-slate-200 dark:text-slate-700 mb-6" />
+                    <h2 className="text-3xl font-black text-slate-900 dark:text-white mb-2">Sin resultados</h2>
+                    <p className="text-slate-500 dark:text-slate-400 font-bold">Probá ajustando la búsqueda.</p>
+                </motion.div>
+            )}
 
             <ConfirmModal
                 isOpen={indexToDelete !== null}
                 title="Eliminar Género"
-                message="¿Estás seguro de que deseas eliminar este género? No se eliminarán los productos, pero quedarán sin género asignado."
+                message="¿Confirmás la eliminación? Los productos no se borrarán, pero perderán su etiqueta de género."
                 onConfirm={confirmDelete}
                 onCancel={() => setIndexToDelete(null)}
             />
 
-            {isAddModalOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
-                    <div className="bg-white dark:bg-slate-900 rounded-[2rem] shadow-2xl w-full max-w-md overflow-hidden border border-slate-200 dark:border-slate-800 animate-in zoom-in-95">
-                        <div className="p-8 pb-6 flex justify-between items-center">
-                            <h2 className="text-2xl font-black">{editingIndex !== null ? "Editar Género" : "Nuevo Género"}</h2>
-                            <button onClick={handleCloseModal} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-all">
-                                <X className="w-5 h-5" />
-                            </button>
-                        </div>
-                        <form onSubmit={handleAddSubmit} className="p-8 pt-0 space-y-6">
-                            <div className="space-y-2">
-                                <label className="text-xs font-bold text-slate-400 uppercase tracking-widest pl-1">Nombre</label>
-                                <input
-                                    autoFocus
-                                    required
-                                    type="text"
-                                    value={formData.name}
-                                    onChange={e => setFormData({ name: e.target.value })}
-                                    placeholder="Ej: Unisex"
-                                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl py-3.5 px-4 text-slate-900 dark:text-white font-bold focus:outline-none focus:border-emerald-500 transition-all"
-                                />
+            <AnimatePresence>
+                {isAddModalOpen && (
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            onClick={handleCloseModal}
+                            className="absolute inset-0 bg-slate-950/80 backdrop-blur-md"
+                        ></motion.div>
+
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                            className="relative bg-white dark:bg-slate-900 rounded-[3.5rem] shadow-2xl w-full max-w-xl overflow-hidden"
+                        >
+                            <div className="p-12 pb-6 flex justify-between items-start">
+                                <div className="space-y-2">
+                                    <h2 className="text-4xl font-black text-slate-900 dark:text-white tracking-tighter">
+                                        {editingIndex !== null ? "Editar Perfil" : "Nuevo Género"}
+                                    </h2>
+                                    <p className="text-slate-500 dark:text-slate-400 font-bold text-sm">
+                                        Aparecerá como opción de filtrado en todo el catálogo.
+                                    </p>
+                                </div>
+                                <button
+                                    onClick={handleCloseModal}
+                                    className="p-3 bg-slate-100 dark:bg-slate-800 text-slate-500 rounded-full hover:bg-rose-100 hover:text-rose-600 transition-colors"
+                                >
+                                    <X className="w-6 h-6" />
+                                </button>
                             </div>
-                            <button type="submit" className="w-full py-4 rounded-2xl bg-emerald-600 text-white font-black text-lg hover:bg-emerald-700 shadow-xl shadow-emerald-600/20 active:scale-95 transition-all">
-                                {editingIndex !== null ? "Guardar Cambios" : "Crear Género"}
-                            </button>
-                        </form>
+
+                            <form onSubmit={handleAddSubmit} className="p-12 space-y-8">
+                                <div className="space-y-3">
+                                    <label className="text-xs font-black text-slate-400 uppercase tracking-[0.2em] pl-1">Título del Género</label>
+                                    <input
+                                        required
+                                        autoFocus
+                                        type="text"
+                                        value={formData.name}
+                                        onChange={e => setFormData({ name: e.target.value })}
+                                        placeholder="Ej: Femenino, Masculino, Unisex..."
+                                        className="w-full bg-slate-50 dark:bg-slate-950 border-2 border-transparent focus:border-emerald-500 rounded-2xl py-6 px-8 text-slate-900 dark:text-white placeholder:text-slate-300 focus:outline-none transition-all font-black text-2xl"
+                                    />
+                                </div>
+
+                                <button type="submit" className="w-full py-6 rounded-[2.5rem] bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-black text-xl hover:scale-[1.02] active:scale-95 transition-all shadow-xl">
+                                    {editingIndex !== null ? "Guardar Cambios" : "Crear Género"}
+                                </button>
+                            </form>
+                        </motion.div>
                     </div>
-                </div>
-            )}
+                )}
+            </AnimatePresence>
         </div>
     );
 }

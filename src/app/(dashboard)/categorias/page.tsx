@@ -1,19 +1,25 @@
 "use client";
 
-import { Search, Plus, ListTree, Trash2, X, Edit2 } from "lucide-react";
-import { useState } from "react";
+import { Search, Plus, ListTree, Trash2, X, Edit2, Layers, ChevronRight, Sparkles, Droplets, Car, Wind, Package } from "lucide-react";
+import { useState, useMemo } from "react";
 import { useAppContext } from "@/context/AppContext";
 import ConfirmModal from "@/components/ConfirmModal";
+import { motion, AnimatePresence } from "framer-motion";
 
 export default function CategoriasPage() {
-    const { categorias, setCategorias,
+    const {
+        categorias, setCategorias,
         esencias, setEsencias,
         insumos, setInsumos,
-        inventario, setInventario, getNextId } = useAppContext();
+        productos, setProductos,
+        inventario, setInventario, getNextId
+    } = useAppContext();
+
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
     const [formData, setFormData] = useState({ name: "" });
     const [itemToDelete, setItemToDelete] = useState<string | null>(null);
+    const [searchTerm, setSearchTerm] = useState("");
 
     const handleAddSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -21,16 +27,13 @@ export default function CategoriasPage() {
             const oldCategory = categorias.find(c => c.id === editingId);
             const newName = formData.name;
 
-            // 1. Actualizar categorías
             setCategorias(categorias.map(c => c.id === editingId ? { ...c, name: newName } : c));
 
-            // 2. Cascade update en Esencias
             if (oldCategory) {
                 setEsencias(esencias.map(esc => esc.category === oldCategory.name ? { ...esc, category: newName } : esc));
-                // 3. Cascade update en Insumos
                 setInsumos(insumos.map(ins => ins.category === oldCategory.name ? { ...ins, category: newName } : ins));
-                // 4. Cascade update en Inventario
                 setInventario(inventario.map(inv => inv.category === oldCategory.name ? { ...inv, category: newName } : inv));
+                setProductos(productos.map(p => p.category === oldCategory.name ? { ...p, category: newName } : p));
             }
 
             setEditingId(null);
@@ -67,143 +70,235 @@ export default function CategoriasPage() {
         }
     };
 
-    return (
-        <div className="space-y-8 pb-12 animate-in fade-in duration-700 relative">
-            {/* Header Area */}
-            <header className="flex flex-col md:flex-row md:justify-between md:items-end gap-6 bg-white dark:bg-slate-900 p-8 md:p-10 rounded-[2.5rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.2)] border border-slate-100 dark:border-slate-800 transition-colors duration-300">
-                <div className="space-y-3">
-                    <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-violet-50 dark:bg-violet-500/10 text-violet-700 dark:text-violet-400 text-xs font-bold tracking-widest uppercase mb-1">
-                        <ListTree className="w-3.5 h-3.5" />
-                        Organización
-                    </div>
-                    <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight text-slate-900 dark:text-slate-50 transition-colors">
-                        Categorías
-                    </h1>
-                    <p className="text-slate-500 dark:text-slate-400 text-lg max-w-xl leading-relaxed font-medium transition-colors">
-                        Agrupá tus productos para mantener tu catálogo y tienda ordenados.
-                    </p>
-                </div>
+    const filteredCategorias = useMemo(() => {
+        return categorias.filter(cat =>
+            cat.name.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+    }, [categorias, searchTerm]);
 
-                <div className="flex flex-wrap items-center gap-3">
-                    <button
-                        onClick={() => setIsAddModalOpen(true)}
-                        className="flex items-center gap-2.5 px-7 py-3.5 rounded-2xl bg-violet-600 text-white font-bold hover:bg-violet-700 hover:shadow-xl hover:shadow-violet-600/20 active:scale-95 transition-all"
+    const getCategoryIcon = (name: string) => {
+        const n = name.toLowerCase();
+        if (n.includes("auto")) return <Car className="w-8 h-8" />;
+        if (n.includes("fina") || n.includes("perfume")) return <Sparkles className="w-8 h-8" />;
+        if (n.includes("pisos") || n.includes("limpia")) return <Droplets className="w-8 h-8" />;
+        if (n.includes("difusor") || n.includes("ambiente")) return <Wind className="w-8 h-8" />;
+        return <Package className="w-8 h-8" />;
+    };
+
+    const getCategoryColor = (name: string) => {
+        const n = name.toLowerCase();
+        if (n.includes("auto")) return "from-blue-500 to-indigo-600 shadow-blue-500/20";
+        if (n.includes("fina") || n.includes("perfume")) return "from-fuchsia-500 to-rose-600 shadow-fuchsia-500/20";
+        if (n.includes("pisos") || n.includes("limpia")) return "from-emerald-500 to-teal-600 shadow-emerald-500/20";
+        if (n.includes("difusor") || n.includes("ambiente")) return "from-violet-500 to-purple-600 shadow-violet-500/20";
+        return "from-slate-500 to-slate-700 shadow-slate-500/20";
+    };
+
+    return (
+        <div className="space-y-10 pb-20 max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8">
+            <header className="relative overflow-hidden bg-white/70 dark:bg-slate-900/70 backdrop-blur-xl p-8 md:p-12 rounded-[3rem] shadow-[0_20px_50px_rgba(0,0,0,0.05)] dark:shadow-[0_20px_50px_rgba(0,0,0,0.3)] border border-white dark:border-slate-800 transition-all duration-500">
+                <div className="absolute top-0 right-0 -mt-20 -mr-20 w-80 h-80 bg-violet-500/5 dark:bg-violet-500/10 rounded-full blur-[100px] pointer-events-none"></div>
+
+                <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-8">
+                    <div className="space-y-4">
+                        <motion.div
+                            initial={{ opacity: 0, y: -20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-slate-500/10 text-slate-600 dark:text-slate-400 text-xs font-black tracking-[0.2em] uppercase"
+                        >
+                            <ListTree className="w-4 h-4" />
+                            Organización de Catálogo
+                        </motion.div>
+                        <motion.h1
+                            initial={{ opacity: 0, x: -20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: 0.1 }}
+                            className="text-5xl md:text-6xl font-black tracking-tighter text-slate-900 dark:text-white leading-[0.9]"
+                        >
+                            Categorías
+                        </motion.h1>
+                        <motion.p
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            transition={{ delay: 0.2 }}
+                            className="text-slate-500 dark:text-slate-400 text-lg max-w-xl leading-relaxed font-medium transition-colors"
+                        >
+                            Gestioná las secciones de tu catálogo. El sistema sincroniza automáticamente el conteo de productos disponibles para la venta.
+                        </motion.p>
+                    </div>
+
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ delay: 0.3 }}
+                        className="flex flex-col sm:flex-row items-center gap-4"
                     >
-                        <Plus className="w-5 h-5" strokeWidth={2.5} />
-                        Nueva Categoría
-                    </button>
+                        <div className="relative group w-full sm:w-80">
+                            <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 group-focus-within:text-violet-500 transition-colors" />
+                            <input
+                                type="text"
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                placeholder="Buscar categorías..."
+                                className="w-full bg-slate-100 dark:bg-slate-800/50 border-none rounded-[2rem] py-4 pl-14 pr-8 text-slate-900 dark:text-white placeholder:text-slate-400 focus:ring-4 focus:ring-violet-500/10 transition-all font-bold"
+                            />
+                        </div>
+                        <button
+                            onClick={() => setIsAddModalOpen(true)}
+                            className="w-full sm:w-auto flex items-center justify-center gap-3 px-10 py-5 rounded-[2rem] bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-black hover:scale-[1.03] active:scale-95 transition-all shadow-[0_15px_30px_rgba(0,0,0,0.1)] group"
+                        >
+                            <Plus className="w-6 h-6 group-hover:rotate-90 transition-transform duration-300" strokeWidth={3} />
+                            Nueva Categoría
+                        </button>
+                    </motion.div>
                 </div>
             </header>
 
-            {/* Table Area Container */}
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[2.5rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.2)] overflow-hidden transition-colors duration-300 relative min-h-[400px] flex flex-col">
-                <div className="p-6 md:p-8 flex flex-col sm:flex-row gap-4 border-b border-slate-100 dark:border-slate-800">
-                    <div className="relative flex-1 group">
-                        <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 dark:text-slate-500 group-focus-within:text-violet-500 dark:group-focus-within:text-violet-400 transition-colors" />
-                        <input
-                            type="text"
-                            placeholder="Buscar categorías..."
-                            className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl py-3.5 pl-14 pr-6 text-slate-900 dark:text-slate-50 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500 dark:focus:border-violet-500 transition-all font-semibold"
-                        />
-                    </div>
-                </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <AnimatePresence mode="popLayout">
+                    {filteredCategorias.map((cat, idx) => {
+                        const associatedCount = productos.filter(p =>
+                            p.category?.trim().toLowerCase() === cat.name?.trim().toLowerCase()
+                        ).length;
 
-                <div className="overflow-x-auto flex-1">
-                    <table className="w-full text-left border-collapse min-w-[600px]">
-                        <thead>
-                            <tr className="bg-slate-50/80 dark:bg-slate-950/50 border-b border-slate-200 dark:border-slate-800">
-                                <th className="px-8 py-6 text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest w-[50%]">Nombre</th>
-                                <th className="px-8 py-6 text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest w-[30%] text-center">Productos Asociados</th>
-                                <th className="px-8 py-6 text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest w-[20%]"></th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                            {categorias.map((cat, idx) => {
-                                const associatedCount =
-                                    esencias.filter(e => e.category === cat.name).length +
-                                    insumos.filter(i => i.category === cat.name).length;
+                        return (
+                            <motion.div
+                                key={cat.id}
+                                layout
+                                initial={{ opacity: 0, scale: 0.9 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                exit={{ opacity: 0, scale: 0.9 }}
+                                transition={{ delay: idx * 0.05 }}
+                                className="group relative bg-white dark:bg-slate-900 rounded-[3rem] p-10 border border-slate-100 dark:border-slate-800 hover:border-violet-500/30 shadow-[0_10px_40px_rgba(0,0,0,0.03)] hover:shadow-[0_40px_80px_rgba(0,0,0,0.1)] transition-all duration-500"
+                            >
+                                <div className="absolute top-8 right-8 flex gap-2 opacity-0 group-hover:opacity-100 transition-all duration-300 translate-y-[-10px] group-hover:translate-y-0">
+                                    <button
+                                        onClick={() => openEditModal(cat)}
+                                        className="w-10 h-10 flex items-center justify-center bg-slate-100/10 hover:bg-violet-500/20 text-slate-400 hover:text-violet-400 rounded-xl backdrop-blur-md border border-white/5 transition-all"
+                                        title="Editar nombre"
+                                    >
+                                        <Edit2 className="w-4 h-4" />
+                                    </button>
+                                    <button
+                                        onClick={() => setItemToDelete(cat.id)}
+                                        className="w-10 h-10 flex items-center justify-center bg-slate-100/10 hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 rounded-xl backdrop-blur-md border border-white/5 transition-all"
+                                        title="Eliminar categoría"
+                                    >
+                                        <Trash2 className="w-4 h-4" />
+                                    </button>
+                                </div>
 
-                                return (
-                                    <tr key={idx} className="group hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors cursor-pointer">
-                                        <td className="px-8 py-6">
-                                            <p className="text-slate-900 dark:text-slate-100 font-bold text-lg group-hover:text-violet-600 dark:group-hover:text-violet-400 transition-colors">{cat.name}</p>
-                                        </td>
-                                        <td className="px-8 py-6 text-center">
-                                            <span className="inline-flex items-center justify-center px-4 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-bold text-sm border border-slate-200 dark:border-slate-700">
-                                                {associatedCount} productos
-                                            </span>
-                                        </td>
-                                        <td className="px-8 py-6 text-right">
-                                            <div className="flex items-center justify-end gap-1">
-                                                <button
-                                                    onClick={() => openEditModal(cat)}
-                                                    className="p-2.5 text-slate-400 dark:text-slate-500 hover:text-violet-600 dark:hover:text-violet-400 hover:bg-violet-50 dark:hover:bg-violet-500/10 rounded-xl transition-colors"
-                                                    title="Editar"
-                                                >
-                                                    <Edit2 className="w-5 h-5" />
-                                                </button>
-                                                <button
-                                                    onClick={() => setItemToDelete(cat.id)}
-                                                    className="p-2.5 text-slate-400 dark:text-slate-500 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl transition-colors"
-                                                    title="Eliminar"
-                                                >
-                                                    <Trash2 className="w-5 h-5" />
-                                                </button>
+                                <div className="space-y-8">
+                                    <div className={`w-20 h-20 rounded-[2rem] bg-gradient-to-br ${getCategoryColor(cat.name)} flex items-center justify-center text-white shadow-2xl group-hover:rotate-6 transition-transform duration-500`}>
+                                        {getCategoryIcon(cat.name)}
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <h3 className="text-3xl font-black text-slate-900 dark:text-white leading-tight">
+                                            {cat.name}
+                                        </h3>
+                                        <div className="flex items-center gap-2">
+                                            <div className="h-1.5 w-12 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+                                                <div className={`h-full bg-gradient-to-r ${getCategoryColor(cat.name)} w-2/3`}></div>
                                             </div>
-                                        </td>
-                                    </tr>
-                                );
-                            })}
-                        </tbody>
-                    </table>
-                </div>
+                                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Sección Activa</span>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex items-end justify-between pt-10 border-t border-slate-50 dark:border-slate-800">
+                                        <div>
+                                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Catálogo de Venta</span>
+                                            <div className="flex items-baseline gap-2">
+                                                <span className="text-4xl font-black text-slate-900 dark:text-white">
+                                                    {associatedCount}
+                                                </span>
+                                                <span className="text-xs font-bold text-slate-400 uppercase tracking-tighter">unidades</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </motion.div>
+                        );
+                    })}
+                </AnimatePresence>
             </div>
+
+            {filteredCategorias.length === 0 && (
+                <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="py-32 flex flex-col items-center justify-center bg-white/50 dark:bg-slate-900/50 rounded-[4rem] border-2 border-dashed border-slate-200 dark:border-slate-800"
+                >
+                    <Search className="w-20 h-20 text-slate-200 dark:text-slate-700 mb-6" />
+                    <h2 className="text-3xl font-black text-slate-900 dark:text-white mb-2">Sin resultados</h2>
+                    <p className="text-slate-500 dark:text-slate-400 font-bold">Probá ajustando la búsqueda.</p>
+                </motion.div>
+            )}
 
             <ConfirmModal
                 isOpen={!!itemToDelete}
                 title="Eliminar Categoría"
-                message="¿Estás seguro de que deseas eliminar esta categoría? Esto podría afectar a los productos asociados si existen."
+                message="¿Confirmás la eliminación? Los productos vinculados quedarán sin categorizar."
                 onConfirm={confirmDelete}
                 onCancel={() => setItemToDelete(null)}
             />
 
-            {/* Visual Modal for Adding Categoria */}
-            {isAddModalOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-slate-900/60 dark:bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-                    <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] shadow-2xl w-full max-w-lg overflow-hidden border border-slate-100 dark:border-slate-800 animate-in zoom-in-95 duration-300">
-                        <div className="p-8 pb-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
-                            <div>
-                                <h2 className="text-2xl font-extrabold text-slate-900 dark:text-slate-50">{editingId ? "Editar Categoría" : "Nueva Categoría"}</h2>
-                                <p className="text-slate-500 dark:text-slate-400 font-medium mt-1">{editingId ? "Actualizá el nombre para clasificar tus productos." : "Ingresá el nombre para clasificar tus productos."}</p>
-                            </div>
-                            <button
-                                onClick={handleCloseModal}
-                                className="p-2.5 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:bg-rose-100 hover:text-rose-600 dark:hover:bg-rose-500/20 dark:hover:text-rose-400 rounded-full transition-colors"
-                            >
-                                <X className="w-5 h-5" />
-                            </button>
-                        </div>
+            <AnimatePresence>
+                {isAddModalOpen && (
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            onClick={handleCloseModal}
+                            className="absolute inset-0 bg-slate-950/80 backdrop-blur-md"
+                        ></motion.div>
 
-                        <form onSubmit={handleAddSubmit} className="p-8 space-y-6">
-                            <div className="space-y-2">
-                                <label className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest pl-1">Nombre</label>
-                                <input
-                                    required
-                                    type="text"
-                                    value={formData.name}
-                                    onChange={e => setFormData({ ...formData, name: e.target.value })}
-                                    placeholder="Ej: Perfumes Premium"
-                                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl py-3.5 px-4 text-slate-900 dark:text-slate-50 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500 dark:focus:border-violet-500 transition-all font-semibold"
-                                />
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                            className="relative bg-white dark:bg-slate-900 rounded-[3.5rem] shadow-2xl w-full max-w-xl overflow-hidden"
+                        >
+                            <div className="p-12 pb-6 flex justify-between items-start">
+                                <div className="space-y-2">
+                                    <h2 className="text-4xl font-black text-slate-900 dark:text-white tracking-tighter">
+                                        {editingId ? "Editar Nombre" : "Nueva Sección"}
+                                    </h2>
+                                    <p className="text-slate-500 dark:text-slate-400 font-bold text-sm">
+                                        Define cómo se agruparán tus productos en las listas de precios.
+                                    </p>
+                                </div>
+                                <button
+                                    onClick={handleCloseModal}
+                                    className="p-3 bg-slate-100 dark:bg-slate-800 text-slate-500 rounded-full hover:bg-rose-100 hover:text-rose-600 transition-colors"
+                                >
+                                    <X className="w-6 h-6" />
+                                </button>
                             </div>
 
-                            <button type="submit" className="w-full py-4 mt-4 rounded-2xl bg-violet-600 text-white font-extrabold text-lg hover:bg-violet-700 hover:shadow-xl hover:shadow-violet-600/20 active:scale-[0.98] transition-all">
-                                {editingId ? "Guardar Cambios" : "Crear Categoría"}
-                            </button>
-                        </form>
+                            <form onSubmit={handleAddSubmit} className="p-12 space-y-8">
+                                <div className="space-y-3">
+                                    <label className="text-xs font-black text-slate-400 uppercase tracking-[0.2em] pl-1">Título de Categoría</label>
+                                    <input
+                                        required
+                                        autoFocus
+                                        type="text"
+                                        value={formData.name}
+                                        onChange={e => setFormData({ ...formData, name: e.target.value })}
+                                        placeholder="Ej: Difusores de Lujo"
+                                        className="w-full bg-slate-50 dark:bg-slate-950 border-2 border-transparent focus:border-violet-500 rounded-2xl py-6 px-8 text-slate-900 dark:text-white placeholder:text-slate-300 focus:outline-none transition-all font-black text-2xl"
+                                    />
+                                </div>
+
+                                <button type="submit" className="w-full py-6 rounded-[2.5rem] bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-black text-xl hover:scale-[1.02] active:scale-95 transition-all shadow-xl">
+                                    {editingId ? "Guardar Cambios" : "Crear Sección"}
+                                </button>
+                            </form>
+                        </motion.div>
                     </div>
-                </div>
-            )}
+                )}
+            </AnimatePresence>
         </div>
     );
 }

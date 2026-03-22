@@ -25,7 +25,8 @@ import {
     Percent,
     PieChart,
     StickyNote,
-    Terminal
+    Terminal,
+    Trophy
 } from "lucide-react";
 import ThemeToggle from "@/components/ThemeToggle";
 
@@ -151,6 +152,21 @@ export default function Sidebar({ onClose }: { onClose?: () => void }) {
                                 : "text-slate-400 group-hover:text-indigo-500 dark:group-hover:text-indigo-400 group-hover:scale-110"
                                 }`} />
                             Dashboard
+                        </Link>
+
+                        <Link
+                            href="/premios-revendedores"
+                            onClick={onClose}
+                            className={`group flex items-center gap-3.5 px-4 py-3.5 rounded-2xl font-bold transition-all border ${pathname === "/premios-revendedores"
+                                ? "bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-100/50 dark:border-amber-500/20"
+                                : "text-slate-600 dark:text-slate-400 border-transparent hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-slate-100"
+                                }`}
+                        >
+                            <Trophy className={`w-5 h-5 transition-transform duration-300 ${pathname === "/premios-revendedores"
+                                ? "text-amber-500 group-hover:scale-110"
+                                : "text-slate-400 group-hover:text-amber-500 dark:group-hover:text-amber-400 group-hover:scale-110"
+                                }`} />
+                            Premios Revendedores
                         </Link>
                     </div>
                 )}

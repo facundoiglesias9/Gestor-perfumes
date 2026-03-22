@@ -206,10 +206,14 @@ export default function GestionUsuariosPage() {
                                     </div>
                                     <div className="flex items-center justify-between text-xs font-bold text-slate-500 dark:text-slate-400 p-3 px-4">
                                         <span className="flex items-center gap-2 uppercase tracking-tighter"><Clock className="w-4 h-4 text-slate-400" /> Última Conexión</span>
-                                        <span className="text-slate-900 dark:text-white font-black tracking-tight">
-                                            {u.id === currentUser?.id
-                                                ? <span className="text-emerald-500 font-black">Conectado (Tú)</span>
-                                                : (u.lastLogin || "Nunca")}
+                                        <span className="text-slate-900 dark:text-white font-black tracking-tight flex items-center gap-2">
+                                            {u.id === currentUser?.id ? (
+                                                <span className="text-emerald-500 font-extrabold flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> (Tú) Ahora</span>
+                                            ) : (
+                                                u.lastLogin === new Date().toLocaleDateString("es-AR")
+                                                    ? <span className="text-indigo-500 font-extrabold flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse"></span> Hoy (Activo)</span>
+                                                    : (u.lastLogin || "Nunca")
+                                            )}
                                         </span>
                                     </div>
                                 </div>
