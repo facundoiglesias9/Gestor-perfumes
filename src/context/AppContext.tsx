@@ -250,6 +250,7 @@ interface AppContextProps {
     deletePromotion: (id: string) => Promise<void>;
     paymentInfo: { alias: string; cbu: string; banco: string; mpAccessToken: string };
     setPaymentInfo: (info: { alias: string; cbu: string; banco: string; mpAccessToken: string }) => void;
+    clearAllProductos: () => Promise<void>;
     addSystemLog: (type: "info" | "error" | "db" | "auth", message: string, details?: any) => void;
     usdRate: number;
 }
@@ -606,6 +607,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                     const parsed = JSON.parse(storedPaymentInfo);
                     setPaymentInfoState(prev => ({ ...prev, ...parsed }));
                 }
+                const storedScraper = localStorage.getItem("scraperStatus");
+                if (storedScraper) {
+                    const parsed = JSON.parse(storedScraper);
+                    // Solo cargamos la fecha, el status siempre arranca en idle al recargar
+                    setScraperStatus({ ...parsed, status: "idle" });
+                }
 
             } finally {
                 setIsLoading(false); // Terminar el flag normal para la base de datos completa.
@@ -676,7 +683,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     useEffect(() => {
         if (!mounted) return;
         try { localStorage.setItem("usuarios", JSON.stringify(usuarios)); } catch (e) { }
-        try { localStorage.setItem("productos", JSON.stringify(productos)); } catch (e) { }
+        try { 
+            // Limpiamos los productos de URLs Base64 pesadas antes de guardar en localStorage
+            const strippedProducts = productos.map(p => ({
+                ...p,
+                imageUrl: (p.imageUrl?.startsWith('data:')) ? undefined : p.imageUrl
+            }));
+            localStorage.setItem("productos", JSON.stringify(strippedProducts)); 
+        } catch (e) { }
         try { localStorage.setItem("categorias", JSON.stringify(categorias)); } catch (e) { }
         try { localStorage.setItem("promociones", JSON.stringify(promotions)); } catch (e) { }
     }, [usuarios, productos, categorias, promotions, mounted]);
@@ -711,6 +725,25 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             last_update: updated.lastUpdate,
             image_url: updated.imageUrl,
         });
+    };
+
+    const clearAllProductos = async () => {
+        if (!confirm("¿ESTÁS COMPLETAMENTE SEGURO? Se borrarán todos los productos (lista de precios), incluyendo imágenes y stock configurado. Esta acción no se puede deshacer.")) {
+            return;
+        }
+        setProductos([]);
+        localStorage.removeItem("productos"); // Limpiamos memoria del navegador
+        
+        // Borramos en Supabase (filtro infalible: todos los menores de la Z o con ID)
+        const { error } = await supabase.from("productos").delete().neq("id", "-1");
+        
+        if (error) {
+            addSystemLog("error", "Error al vaciar productos", error);
+            alert("Error al vaciar la base de datos.");
+        } else {
+            addSystemLog("info", "Catálogo de productos vaciado por el usuario.");
+            alert("Catálogo vaciado con éxito.");
+        }
     };
 
     const deleteProducto = async (id: string) => {
@@ -1018,95 +1051,161 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     };
 
     // ── Generate Products from Base ───────────────────────────────
-    const generateProductsFromBase = async (baseId: string, overrideCategory?: string) => {
-        const base = bases.find(b => b.id === baseId);
-        if (!base) return;
+    const generateProductsFromBase = async (baseId: string): Promise<{ created: number, updated: number }> => {
+        return new Promise(async (resolve, reject) => {
+            const base = bases.find(b => b.id === baseId);
+            if (!base) return reject(new Error("Base no encontrada"));
 
-        const targetCategory = overrideCategory || base.category || "Perfumería Fina";
+            // OBTENER ESTADO FRESCO: Consultamos directamente para que el cálculo sea real
+            const { data: dbProds, error: fetchErr } = await supabase.from("productos").select("*");
+            const currentProds = dbProds ? (dbProds as any[]).map(r => ({
+                id: r.id,
+                name: r.name,
+                category: r.category,
+                baseId: r.base_id,
+                price: r.price,
+                priceMinorista: r.price_minorista,
+                cost: r.cost,
+                components: r.components || [],
+                gender: r.gender,
+                imageUrl: r.image_url,
+            } as Producto)) : [];
 
-        // Filtramos esencias válidas. Para Limpia Pisos, checkeamos costo>0. Para otros, price100g>0
-        const validEsencias = esencias.filter(e => {
-            if (base.essenceGender?.toLowerCase() === "limpia pisos") {
-                return e.cost && e.cost > 0;
-            }
-            const p = parseFloat(e.price100g as any);
-            return !isNaN(p) && p > 0;
-        });
-
-        const targetEsencias = base.essenceGender && base.essenceGender !== "Todos"
-            ? validEsencias.filter(e => {
-                if (base.essenceGender?.toLowerCase() === "limpia pisos") {
-                    const expectedCategory = base.name.includes("5L") ? "limpia pisos 5l" : "limpia pisos 1l";
-                    return e.category?.toLowerCase() === expectedCategory;
+            // Filtramos por categoría diferenciando entre Limpia Pisos y Ambiente (Auto/Difusores)
+            const baseCategoryStr = (base.category || "").toLowerCase().trim();
+            const baseNameStr = (base.name || "").toLowerCase().trim();
+            
+            const isLimpiaPisos = baseCategoryStr.includes("limpia") || baseNameStr.includes("limpia");
+            const isEsenciaAmbiente = baseCategoryStr.includes("ambiente") || 
+                                     baseCategoryStr.includes("auto") ||
+                                     baseCategoryStr.includes("difusor") ||
+                                     baseCategoryStr.includes("aromatizante") ||
+                                     baseNameStr.includes("ambiente") ||
+                                     baseNameStr.includes("auto") ||
+                                     baseNameStr.includes("difusor") ||
+                                     baseNameStr.includes("aromatizante");
+            
+            const validEsencias = esencias.filter(e => {
+                const essenceCat = (e.category || "Perfumería Fina").toLowerCase().trim();
+                
+                // Si es Limpia Pisos, buscamos esencias de Limpia
+                if (isLimpiaPisos) return essenceCat.includes("limpia");
+                
+                // Si es DIFUSOR/AROMATIZANTE/AUTO, buscamos cualquiera de esas en la esencia (lo que pidió el cliente)
+                if (isEsenciaAmbiente) {
+                    return essenceCat.includes("ambiente") || 
+                           essenceCat.includes("auto") || 
+                           essenceCat.includes("difusor") || 
+                           essenceCat.includes("aromatizante");
                 }
-                return e.gender === base.essenceGender;
-            })
-            : validEsencias;
-
-        const now = new Date();
-        const lastUpdateStr = `${now.getDate().toString().padStart(2, '0')}/${(now.getMonth() + 1).toString().padStart(2, '0')}`;
-
-        const newProductsGenerated: Producto[] = [];
-
-        targetEsencias.forEach(esc => {
-            const formula: BaseComponent[] = [
-                ...base.components,
-                { id: esc.id, name: esc.name, qty: base.essenceGrams || 10, type: "Esencia" }
-            ];
-
-            const cost = formula.reduce((acc, comp) => {
-                const source = comp.type === "Esencia"
-                    ? (esencias.find(e => e.id === comp.id) || esencias.find(e => e.name.toLowerCase() === comp.name.toLowerCase()))
-                    : (insumos.find(i => i.id === comp.id) || insumos.find(i => i.name.toLowerCase() === comp.name.toLowerCase()));
-                if (!source) return acc;
-                let unitCost = 0;
-                if (comp.type === "Esencia") {
-                    const e = source as Esencia;
-                    const p100 = parseFloat(e.price100g as any);
-                    const p30 = parseFloat(e.price30g as any);
-                    if (!isNaN(p100) && p100 > 0) unitCost = p100 / 100;
-                    else if (!isNaN(p30) && p30 > 0) unitCost = p30 / 30;
-                    else unitCost = e.cost / (e.qty || 1);
-                } else {
-                    unitCost = source.cost / ((source as Insumo).qty || 1);
-                }
-                return acc + (unitCost * comp.qty);
-            }, 0);
-
-            const roundUpTo1000 = (num: number) => Math.ceil(num / 1000) * 1000;
-
-            let cleanName = esc.name
-                .replace(/X\s*KG/gi, "")
-                .replace(/\([FfMmUu]\)/g, "")
-                .replace(/\s+[FfMmUu](\s|$)/g, " ")
-                .replace(/\s+/g, " ")
-                .trim();
-
-            if (base.essenceGender?.toLowerCase() === "limpia pisos") {
-                const is5L = base.name.includes("5L");
-                cleanName += is5L ? " 5L" : " 1L";
-            }
-
-            const margins = categoryMargins[targetCategory] || { mayorista: 1.5, minorista: 2.0 };
-
-            newProductsGenerated.push({
-                id: "", // will be assigned below
-                name: cleanName,
-                category: targetCategory,
-                baseId: base.id,
-                components: formula,
-                cost,
-                price: roundUpTo1000(cost * margins.mayorista),
-                priceMinorista: roundUpTo1000(cost * margins.minorista),
-                stock: 0,
-                description: `Generado de base ${base.name}`,
-                gender: esc.gender || "Unisex",
-                lastUpdate: lastUpdateStr,
+                
+                // Si no, comparación exacta (Perfumería Fina por defecto)
+                return essenceCat === baseCategoryStr || (baseCategoryStr === "" && essenceCat === "perfumería fina");
             });
-        });
 
-        // Merge with existing, upsert to Supabase
-        return new Promise<{ created: number, updated: number }>((resolve) => {
+            // REGLA DE GÉNERO:
+            // - Limpia Pisos / Ambiente / Auto: Ignoramos el filtro de género de la base para buscar esencias
+            // - Perfumería: SÍ lo usamos
+            const bypassGender = isLimpiaPisos || isEsenciaAmbiente || !base.essenceGender || base.essenceGender === "Todos";
+
+            const targetEsencias = bypassGender
+                ? validEsencias
+                : validEsencias.filter(e => {
+                    if (!e.gender) return false;
+                    return e.gender.toLowerCase() === base.essenceGender?.toLowerCase();
+                });
+            
+            // Log para debug
+            if (isLimpiaPisos || isEsenciaAmbiente) {
+                console.log(`Generación Especial: Tomando TODAS las ${targetEsencias.length} esencias sin filtrar género.`);
+            }
+
+            if (targetEsencias.length === 0) {
+                return reject(new Error(`No hay productos de género '${base.essenceGender}' en la categoría '${base.category || 'Perfumería Fina'}'`));
+            }
+
+            const newProductsGenerated: Producto[] = [];
+            const lastUpdateStr = new Date().toISOString();
+
+            targetEsencias.forEach(esc => {
+                const formula: BaseComponent[] = [
+                    ...base.components,
+                    { id: esc.id, name: esc.name, qty: base.essenceGrams || 10, type: "Esencia" }
+                ];
+
+                const cost = formula.reduce((acc, comp) => {
+                    const source = comp.type === "Esencia"
+                        ? (esencias.find(e => e.id === comp.id) || esencias.find(e => e.name.toLowerCase() === comp.name.toLowerCase()))
+                        : (insumos.find(i => i.id === comp.id) || insumos.find(i => i.name.toLowerCase() === comp.name.toLowerCase()));
+                    if (!source) return acc;
+
+                    let unitCost = 0;
+                    if (comp.type === "Esencia") {
+                        const e = source as Esencia;
+                        const p100 = parseFloat(e.price100g as any);
+                        const p250 = parseFloat(e.price250g as any);
+                        const p30 = parseFloat(e.price30g as any);
+
+                        if (!isNaN(p100) && p100 > 0) unitCost = p100 / 100;
+                        else if (!isNaN(p250) && p250 > 0) unitCost = p250 / 250;
+                        else if (!isNaN(p30) && p30 > 0) unitCost = p30 / 30;
+                        else unitCost = e.cost / (e.qty || 1);
+                    } else {
+                        unitCost = source.cost / ((source as Insumo).qty || 1);
+                    }
+
+                    return acc + (unitCost * comp.qty);
+                }, 0);
+
+                const roundUpTo1000 = (num: number) => Math.ceil(num / 1000) * 1000;
+
+                let cleanName = esc.name
+                    .replace(/X\s*KG/gi, "")
+                    .replace(/\([FfMmUu]\)/g, "")
+                    .replace(/\s+[FfMmUu](\s|$)/g, " ")
+                    .replace(/\s+/g, " ")
+                    .trim()
+                    .toUpperCase();
+
+                if (isLimpiaPisos) {
+                    const is5L = base.name.includes("5L");
+                    cleanName += is5L ? " 5L" : " 1L";
+                }
+
+                const targetCategory = base.category || "Perfumería Fina";
+                const margins = categoryMargins[targetCategory] || { mayorista: 1.5, minorista: 2.0 };
+
+                // REGLA: Si la esencia no tiene ningún precio válido (p100, p250, p30 ni cost), el producto final será 'Consultar' (Precio 0)
+                const p100Esc = parseFloat(esc.price100g as any);
+                const p250Esc = parseFloat(esc.price250g as any);
+                const p30Esc = parseFloat(esc.price30g as any);
+                
+                const hasValidPrice = (!isNaN(p100Esc) && p100Esc > 0) || 
+                                     (!isNaN(p250Esc) && p250Esc > 0) ||
+                                     (!isNaN(p30Esc) && p30Esc > 0) || 
+                                     (esc.cost > 0);
+                                     
+                const isEsenciaConsultar = !hasValidPrice;
+
+                newProductsGenerated.push({
+                    id: "", // Se asignará luego numéricamente si es nuevo
+                    name: cleanName,
+                    category: targetCategory,
+                    baseId: base.id,
+                    components: formula,
+                    cost,
+                    price: isEsenciaConsultar ? 0 : roundUpTo1000(cost * margins.mayorista),
+                    priceMinorista: isEsenciaConsultar ? 0 : roundUpTo1000(cost * margins.minorista),
+                    stock: 0,
+                    description: `Generado de base ${base.name}`,
+                    gender: (isLimpiaPisos || isEsenciaAmbiente) ? (base.essenceGender || "Unisex") : (esc.gender || "Unisex"),
+                    lastUpdate: lastUpdateStr,
+                });
+            });
+            const toUpsert: any[] = [];
+            let created = 0;
+            let updated = 0;
+
             setProductos(prev => {
                 const updatedList = [...prev];
                 let nextIdNum = updatedList.reduce((max, p) => {
@@ -1114,34 +1213,30 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                     return isNaN(num) ? max : Math.max(max, num);
                 }, 0) + 1;
 
-                const toUpsert: any[] = [];
-                let created = 0;
-                let updated = 0;
-
                 newProductsGenerated.forEach(np => {
-                    const normStr = (str: string) => str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
-                    const npName = normStr(np.name);
-                    const npCat = normStr(np.category);
-                    const npGen = normStr(np.gender);
-
-                    const existingIdx = updatedList.findIndex(p =>
-                        normStr(p.name) === npName &&
-                        normStr(p.category) === npCat &&
-                        normStr(p.gender) === npGen
-                    );
+                    // Buscar esencia en el nuevo producto
+                    const npEsc = np.components.find(c => c.type === "Esencia");
+                    
+                    // Buscar si ya existe un producto con esa misma base e ID de esencia
+                    const existingIdx = currentProds.findIndex(p => {
+                        const pEsc = p.components.find(c => c.type === "Esencia");
+                        return p.baseId === np.baseId && pEsc && npEsc && pEsc.id === npEsc.id;
+                    });
 
                     if (existingIdx >= 0) {
                         updated++;
-                        const existing = updatedList[existingIdx];
-                        const merged = {
-                            ...existing,
-                            components: np.components,
-                            cost: np.cost,
-                            baseId: np.baseId,
-                            gender: np.gender,
-                            lastUpdate: np.lastUpdate
+                        const existing = currentProds[existingIdx];
+                        const merged: Producto = {
+                            ...np,
+                            id: existing.id,
+                            stock: (prev.find(p => p.id === existing.id)?.stock) || 0,
+                            imageUrl: (prev.find(p => p.id === existing.id)?.imageUrl)
                         };
-                        updatedList[existingIdx] = merged;
+                        
+                        const i = updatedList.findIndex(x => x.id === merged.id);
+                        if (i >= 0) updatedList[i] = merged;
+                        else updatedList.push(merged);
+
                         toUpsert.push({
                             id: merged.id,
                             name: merged.name,
@@ -1149,8 +1244,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                             base_id: merged.baseId,
                             components: merged.components,
                             cost: merged.cost,
-                            price: merged.price, // Keep existing user-edited prices
-                            price_minorista: merged.priceMinorista, // Keep existing user-edited prices
+                            price: merged.price,
+                            price_minorista: merged.priceMinorista,
                             stock: merged.stock,
                             description: merged.description,
                             gender: merged.gender,
@@ -1180,13 +1275,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                     }
                 });
 
-                // Fire-and-forget upsert
-                if (toUpsert.length > 0) {
-                    supabase.from("productos").upsert(toUpsert).then(({ error }) => {
-                        if (error) console.error("Error saving productos:", error);
-                    });
-                }
+                const CHUNK_SIZE = 50;
+                const uniqueUpsert = Object.values(toUpsert.reduce((acc, obj) => { acc[obj.id] = obj; return acc; }, {}));
+                
+                const processChunks = async () => {
+                    for (let i = 0; i < uniqueUpsert.length; i += CHUNK_SIZE) {
+                        const chunk = uniqueUpsert.slice(i, i + CHUNK_SIZE);
+                        await supabase.from("productos").upsert(chunk);
+                    }
+                };
 
+                processChunks();
                 resolve({ created, updated });
                 return updatedList;
             });
@@ -1413,18 +1512,34 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                 const scrapedEsencias = (data.esencias as Esencia[]).map(e => ({ ...e, source: "scraped" as const }));
 
                 _setEsencias(prev => {
-                    const existingNonScraped = prev.filter(e => e.source !== "scraped" && !e.id.startsWith("VR-"));
-                    return [...scrapedEsencias, ...existingNonScraped];
+                    // Limpieza agresiva nivel Dios: Normalizamos nombre quitando símbolos y espacios
+                    const uniqueMap = new Map();
+                    
+                    const normalize = (name: string) => name.replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
+
+                    // Primero volcamos lo que ya tenemos
+                    prev.forEach(e => {
+                        const key = `${normalize(e.name)}_${(e.gender || "U").toUpperCase()}`;
+                        uniqueMap.set(key, e);
+                    });
+                    
+                    // Luego volcamos lo nuevo del scrapper (pisando duplicados por nombre normalizado)
+                    scrapedEsencias.forEach(e => {
+                        const key = `${normalize(e.name)}_${(e.gender || "U").toUpperCase()}`;
+                        uniqueMap.set(key, e);
+                    });
+                    
+                    return Array.from(uniqueMap.values());
                 });
 
-                const newStatus: ScraperStatus = { lastRun: new Date().toLocaleString(), status: "success" };
+                const newStatus: ScraperStatus = { lastRun: new Date().toLocaleDateString(), status: "success" };
                 setScraperStatus(newStatus);
                 localStorage.setItem("scraperStatus", JSON.stringify(newStatus));
             } else {
                 throw new Error(data.error);
             }
         } catch (error: any) {
-            const newStatus: ScraperStatus = { lastRun: new Date().toLocaleString(), status: "failure", message: error.message };
+            const newStatus: ScraperStatus = { lastRun: new Date().toLocaleDateString(), status: "failure", message: error.message };
             setScraperStatus(newStatus);
             localStorage.setItem("scraperStatus", JSON.stringify(newStatus));
         }
@@ -1432,9 +1547,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
     useEffect(() => {
         if (!mounted) return;
-        const lastDate = scraperStatus.lastRun ? new Date(scraperStatus.lastRun).toLocaleDateString() : "";
-        const today = new Date().toLocaleDateString();
-        if (lastDate !== today && scraperStatus.status === "idle") {
+        const lastRunStr = scraperStatus.lastRun;
+        const todayStr = new Date().toLocaleDateString(); // ej: "23/3/2026"
+        
+        // Solo corre si es un día distinto al guardado
+        if (lastRunStr !== todayStr && scraperStatus.status === "idle") {
             runScraper();
         }
     }, [mounted, scraperStatus.lastRun, scraperStatus.status]);
@@ -1497,6 +1614,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             setPaymentInfo: setPaymentInfoState,
             isLoading,
             addSystemLog,
+            clearAllProductos,
             usdRate
         }}>
             {children}

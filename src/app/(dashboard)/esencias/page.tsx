@@ -1,6 +1,6 @@
 "use client";
 
-import { Search, Plus, Filter, FlaskConical, Trash2, X, Edit2, RefreshCw, ChevronDown, ChevronLeft, ChevronRight, Droplet, Wind } from "lucide-react";
+import { Search, Plus, Filter, FlaskConical, Trash2, X, Edit2, RefreshCw, ChevronDown, ChevronLeft, ChevronRight, Droplet, Wind, Check } from "lucide-react";
 import { useState, useMemo, useEffect } from "react";
 import { useAppContext } from "@/context/AppContext";
 import ConfirmModal from "@/components/ConfirmModal";
@@ -24,6 +24,33 @@ export default function EsenciasPage() {
     const [isCustomProvider, setIsCustomProvider] = useState(false);
     const [isCustomCategory, setIsCustomCategory] = useState(false);
     const itemsPerPage = 10;
+    const [hasRanMassUpdate, setHasRanMassUpdate] = useState(false);
+
+    // Massive update for "Ambiente" essences to have both "Esencia de Ambiente" and "Difusor"
+    useEffect(() => {
+        if (!hasRanMassUpdate && esencias.length > 0) {
+            let updated = false;
+            const newEsencias = esencias.map(e => {
+                if (e.gender === "Ambiente") {
+                    const currentCats = e.category ? e.category.split(", ").map(c => c.trim()) : [];
+                    let modified = false;
+                    if (!currentCats.includes("Difusor")) { currentCats.push("Difusor"); modified = true; }
+                    if (!currentCats.includes("Auto")) { currentCats.push("Auto"); modified = true; }
+                    
+                    if (modified) {
+                        updated = true;
+                        return { ...e, category: currentCats.filter(c => c !== "Esencia de Ambiente" && c !== "").join(", ") };
+                    }
+                }
+                return e;
+            });
+
+            if (updated) {
+                setEsencias(newEsencias);
+            }
+            setHasRanMassUpdate(true);
+        }
+    }, [esencias, hasRanMassUpdate, setEsencias]);
 
     // Load page from localStorage on mount
     useEffect(() => {
@@ -88,6 +115,7 @@ export default function EsenciasPage() {
         else if (s.includes('difusor')) colorObj = colorsMap.rose;
         else if (s.includes('textil')) colorObj = colorsMap.emerald;
         else if (s.includes('esencia')) colorObj = colorsMap.fuchsia;
+        else if (s === 'ambiente') colorObj = colorsMap.indigo;
         else if (s === 'femenino' || s === 'femenina') colorObj = colorsMap.rose;
         else if (s === 'masculino') colorObj = colorsMap.blue;
         else if (s === 'unisex') colorObj = colorsMap.teal;
@@ -199,7 +227,7 @@ export default function EsenciasPage() {
             cost: item.cost.toString(),
             qty: item.qty.toString()
         });
-        setIsCustomCategory(!categorias.some(c => c.name === catValue));
+        setIsCustomCategory(false);
         setIsCustomProvider(!proveedores.some(p => p.name === provValue));
         setIsAddModalOpen(true);
     };
@@ -230,7 +258,7 @@ export default function EsenciasPage() {
             const matchesSearch = e.name.toLowerCase().includes(searchTerm.toLowerCase());
 
             if (activeTab === "Limpia Pisos" || activeTab === "Ambiente") {
-                const matchesCategory = categoryFilter === "Todos" || (e.category?.toLowerCase() === categoryFilter.toLowerCase());
+                const matchesCategory = categoryFilter === "Todos" || (e.category?.toLowerCase()?.includes(categoryFilter.toLowerCase()));
                 return matchesSearch && matchesCategory;
             }
 
@@ -257,7 +285,7 @@ export default function EsenciasPage() {
             <header className="flex flex-col md:flex-row md:justify-between md:items-end gap-6 bg-white dark:bg-slate-900 p-8 md:p-10 rounded-[2.5rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.2)] border border-slate-100 dark:border-slate-800 transition-colors duration-300">
                 <div className="space-y-3">
                     <div className="flex items-center gap-3">
-                        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-orange-50 dark:bg-orange-500/10 text-orange-700 dark:text-orange-400 text-xs font-bold tracking-widest uppercase">
+                        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 text-xs font-bold tracking-widest uppercase">
                             <FlaskConical className="w-3.5 h-3.5" />
                             Base Líquida
                         </div>
@@ -307,7 +335,7 @@ export default function EsenciasPage() {
                     )}
                     <button
                         onClick={openAddModal}
-                        className="flex items-center gap-2.5 px-7 py-3.5 rounded-2xl bg-orange-600 text-white font-bold hover:bg-orange-700 hover:shadow-xl hover:shadow-orange-600/20 active:scale-95 transition-all"
+                        className="flex items-center gap-2.5 px-7 py-3.5 rounded-2xl bg-indigo-600 text-white font-bold hover:bg-indigo-700 hover:shadow-xl hover:shadow-indigo-600/20 active:scale-95 transition-all"
                     >
                         <Plus className="w-5 h-5" strokeWidth={2.5} />
                         Agregar Esencia
@@ -327,12 +355,20 @@ export default function EsenciasPage() {
                         };
 
                         newEsencias.forEach(newE => {
+                            // Si es ambiente, auto-asignamos categorías requeridas si no las tiene
+                            if (newE.gender === "Ambiente") {
+                                const currentCats = newE.category ? newE.category.split(", ").map(c => c.trim()) : [];
+                                if (!currentCats.includes("Difusor")) currentCats.push("Difusor");
+                                if (!currentCats.includes("Auto")) currentCats.push("Auto");
+                                newE.category = currentCats.filter(c => c !== "Esencia de Ambiente").join(", ");
+                            }
+
                             const newNorm = normalize(newE.name);
                             // Rastrear TODOS los clones viejos que encuentre bajo el mismo nombre
                             const matchingIndices = merged
                                 .map((e, idx) =>
                                     normalize(e.name) === newNorm &&
-                                        (e.category === "Esencia de Ambiente" || e.category === newE.category)
+                                        (e.category?.includes("Ambiente") || e.category === newE.category || e.gender === "Ambiente")
                                         ? idx : -1
                                 )
                                 .filter(idx => idx !== -1);
@@ -349,7 +385,10 @@ export default function EsenciasPage() {
                                     }
                                 }
                             } else {
-                                merged.push(newE);
+                                merged.push({
+                                    ...newE,
+                                    id: getNextId(merged, "E-")
+                                });
                             }
                         });
 
@@ -365,7 +404,7 @@ export default function EsenciasPage() {
                 <button
                     onClick={() => { setActiveTab("Perfumería"); setCurrentPage(1); }}
                     className={`relative flex items-center gap-2.5 px-6 py-3 rounded-xl font-bold text-sm transition-all duration-300 ${activeTab === "Perfumería"
-                        ? "bg-white dark:bg-slate-800 text-orange-600 dark:text-orange-400 shadow-[0_2px_10px_rgb(0,0,0,0.06)] dark:shadow-[0_2px_10px_rgb(0,0,0,0.2)] ring-1 ring-slate-200/50 dark:ring-slate-700 hover:scale-[1.02]"
+                        ? "bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-[0_2px_10px_rgb(0,0,0,0.06)] dark:shadow-[0_2px_10px_rgb(0,0,0,0.2)] ring-1 ring-slate-200/50 dark:ring-slate-700 hover:scale-[1.02]"
                         : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-white/50 dark:hover:bg-slate-800/50"
                         }`}
                 >
@@ -396,13 +435,13 @@ export default function EsenciasPage() {
 
             <div className="flex flex-col lg:flex-row gap-4">
                 <div className="relative flex-1 group">
-                    <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 dark:text-slate-500 group-focus-within:text-orange-500 dark:group-focus-within:text-orange-400 transition-colors" />
+                    <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 dark:text-slate-500 group-focus-within:text-indigo-500 dark:group-focus-within:text-indigo-400 transition-colors" />
                     <input
                         type="text"
                         placeholder="Buscar esencia por nombre..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl py-4 pl-14 pr-6 text-slate-900 dark:text-slate-50 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-4 focus:ring-orange-500/10 focus:border-orange-500 transition-all font-semibold"
+                        className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl py-4 pl-14 pr-6 text-slate-900 dark:text-slate-50 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all font-semibold"
                     />
                 </div>
 
@@ -505,7 +544,7 @@ export default function EsenciasPage() {
                             return (
                                 <tr key={idx} className="group hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
                                     <td className="px-6 py-6 text-left">
-                                        <p className="text-slate-900 dark:text-slate-100 font-extrabold text-lg group-hover:text-orange-600 transition-colors line-clamp-2">{item.name}</p>
+                                        <p className="text-slate-900 dark:text-slate-100 font-extrabold text-lg group-hover:text-indigo-600 transition-colors line-clamp-2">{item.name}</p>
                                     </td>
                                     <td className="px-6 py-6 text-center">
                                         <span className={`inline-flex items-center px-2.5 py-1 rounded-md font-bold text-[11px] uppercase tracking-wider border whitespace-nowrap w-max mx-auto ${getColorClass(gender, true)}`}>
@@ -513,9 +552,19 @@ export default function EsenciasPage() {
                                         </span>
                                     </td>
                                     <td className="px-6 py-6 text-center">
-                                        <span className={`inline-flex items-center px-2.5 py-1 rounded-md font-bold text-[11px] uppercase tracking-wider border whitespace-nowrap w-max mx-auto ${getColorClass(item.category || "Perfumería Fina", true)}`}>
-                                            {item.category || "Perfumería Fina"}
-                                        </span>
+                                        <div className="flex flex-col items-center gap-1.5 min-w-[140px] mx-auto">
+                                            {(item.category || "Perfumería Fina")
+                                                .split(", ")
+                                                .filter(cat => 
+                                                    cat === "Perfumería Fina" || 
+                                                    categorias.some(c => c.name.trim().toLowerCase() === cat.trim().toLowerCase())
+                                                )
+                                                .map((cat, cIdx) => (
+                                                    <span key={cIdx} className={`inline-flex items-center px-2.5 py-1 rounded-md font-bold text-[10px] uppercase tracking-widest border whitespace-nowrap shadow-sm ${getColorClass(cat, true)}`}>
+                                                        {cat}
+                                                    </span>
+                                                ))}
+                                        </div>
                                     </td>
                                     <td className="px-6 py-6 text-center">
                                         <div className="inline-flex items-center justify-center gap-2 px-3 py-1.5 rounded-full bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800 group-hover:border-slate-200 dark:group-hover:border-slate-700 transition-colors">
@@ -591,7 +640,7 @@ export default function EsenciasPage() {
                                         <div className="flex items-center justify-end gap-1 opacity-100 xl:opacity-0 xl:group-hover:opacity-100 transition-opacity">
                                             <button
                                                 onClick={() => openEditModal(item)}
-                                                className="p-2.5 text-slate-400 hover:text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-500/10 rounded-xl transition-all"
+                                                className="p-2.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 rounded-xl transition-all"
                                             >
                                                 <Edit2 className="w-5 h-5" />
                                             </button>
@@ -640,7 +689,7 @@ export default function EsenciasPage() {
                                             key={page}
                                             onClick={() => setCurrentPage(page)}
                                             className={`w-10 h-10 rounded-xl font-black text-sm transition-all ${currentPage === page
-                                                ? "bg-orange-600 text-white shadow-lg shadow-orange-600/20"
+                                                ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/20"
                                                 : "text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800"
                                                 }`}
                                         >
@@ -675,53 +724,62 @@ export default function EsenciasPage() {
             {isAddModalOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/40 backdrop-blur-sm animate-in fade-in duration-300">
                     <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] shadow-2xl w-full max-w-lg overflow-hidden border border-slate-200 dark:border-slate-800 animate-in zoom-in-95">
-                        <div className="p-8 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
+                        <div className="p-8 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-indigo-50/30 dark:bg-indigo-500/5">
                             <div>
-                                <h2 className="text-2xl font-black text-slate-900 dark:text-slate-100">{editingId ? "Editar Esencia" : "Nueva Esencia"}</h2>
-                                <p className="text-slate-500 font-medium text-sm mt-1">Configuración manual de materia prima</p>
+                                <h2 className="text-3xl font-black text-slate-900 dark:text-slate-100 tracking-tight">{editingId ? "Editar Esencia" : "Nueva Esencia"}</h2>
+                                <p className="text-slate-500 dark:text-slate-400 font-bold text-xs uppercase tracking-widest mt-1.5 opacity-70">Control Maestro de Materia Prima</p>
                             </div>
-                            <button onClick={handleCloseModal} className="p-2 text-slate-400 hover:text-slate-600"><X className="w-6 h-6" /></button>
+                            <button onClick={handleCloseModal} className="p-3 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 bg-white dark:bg-slate-800 rounded-2xl transition-all shadow-sm hover:rotate-90"><X className="w-6 h-6" /></button>
                         </div>
 
-                        <form onSubmit={handleAddSubmit} className="p-8 space-y-6">
-                            <div className="space-y-2">
-                                <label className="text-xs font-black text-slate-400 uppercase tracking-widest pl-1">Nombre</label>
+                        <form onSubmit={handleAddSubmit} className="p-8 space-y-8">
+                            {/* Nombre Field */}
+                            <div className="space-y-3">
+                                <label className="flex items-center justify-center gap-2 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] pl-1">
+                                    <Edit2 className="w-3 h-3" />
+                                    Nombre de la Esencia
+                                </label>
                                 <input
                                     required
                                     type="text"
                                     value={formData.name}
                                     onChange={e => setFormData({ ...formData, name: e.target.value })}
-                                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl py-4 px-6 text-slate-900 dark:text-slate-100 font-bold"
+                                    placeholder="Ej: Lavanda Premium"
+                                    className="w-full bg-slate-50 dark:bg-slate-950/50 border border-slate-200 dark:border-slate-800 rounded-2xl py-4.5 px-6 text-slate-900 dark:text-slate-100 font-bold focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all text-center"
                                 />
                             </div>
 
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <label className="text-xs font-black text-slate-400 uppercase tracking-widest pl-1">Género</label>
-                                    <select
-                                        required
-                                        value={formData.gender}
-                                        onChange={e => setFormData({ ...formData, gender: e.target.value as any })}
-                                        className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl py-4 px-4 text-slate-900 dark:text-slate-100 font-bold"
-                                    >
-                                        <option value="">-- Seleccionar --</option>
-                                        {generos.map((g, idx) => (
-                                            <option key={idx} value={g}>{g}</option>
-                                        ))}
-                                    </select>
+                            {/* Gender & Provider Grid */}
+                            <div className="grid grid-cols-2 gap-6">
+                                <div className="space-y-3">
+                                    <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] pl-1 text-center block">Género / Uso</label>
+                                    <div className="relative">
+                                        <select
+                                            required
+                                            value={formData.gender}
+                                            onChange={e => setFormData({ ...formData, gender: e.target.value as any })}
+                                            className="w-full bg-slate-50 dark:bg-slate-950/50 border border-slate-200 dark:border-slate-800 rounded-2xl py-4 px-5 text-slate-900 dark:text-slate-100 font-bold appearance-none focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all cursor-pointer"
+                                        >
+                                            <option value="">Seleccionar...</option>
+                                            {generos.map((g, idx) => (
+                                                <option key={idx} value={g}>{g}</option>
+                                            ))}
+                                        </select>
+                                        <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                                    </div>
                                 </div>
-                                <div className="space-y-2">
-                                    <label className="text-xs font-black text-slate-400 uppercase tracking-widest pl-1">Proveedor</label>
+                                <div className="space-y-3">
+                                    <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] pl-1 text-center block">Proveedor</label>
                                     {isCustomProvider ? (
-                                        <div className="relative">
+                                        <div className="relative group">
                                             <input
                                                 required
                                                 type="text"
                                                 autoFocus
                                                 value={formData.provider}
                                                 onChange={e => setFormData({ ...formData, provider: e.target.value })}
-                                                className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl py-4 pl-4 pr-12 text-slate-900 dark:text-slate-100 font-bold focus:outline-none focus:ring-4 focus:ring-orange-500/10 focus:border-orange-500 transition-all"
-                                                placeholder="Ingresar proveedor..."
+                                                className="w-full bg-slate-50 dark:bg-slate-950/50 border border-indigo-500/50 dark:border-indigo-500/30 rounded-2xl py-4 pl-5 pr-12 text-slate-900 dark:text-slate-100 font-bold focus:outline-none focus:ring-4 focus:ring-indigo-500/10 transition-all text-center"
+                                                placeholder="Nombre..."
                                             />
                                             <button
                                                 type="button"
@@ -729,113 +787,158 @@ export default function EsenciasPage() {
                                                     setIsCustomProvider(false);
                                                     setFormData({ ...formData, provider: proveedores[0]?.name || "" });
                                                 }}
-                                                className="absolute right-3 top-1/2 -translate-y-1/2 p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 bg-slate-200/50 dark:bg-slate-800/50 rounded-xl transition-colors"
+                                                className="absolute right-3 top-1/2 -translate-y-1/2 p-2 text-slate-400 hover:text-rose-500 bg-white dark:bg-slate-900 rounded-xl transition-colors shadow-sm"
                                             >
-                                                <X className="w-4 h-4" />
+                                                <X className="w-3.5 h-3.5" />
                                             </button>
                                         </div>
                                     ) : (
-                                        <select
-                                            required
-                                            value={proveedores.some(p => p.name === formData.provider) ? formData.provider : (formData.provider && !proveedores.some(p => p.name === formData.provider) ? "__CUSTOM__" : "")}
-                                            onChange={e => {
-                                                if (e.target.value === "__CUSTOM__") {
-                                                    setIsCustomProvider(true);
-                                                    setFormData({ ...formData, provider: "" });
-                                                } else {
-                                                    setFormData({ ...formData, provider: e.target.value });
-                                                }
-                                            }}
-                                            className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl py-4 px-4 text-slate-900 dark:text-slate-100 font-bold focus:outline-none focus:ring-4 focus:ring-orange-500/10 focus:border-orange-500 transition-all"
-                                        >
-                                            <option value="" disabled>-- Seleccionar Proveedor --</option>
-                                            {proveedores.map((p, idx) => (
-                                                <option key={idx} value={p.name}>{p.name}</option>
-                                            ))}
-                                            <option value="__CUSTOM__" className="font-extrabold text-orange-600">+ Cargar otro proveedor...</option>
-                                        </select>
+                                        <div className="relative">
+                                            <select
+                                                required
+                                                value={proveedores.some(p => p.name === formData.provider) ? formData.provider : (formData.provider && !proveedores.some(p => p.name === formData.provider) ? "__CUSTOM__" : "")}
+                                                onChange={e => {
+                                                    if (e.target.value === "__CUSTOM__") {
+                                                        setIsCustomProvider(true);
+                                                        setFormData({ ...formData, provider: "" });
+                                                    } else {
+                                                        setFormData({ ...formData, provider: e.target.value });
+                                                    }
+                                                }}
+                                                className="w-full bg-slate-50 dark:bg-slate-950/50 border border-slate-200 dark:border-slate-800 rounded-2xl py-4 px-5 text-slate-900 dark:text-slate-100 font-bold appearance-none focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all cursor-pointer"
+                                            >
+                                                <option value="" disabled>Seleccionar...</option>
+                                                {proveedores.map((p, idx) => (
+                                                    <option key={idx} value={p.name}>{p.name}</option>
+                                                ))}
+                                                <option value="__CUSTOM__" className="font-extrabold text-indigo-600">+ Nuevo Proveedor...</option>
+                                            </select>
+                                            <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                                        </div>
                                     )}
                                 </div>
                             </div>
 
-                            <div className="space-y-2">
-                                <label className="text-xs font-black text-slate-400 uppercase tracking-widest pl-1">Categoría</label>
-                                {isCustomCategory ? (
-                                    <div className="relative">
+                            {/* Categories Section */}
+                            <div className="space-y-4">
+                                <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] pl-1 text-center block">Categorías</label>
+                                <div className="grid grid-cols-2 gap-2.5 p-5 bg-slate-50 dark:bg-slate-950/30 border border-slate-200 dark:border-slate-800 rounded-[2rem] max-h-52 overflow-y-auto custom-scrollbar shadow-inner">
+                                    {categorias.map(cat => {
+                                        const isChecked = formData.category.split(", ").includes(cat.name);
+                                        return (
+                                            <label key={cat.id} className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all border ${isChecked 
+                                                ? "bg-indigo-50 dark:bg-indigo-500/10 border-indigo-200 dark:border-indigo-500/20" 
+                                                : "bg-white dark:bg-slate-900 border-transparent hover:border-slate-200 dark:hover:border-slate-700 shadow-sm"}`}>
+                                                <div className="relative flex items-center justify-center">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={isChecked}
+                                                        onChange={(e) => {
+                                                            const currentCats = formData.category ? formData.category.split(", ").filter(c => c !== "") : [];
+                                                            let newCats;
+                                                            if (e.target.checked) {
+                                                                newCats = [...currentCats, cat.name];
+                                                            } else {
+                                                                newCats = currentCats.filter(c => c !== cat.name);
+                                                            }
+                                                            setFormData({ ...formData, category: newCats.length > 0 ? newCats.join(", ") : "" });
+                                                        }}
+                                                        className="peer h-5 w-5 cursor-pointer appearance-none rounded-lg border-2 border-slate-300 dark:border-slate-700 checked:border-indigo-500 checked:bg-indigo-500 transition-all"
+                                                    />
+                                                    <Check className="w-3.5 h-3.5 text-white absolute scale-0 peer-checked:scale-100 transition-transform font-black" strokeWidth={4} />
+                                                </div>
+                                                <span className={`text-xs font-bold transition-colors ${isChecked ? "text-indigo-700 dark:text-indigo-400" : "text-slate-600 dark:text-slate-400"}`}>
+                                                    {cat.name}
+                                                </span>
+                                            </label>
+                                        );
+                                    })}
+                                    <button 
+                                        type="button"
+                                        onClick={() => setIsCustomCategory(true)}
+                                        className="flex items-center justify-center gap-2 p-3 rounded-xl border-2 border-dashed border-slate-200 dark:border-slate-800 text-xs font-bold text-slate-400 hover:text-indigo-500 hover:border-indigo-500 transition-all"
+                                    >
+                                        <Plus className="w-3.5 h-3.5" />
+                                        Nueva...
+                                    </button>
+                                </div>
+                                {isCustomCategory && (
+                                    <div className="flex gap-2 animate-in slide-in-from-top-2 p-1">
                                         <input
-                                            required
                                             type="text"
+                                            placeholder="Nombre de nueva categoría..."
                                             autoFocus
-                                            value={formData.category}
-                                            onChange={e => setFormData({ ...formData, category: e.target.value })}
-                                            className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl py-4 pl-4 pr-12 text-slate-900 dark:text-slate-100 font-bold focus:outline-none focus:ring-4 focus:ring-orange-500/10 focus:border-orange-500 transition-all"
-                                            placeholder="Ingresar categoría..."
-                                        />
-                                        <button
-                                            type="button"
-                                            onClick={() => {
-                                                setIsCustomCategory(false);
-                                                setFormData({ ...formData, category: categorias[0]?.name || "" });
+                                            className="flex-1 bg-white dark:bg-slate-900 border-2 border-indigo-500/30 rounded-xl py-3 px-5 text-sm font-bold shadow-lg"
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter') {
+                                                    e.preventDefault();
+                                                    const val = (e.target as HTMLInputElement).value.trim();
+                                                    if (val) {
+                                                        const currentCats = formData.category ? formData.category.split(", ").filter(c => c !== "") : [];
+                                                        if (!currentCats.includes(val)) {
+                                                            setFormData({ ...formData, category: [...currentCats, val].join(", ") });
+                                                        }
+                                                        (e.target as HTMLInputElement).value = "";
+                                                        setIsCustomCategory(false);
+                                                    }
+                                                }
                                             }}
-                                            className="absolute right-3 top-1/2 -translate-y-1/2 p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 bg-slate-200/50 dark:bg-slate-800/50 rounded-xl transition-colors"
+                                        />
+                                        <button 
+                                            type="button"
+                                            onClick={() => setIsCustomCategory(false)}
+                                            className="p-3 bg-slate-100 dark:bg-slate-800 text-slate-500 rounded-xl hover:text-rose-500 transition-colors shadow-sm"
                                         >
-                                            <X className="w-4 h-4" />
+                                            <Trash2 className="w-5 h-5" />
                                         </button>
                                     </div>
-                                ) : (
-                                    <select
-                                        required
-                                        value={categorias.some(c => c.name === formData.category) ? formData.category : (formData.category && !categorias.some(c => c.name === formData.category) ? "__CUSTOM__" : "")}
-                                        onChange={e => {
-                                            if (e.target.value === "__CUSTOM__") {
-                                                setIsCustomCategory(true);
-                                                setFormData({ ...formData, category: "" });
-                                            } else {
-                                                setFormData({ ...formData, category: e.target.value });
-                                            }
-                                        }}
-                                        className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl py-4 px-4 text-slate-900 dark:text-slate-100 font-bold focus:outline-none focus:ring-4 focus:ring-orange-500/10 focus:border-orange-500 transition-all"
-                                    >
-                                        <option value="" disabled>-- Seleccionar Categoría --</option>
-                                        {categorias.map((c, idx) => (
-                                            <option key={idx} value={c.name}>{c.name}</option>
-                                        ))}
-                                        <option value="__CUSTOM__" className="font-extrabold text-orange-600">+ Cargar otra categoría...</option>
-                                    </select>
                                 )}
                             </div>
 
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <label className="text-xs font-black text-slate-400 uppercase tracking-widest pl-1">
-                                        {formData.gender?.toLowerCase()?.includes("limpia pisos") || formData.gender?.toLowerCase()?.includes("ambiente") ? "Costo por litro/kilo ($)" : "Costo (30g)"}
+                            {/* Cost & Stock Grid */}
+                            <div className="grid grid-cols-2 gap-6 pt-2">
+                                <div className="space-y-3">
+                                    <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] pl-1 text-center block">
+                                        {formData.gender?.toLowerCase()?.includes("limpia") || formData.gender?.toLowerCase()?.includes("ambiente") ? "Costo por Litro ($)" : "Costo (30 gr) ($)"}
                                     </label>
-                                    <input
-                                        required
-                                        type="number"
-                                        value={formData.cost}
-                                        onFocus={(e) => e.target.select()}
-                                        onChange={e => setFormData({ ...formData, cost: e.target.value })}
-                                        className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl py-4 px-6 text-slate-900 dark:text-slate-100 font-bold"
-                                    />
+                                    <div className="relative group">
+                                        <span className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 font-bold">$</span>
+                                        <input
+                                            required
+                                            type="number"
+                                            value={formData.cost}
+                                            onFocus={(e) => e.target.select()}
+                                            onChange={e => setFormData({ ...formData, cost: e.target.value })}
+                                            className="w-full bg-slate-50 dark:bg-slate-950/50 border border-slate-200 dark:border-slate-800 rounded-2xl py-4 pl-10 pr-6 text-slate-900 dark:text-slate-100 font-black text-center text-lg focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all"
+                                        />
+                                    </div>
                                 </div>
-                                <div className="space-y-2">
-                                    <label className="text-xs font-black text-slate-400 uppercase tracking-widest pl-1">
-                                        {formData.gender?.toLowerCase()?.includes("limpia pisos") || formData.gender?.toLowerCase()?.includes("ambiente") ? "Stock (unidades de medida)" : "Stock (g)"}
+                                <div className="space-y-3">
+                                    <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] pl-1 text-center block">
+                                        {formData.gender?.toLowerCase()?.includes("limpia") || formData.gender?.toLowerCase()?.includes("ambiente") ? "Stock Actual (ml)" : "Stock Actual (gr)"}
                                     </label>
-                                    <input
-                                        required
-                                        type="number"
-                                        value={formData.qty}
-                                        onFocus={(e) => e.target.select()}
-                                        onChange={e => setFormData({ ...formData, qty: e.target.value })}
-                                        className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl py-4 px-6 text-slate-900 dark:text-slate-100 font-bold text-right"
-                                    />
+                                    <div className="relative group">
+                                        <input
+                                            required
+                                            type="number"
+                                            value={formData.qty}
+                                            onFocus={(e) => e.target.select()}
+                                            onChange={e => setFormData({ ...formData, qty: e.target.value })}
+                                            className="w-full bg-slate-50 dark:bg-slate-950/50 border border-slate-200 dark:border-slate-800 rounded-2xl py-4 px-6 text-slate-900 dark:text-slate-100 font-black text-center text-lg focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all"
+                                        />
+                                        <span className="absolute right-5 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-400 uppercase tracking-widest pointer-events-none">
+                                            {formData.gender?.toLowerCase()?.includes("limpia") || formData.gender?.toLowerCase()?.includes("ambiente") ? "ml" : "gr"}
+                                        </span>
+                                    </div>
                                 </div>
                             </div>
 
-                            <button type="submit" className="w-full py-5 bg-orange-600 text-white rounded-3xl font-black text-xl hover:bg-orange-700 shadow-xl shadow-orange-600/20 transition-all">
-                                Guardar Materia Prima
+                            <button 
+                                type="submit" 
+                                className="w-full py-5 bg-indigo-600 text-white rounded-[2rem] font-black text-xl hover:bg-indigo-700 shadow-xl shadow-indigo-600/20 active:scale-[0.98] transition-all cursor-pointer flex items-center justify-center gap-3 group"
+                            >
+                                <FlaskConical className="w-6 h-6 group-hover:rotate-12 transition-transform" />
+                                {editingId ? "Actualizar Esencia" : "Guardar Materia Prima"}
                             </button>
                         </form>
                     </div>

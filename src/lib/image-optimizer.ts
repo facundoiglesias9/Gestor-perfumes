@@ -5,13 +5,7 @@
 export function getOptimizedImageUrl(url: string | undefined, size: number = 400) {
     if (!url) return undefined;
 
-    // Si la URL no es de Supabase Storage, retornarla tal cual
-    if (!url.includes('supabase.co/storage/v1/object/public/')) {
-        return url;
-    }
-
-    // Reemplazar 'object/public' por 'render/image/public'
-    // Y añadir parámetros de transformación
-    const optimizedUrl = url.replace('/object/public/', '/render/image/public/');
-    return `${optimizedUrl}?width=${size}&height=${size}&resize=contain&quality=75`;
+    // Supabase Image Transformation is a paid feature (Pro). 
+    // If getting 403, we must use the original public URL.
+    return url;
 }

@@ -21,7 +21,8 @@ import {
     ExternalLink,
     Loader2,
     Copy,
-    Check
+    Check,
+    MessageCircle
 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import Image from "next/image";
@@ -85,6 +86,7 @@ export default function ListaMinoristaPage() {
     const [search, setSearch] = useState("");
     const [categoryFilter, setCategoryFilter] = useState("Todas");
     const [genderFilter, setGenderFilter] = useState("Todos");
+    const [sizeFilter, setSizeFilter] = useState("Todos");
     const [sortBy, setSortBy] = useState<"price-asc" | "price-desc" | "id-asc" | "id-desc" | "none">("none");
     const [isCartOpen, setIsCartOpen] = useState(false);
     const [customerName, setCustomerName] = useState("");
@@ -110,10 +112,11 @@ export default function ListaMinoristaPage() {
         try {
             const saved = sessionStorage.getItem('minorista_filters');
             if (saved) {
-                const { search: s, categoryFilter: c, genderFilter: g, sortBy: sb, currentPage: p } = JSON.parse(saved);
+                const { search: s, categoryFilter: c, genderFilter: g, sizeFilter: sz, sortBy: sb, currentPage: p } = JSON.parse(saved);
                 if (s !== undefined) setSearch(s);
                 if (c !== undefined) setCategoryFilter(c);
                 if (g !== undefined) setGenderFilter(g);
+                if (sz !== undefined) setSizeFilter(sz);
                 if (sb !== undefined) setSortBy(sb);
                 if (p !== undefined) setCurrentPage(p);
             }
@@ -124,7 +127,7 @@ export default function ListaMinoristaPage() {
     // Save filters + page to sessionStorage whenever they change
     useEffect(() => {
         if (isRestored) {
-            sessionStorage.setItem('minorista_filters', JSON.stringify({ search, categoryFilter, genderFilter, sortBy, currentPage }));
+            sessionStorage.setItem('minorista_filters', JSON.stringify({ search, categoryFilter, genderFilter, sizeFilter, sortBy, currentPage }));
         }
     }, [search, categoryFilter, genderFilter, sortBy, currentPage, isRestored]);
 
@@ -140,11 +143,16 @@ export default function ListaMinoristaPage() {
         }
 
         if (categoryFilter !== "Todas") {
-            result = result.filter(p => p.category === categoryFilter);
+            const lowCatFilter = categoryFilter.trim().toLowerCase();
+            result = result.filter(p => 
+                p.category?.trim().toLowerCase().includes(lowCatFilter) ||
+                lowCatFilter.includes(p.category?.trim().toLowerCase())
+            );
         }
 
         if (genderFilter !== "Todos") {
-            result = result.filter(p => p.gender === genderFilter);
+            const lowGenderFilter = genderFilter.toLowerCase();
+            result = result.filter(p => p.gender?.toLowerCase() === lowGenderFilter);
         }
 
         if (sortBy === "price-asc") {
@@ -392,14 +400,14 @@ export default function ListaMinoristaPage() {
                     {paginatedProductos.map((prod, idx) => (
                         <div key={prod.id} className="relative group flex flex-col bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl overflow-hidden hover:shadow-2xl hover:-translate-y-1 transition-all duration-300">
                             {/* Image Placeholder */}
-                            <div className="relative aspect-square bg-slate-100 dark:bg-slate-800/50 flex items-center justify-center p-6 overflow-hidden">
+                            <div className="relative aspect-square bg-white flex items-center justify-center overflow-hidden">
                                 {prod.imageUrl ? (
                                     <Image
                                         src={getOptimizedImageUrl(prod.imageUrl, 400) || prod.imageUrl || ""}
                                         alt={prod.name}
                                         fill
                                         sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                                        className="object-cover rounded-2xl group-hover:scale-105 transition-transform duration-500"
+                                        className="object-contain rounded-2xl group-hover:scale-105 transition-transform duration-500"
                                         priority={idx < 4}
                                         loading={idx < 4 ? undefined : "lazy"}
                                     />
@@ -412,10 +420,14 @@ export default function ListaMinoristaPage() {
 
                             {/* Gender Badge */}
                             <div className="absolute top-4 left-4 z-10">
-                                <span className={`inline-flex items-center px-3 py-1.5 rounded-xl font-black text-[10px] uppercase tracking-widest shadow-xl backdrop-blur-md border ${prod.gender === 'Femenino' ? 'bg-pink-600/90 text-white border-pink-400/50' :
+                                <span className={`inline-flex items-center px-3 py-1.5 rounded-xl font-black text-[10px] uppercase tracking-widest shadow-xl backdrop-blur-md border ${
+                                    prod.gender === 'Femenino' ? 'bg-pink-600/90 text-white border-pink-400/50' :
                                     prod.gender === 'Masculino' ? 'bg-sky-600/90 text-white border-sky-400/50' :
-                                        prod.gender === 'Unisex' ? 'bg-emerald-600/90 text-white border-emerald-400/50' :
-                                            'bg-slate-800/90 text-white border-slate-600/50'
+                                    prod.gender === 'Unisex' ? 'bg-emerald-600/90 text-white border-emerald-400/50' :
+                                    (prod.gender === 'Ambiente' || (typeof prod.gender === 'string' && prod.gender.toLowerCase().includes('ambiente'))) ? 'bg-amber-600/90 text-white border-amber-400/50' :
+                                    (prod.gender === 'Auto' || (typeof prod.gender === 'string' && prod.gender.toLowerCase().includes('auto'))) ? 'bg-violet-600/90 text-white border-violet-400/50' :
+                                    (typeof prod.gender === 'string' && prod.gender.toLowerCase().includes('limpia')) ? 'bg-cyan-600/90 text-white border-cyan-400/50' :
+                                    'bg-slate-800/90 text-white border-slate-600/50'
                                     }`}>
                                     {prod.gender}
                                 </span>
@@ -475,20 +487,34 @@ export default function ListaMinoristaPage() {
                                 </div>
 
                                 <div className="flex items-end justify-between w-full mt-auto text-left">
-                                    <div>
-                                        {(() => {
-                                            const promo = promotions.find(p => p.productId === prod.id && p.isActive && (!p.endDate || new Date(p.endDate) >= new Date()));
-                                            if (promo) {
+                                    {!isAdmin && prod.priceMinorista === 0 ? (
+                                        <div className="flex flex-col gap-1">
+                                            <p className="text-xl font-black text-emerald-600 dark:text-emerald-400 tracking-tight uppercase">
+                                                Consultar
+                                            </p>
+                                        </div>
+                                    ) : (
+                                        <div>
+                                            {(() => {
+                                                const promo = promotions.find(p => p.productId === prod.id && p.isActive && (!p.endDate || new Date(p.endDate) >= new Date()));
+                                                if (promo) {
+                                                    return (
+                                                        <>
+                                                            <p className="text-xs text-slate-400 line-through font-bold mb-0.5 opacity-60">
+                                                                ${prod.priceMinorista.toLocaleString()}
+                                                            </p>
+                                                            <p className="text-3xl font-black text-violet-600 dark:text-violet-400 tracking-tight">
+                                                                <span className="text-xl mr-0.5">$</span>
+                                                                {Math.round(prod.priceMinorista * (1 - promo.discountPercentage / 100)).toLocaleString()}
+                                                            </p>
+                                                        </>
+                                                    );
+                                                }
+                                            if (prod.priceMinorista === 0) {
                                                 return (
-                                                    <>
-                                                        <p className="text-xs text-slate-400 line-through font-bold mb-0.5 opacity-60">
-                                                            ${prod.priceMinorista.toLocaleString()}
-                                                        </p>
-                                                        <p className="text-3xl font-black text-violet-600 dark:text-violet-400 tracking-tight">
-                                                            <span className="text-xl mr-0.5">$</span>
-                                                            {Math.round(prod.priceMinorista * (1 - promo.discountPercentage / 100)).toLocaleString()}
-                                                        </p>
-                                                    </>
+                                                    <p className="text-xl font-black text-emerald-600 dark:text-emerald-400 tracking-tight uppercase">
+                                                        Consultar
+                                                    </p>
                                                 );
                                             }
                                             return (
@@ -497,16 +523,29 @@ export default function ListaMinoristaPage() {
                                                     {prod.priceMinorista.toLocaleString("es-AR")}
                                                 </p>
                                             );
-                                        })()}
-                                    </div>
+                                            })()}
+                                        </div>
+                                    )}
 
-                                    <button
-                                        onClick={() => addToCart(prod, "minorista")}
-                                        className="p-4 bg-slate-900 dark:bg-emerald-600 text-white rounded-2xl hover:bg-emerald-600 dark:hover:bg-emerald-500 shadow-[0_4px_20px_rgb(0,0,0,0.1)] hover:shadow-[0_8px_25px_rgba(16,185,129,0.3)] hover:-translate-y-1 active:translate-y-0 active:scale-95 transition-all"
-                                        title="Agregar al carrito"
-                                    >
-                                        <ShoppingCart className="w-6 h-6" strokeWidth={2.5} />
-                                    </button>
+                                    {!isAdmin && prod.priceMinorista === 0 ? (
+                                        <a
+                                            href={`https://wa.me/5491122558866?text=Hola!%20Quiero%20consultar%20por%20el%20producto:%20${encodeURIComponent(prod.name)}%20(Cód.%20${prod.id})`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="p-4 bg-emerald-500 text-white rounded-2xl hover:bg-emerald-600 shadow-[0_4px_20px_rgba(16,185,129,0.2)] hover:shadow-[0_8px_25px_rgba(16,185,129,0.4)] hover:-translate-y-1 active:translate-y-0 active:scale-95 transition-all"
+                                            title="Consultar por WhatsApp"
+                                        >
+                                            <MessageCircle className="w-6 h-6" strokeWidth={2.5} />
+                                        </a>
+                                    ) : (
+                                        <button
+                                            onClick={() => addToCart(prod, "minorista")}
+                                            className="p-4 bg-slate-900 dark:bg-emerald-600 text-white rounded-2xl hover:bg-emerald-600 dark:hover:bg-emerald-500 shadow-[0_4px_20px_rgb(0,0,0,0.1)] hover:shadow-[0_8px_25px_rgba(16,185,129,0.3)] hover:-translate-y-1 active:translate-y-0 active:scale-95 transition-all"
+                                            title="Agregar al carrito"
+                                        >
+                                            <ShoppingCart className="w-6 h-6" strokeWidth={2.5} />
+                                        </button>
+                                    )}
                                 </div>
                             </div>
                         </div>
@@ -611,6 +650,11 @@ export default function ListaMinoristaPage() {
 
                                             return (
                                                 <div key={idx} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800 animate-in slide-in-from-bottom-2">
+                                                    <div className="w-16 h-16 bg-slate-100 dark:bg-slate-800/50 rounded-xl overflow-hidden shrink-0">
+                                                        {item.producto.imageUrl && (
+                                                            <img src={item.producto.imageUrl} className="w-full h-full object-contain p-1" alt={item.producto.name} />
+                                                        )}
+                                                    </div>
                                                     <div className="flex-1 w-full text-center sm:text-left">
                                                         <p className="font-black text-slate-900 dark:text-slate-100">{item.producto.name}</p>
                                                         <div className="flex items-center justify-center sm:justify-start gap-2 mt-1 mb-1.5">

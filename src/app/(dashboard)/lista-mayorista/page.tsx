@@ -20,7 +20,8 @@ import {
     ExternalLink,
     Loader2,
     Copy,
-    Check
+    Check,
+    MessageCircle
 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import Image from "next/image";
@@ -67,6 +68,7 @@ export default function ListaMayoristaPage() {
     const [searchTerm, setSearchTerm] = useState("");
     const [categoryFilter, setCategoryFilter] = useState("Todas");
     const [genderFilter, setGenderFilter] = useState("Todos");
+    const [sizeFilter, setSizeFilter] = useState("Todos");
     const [sortBy, setSortBy] = useState<"price-asc" | "price-desc" | "id-asc" | "id-desc" | "none">("none");
     const [isCartOpen, setIsCartOpen] = useState(false);
     const [customerName, setCustomerName] = useState("");
@@ -92,10 +94,11 @@ export default function ListaMayoristaPage() {
         try {
             const saved = sessionStorage.getItem('mayorista_filters');
             if (saved) {
-                const { searchTerm: s, categoryFilter: c, genderFilter: g, sortBy: sb, currentPage: p } = JSON.parse(saved);
+                const { searchTerm: s, categoryFilter: c, genderFilter: g, sizeFilter: sz, sortBy: sb, currentPage: p } = JSON.parse(saved);
                 if (s !== undefined) setSearchTerm(s);
                 if (c !== undefined) setCategoryFilter(c);
                 if (g !== undefined) setGenderFilter(g);
+                if (sz !== undefined) setSizeFilter(sz);
                 if (sb !== undefined) setSortBy(sb);
                 if (p !== undefined) setCurrentPage(p);
             }
@@ -106,7 +109,7 @@ export default function ListaMayoristaPage() {
     // Save filters + page to sessionStorage whenever they change
     useEffect(() => {
         if (isRestored) {
-            sessionStorage.setItem('mayorista_filters', JSON.stringify({ searchTerm, categoryFilter, genderFilter, sortBy, currentPage }));
+            sessionStorage.setItem('mayorista_filters', JSON.stringify({ searchTerm, categoryFilter, genderFilter, sizeFilter, sortBy, currentPage }));
         }
     }, [searchTerm, categoryFilter, genderFilter, sortBy, currentPage, isRestored]);
 
@@ -124,11 +127,16 @@ export default function ListaMayoristaPage() {
         }
 
         if (categoryFilter !== "Todas") {
-            result = result.filter(p => p.category === categoryFilter);
+            const lowCatFilter = categoryFilter.trim().toLowerCase();
+            result = result.filter(p => 
+                p.category?.trim().toLowerCase().includes(lowCatFilter) ||
+                lowCatFilter.includes(p.category?.trim().toLowerCase())
+            );
         }
 
         if (genderFilter !== "Todos") {
-            result = result.filter(p => p.gender === genderFilter);
+            const lowGenderFilter = genderFilter.toLowerCase();
+            result = result.filter(p => p.gender?.toLowerCase() === lowGenderFilter);
         }
 
         if (sortBy === "price-asc") {
@@ -332,6 +340,8 @@ export default function ListaMayoristaPage() {
                         <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
                     </div>
 
+
+
                     <div className="relative min-w-[200px]">
                         <ArrowUpDown className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                         <select
@@ -371,14 +381,14 @@ export default function ListaMayoristaPage() {
                     {paginatedProductos.map((prod, idx) => (
                         <div key={prod.id} className="relative group flex flex-col bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl overflow-hidden hover:shadow-2xl hover:-translate-y-1 transition-all duration-300">
                             {/* Image Placeholder */}
-                            <div className="relative aspect-square bg-slate-100 dark:bg-slate-800/50 flex items-center justify-center p-6 overflow-hidden">
+                            <div className="relative aspect-square bg-white flex items-center justify-center overflow-hidden">
                                 {prod.imageUrl ? (
                                     <Image
                                         src={getOptimizedImageUrl(prod.imageUrl, 400) || prod.imageUrl}
                                         alt={prod.name}
                                         fill
                                         sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                                        className="object-cover rounded-2xl group-hover:scale-105 transition-transform duration-500"
+                                        className="object-contain rounded-2xl group-hover:scale-105 transition-transform duration-500"
                                         priority={idx < 4}
                                         loading={idx < 4 ? undefined : "lazy"}
                                     />
@@ -391,10 +401,14 @@ export default function ListaMayoristaPage() {
 
                                 {/* Gender Badge */}
                                 <div className="absolute top-4 left-4 z-10 transition-transform duration-300 group-hover:scale-105">
-                                    <span className={`inline-flex items-center px-3.5 py-1.5 rounded-2xl font-black text-[10px] uppercase tracking-[0.05em] shadow-xl border border-white/20 text-white ${prod.gender === 'Femenino' ? 'bg-gradient-to-br from-pink-500 to-rose-600 shadow-pink-500/20' :
+                                    <span className={`inline-flex items-center px-3.5 py-1.5 rounded-2xl font-black text-[10px] uppercase tracking-[0.05em] shadow-xl border border-white/20 text-white ${
+                                        prod.gender === 'Femenino' ? 'bg-gradient-to-br from-pink-500 to-rose-600 shadow-pink-500/20' :
                                         prod.gender === 'Masculino' ? 'bg-gradient-to-br from-indigo-500 to-blue-700 shadow-indigo-500/20' :
-                                            prod.gender === 'Unisex' ? 'bg-gradient-to-br from-emerald-500 to-teal-700 shadow-emerald-500/20' :
-                                                'bg-gradient-to-br from-slate-600 to-slate-800 shadow-slate-500/20'
+                                        prod.gender === 'Unisex' ? 'bg-gradient-to-br from-emerald-500 to-teal-700 shadow-emerald-500/20' :
+                                        (prod.gender === 'Ambiente' || (typeof prod.gender === 'string' && prod.gender.toLowerCase().includes('ambiente'))) ? 'bg-gradient-to-br from-orange-500 to-amber-600 shadow-orange-500/20' :
+                                        (prod.gender === 'Auto' || (typeof prod.gender === 'string' && prod.gender.toLowerCase().includes('auto'))) ? 'bg-gradient-to-br from-violet-500 to-purple-700 shadow-violet-500/20' :
+                                        (typeof prod.gender === 'string' && prod.gender.toLowerCase().includes('limpia')) ? 'bg-gradient-to-br from-cyan-500 to-blue-600 shadow-cyan-500/20' :
+                                        'bg-gradient-to-br from-slate-600 to-slate-800 shadow-slate-500/20'
                                         }`}>
                                         <span className="mr-2 w-1.5 h-1.5 rounded-full bg-white/40 animate-pulse"></span>
                                         {prod.gender}
@@ -443,19 +457,37 @@ export default function ListaMayoristaPage() {
 
                                 <div className="flex items-end justify-between w-full mt-auto text-left">
                                     <div>
-                                        <p className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">
-                                            <span className="text-xl text-slate-400 mr-0.5">$</span>
-                                            {prod.price.toLocaleString("es-AR")}
-                                        </p>
+                                        {prod.price === 0 ? (
+                                            <p className="text-xl font-black text-indigo-600 dark:text-indigo-400 tracking-tight uppercase">
+                                                Consultar
+                                            </p>
+                                        ) : (
+                                            <p className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">
+                                                <span className="text-xl text-slate-400 mr-0.5">$</span>
+                                                {prod.price.toLocaleString("es-AR")}
+                                            </p>
+                                        )}
                                     </div>
 
-                                    <button
-                                        onClick={() => addToCart(prod, "mayorista")}
-                                        className="p-4 bg-slate-900 dark:bg-indigo-600 text-white rounded-2xl hover:bg-indigo-600 dark:hover:bg-indigo-500 shadow-[0_4px_20px_rgb(0,0,0,0.1)] hover:shadow-[0_8px_25px_rgba(99,102,241,0.3)] hover:-translate-y-1 active:translate-y-0 active:scale-95 transition-all"
-                                        title="Agregar al carrito"
-                                    >
-                                        <ShoppingCart className="w-6 h-6" strokeWidth={2.5} />
-                                    </button>
+                                    {!isAdmin && prod.price === 0 ? (
+                                        <a
+                                            href={`https://wa.me/5491122558866?text=Hola!%20Quiero%20consultar%20por%20el%20producto:%20${encodeURIComponent(prod.name)}%20(Cód.%20${prod.id})`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="p-4 bg-emerald-500 text-white rounded-2xl hover:bg-emerald-600 shadow-[0_4px_20px_rgba(16,185,129,0.2)] hover:shadow-[0_8px_25px_rgba(16,185,129,0.4)] hover:-translate-y-1 active:translate-y-0 active:scale-95 transition-all"
+                                            title="Consultar por WhatsApp"
+                                        >
+                                            <MessageCircle className="w-6 h-6" strokeWidth={2.5} />
+                                        </a>
+                                    ) : (
+                                        <button
+                                            onClick={() => addToCart(prod, "mayorista")}
+                                            className="p-4 bg-slate-900 dark:bg-indigo-600 text-white rounded-2xl hover:bg-indigo-600 dark:hover:bg-indigo-500 shadow-[0_4px_20px_rgb(0,0,0,0.1)] hover:shadow-[0_8px_25_rgba(99,102,241,0.3)] hover:-translate-y-1 active:translate-y-0 active:scale-95 transition-all"
+                                            title="Agregar al carrito"
+                                        >
+                                            <ShoppingCart className="w-6 h-6" strokeWidth={2.5} />
+                                        </button>
+                                    )}
                                 </div>
                             </div>
                         </div>

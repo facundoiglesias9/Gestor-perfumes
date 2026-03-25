@@ -63,8 +63,11 @@ async function getProductsFromCategory(baseUrl: string, gender: "Femenino" | "Ma
                     const fullUrl = relativeUrl.startsWith("http") ? relativeUrl : `https://vanrossum.com.ar${relativeUrl}`;
                     const prices = await scrapeProductPrices(fullUrl);
 
+                    // Generamos un ID determinístico basado en el nombre para evitar duplicados en sincronizaciones futuras
+                    const deterministicId = `VR-${name.replace(/[^a-zA-Z0-9]/g, "").toUpperCase()}`;
+
                     products.push({
-                        id: `VR-${Math.random().toString(36).substr(2, 9).toUpperCase()}`,
+                        id: deterministicId,
                         name: name,
                         category: "Perfumería Fina",
                         gender: gender,
