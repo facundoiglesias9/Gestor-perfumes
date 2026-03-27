@@ -26,7 +26,7 @@ function DashboardContent({ children }: { children: ReactNode }) {
         const role = currentUser.role;
 
         // Define accessible paths per role
-        const retailerPaths = ["/minorista", "/pedidos-solicitud"];
+        const retailerPaths = ["/minorista", "/pedidos-solicitud", "/quiero-ser-mayorista"];
         const wholesalerPaths = ["/lista-mayorista", "/pedidos-solicitud", "/historial-compras", "/notas", "/dashboard-mayorista"];
 
         // Admin has access to everything

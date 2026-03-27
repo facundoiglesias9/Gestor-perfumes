@@ -11,6 +11,7 @@ export const metadata: Metadata = {
 };
 
 import { AppProvider } from "@/context/AppContext";
+import { Toaster } from "sonner";
 
 export default function RootLayout({
   children,
@@ -39,6 +40,12 @@ export default function RootLayout({
       <body className="antialiased">
         <AppProvider>
           {children}
+          <Toaster 
+            position="top-right" 
+            theme="system" 
+            richColors 
+            expand={false}
+          />
         </AppProvider>
       </body>
     </html>

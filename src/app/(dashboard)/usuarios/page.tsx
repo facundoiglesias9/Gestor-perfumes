@@ -16,7 +16,8 @@ import {
     Clock,
     KeyRound,
     Mail,
-    Loader2
+    Loader2,
+    StickyNote
 } from "lucide-react";
 import { useAppContext, Usuario, UserRole } from "@/context/AppContext";
 import { motion, AnimatePresence } from "framer-motion";
@@ -29,6 +30,7 @@ export default function GestionUsuariosPage() {
 
     // Modals
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+    const [isQuickEdit, setIsQuickEdit] = useState(false);
     const [editingUser, setEditingUser] = useState<Usuario | null>(null);
     const [isSuccess, setIsSuccess] = useState(false);
 
@@ -38,7 +40,8 @@ export default function GestionUsuariosPage() {
         email: "",
         password: "",
         role: "minorista" as UserRole,
-        status: "Activo" as "Activo" | "Inactivo"
+        status: "Activo" as "Activo" | "Inactivo",
+        notas: ""
     });
 
     const filteredUsuarios = useMemo(() => {
@@ -70,18 +73,20 @@ export default function GestionUsuariosPage() {
             setIsSuccess(false);
             setIsCreateModalOpen(false);
             setEditingUser(null);
-            setFormData({ username: "", email: "", password: "", role: "minorista", status: "Activo" });
+            setFormData({ username: "", email: "", password: "", role: "minorista", status: "Activo", notas: "" });
         }, 1500);
     };
 
-    const handleEdit = (user: Usuario) => {
+    const handleEdit = (user: Usuario, quick: boolean = false) => {
         setEditingUser(user);
+        setIsQuickEdit(quick);
         setFormData({
             username: user.username,
             email: user.email || "",
             password: user.password || "",
             role: user.role,
-            status: user.status
+            status: user.status,
+            notas: user.notas || ""
         });
         setIsCreateModalOpen(true);
     };
@@ -195,6 +200,25 @@ export default function GestionUsuariosPage() {
                                         <span className={`w-1.5 h-1.5 my-auto mr-1.5 rounded-full ${u.status === 'Activo' ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`}></span>
                                         {u.status}
                                     </span>
+
+                                    {/* Tooltip de Notas Permanente con Doble Click para Editar */}
+                                    <div 
+                                        className="relative group/note" 
+                                        onDoubleClick={() => handleEdit(u, true)}
+                                        title="Doble click para editar SOLO notas"
+                                    >
+                                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center cursor-help border transition-all ${u.notas ? 'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-500 border-indigo-100 dark:border-indigo-500/20 hover:bg-indigo-500 hover:text-white' : 'bg-slate-50 dark:bg-slate-800 text-slate-300 border-slate-100 dark:border-slate-700/50'}`}>
+                                            <StickyNote className="w-5 h-5" />
+                                        </div>
+                                        
+                                        <div className="absolute top-12 right-0 w-64 p-4 bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-100 dark:border-slate-700 opacity-0 invisible group-hover/note:opacity-100 group-hover/note:visible transition-all z-50 pointer-events-none translate-y-2 group-hover/note:translate-y-0">
+                                            <p className="text-[10px] font-black uppercase text-indigo-500 mb-2 tracking-widest">Información de Usuario</p>
+                                            <p className="text-[11px] font-bold text-slate-600 dark:text-slate-300 whitespace-pre-wrap leading-relaxed">
+                                                {u.notas || "Sin anotaciones administrativas registradas."}
+                                            </p>
+                                            <div className="absolute -top-1.5 right-4 w-3 h-3 bg-white dark:bg-slate-800 border-t border-l border-slate-100 dark:border-slate-700 rotate-45" />
+                                        </div>
+                                    </div>
                                 </div>
 
                                 <div className="space-y-3 mb-8">
@@ -264,10 +288,10 @@ export default function GestionUsuariosPage() {
                                     <div className="flex items-center justify-between mb-2">
                                         <div className="space-y-1">
                                             <h2 className="text-3xl font-black text-slate-900 dark:text-white tracking-tighter">
-                                                {editingUser ? "Configurar Perfil" : "Crear Usuario"}
+                                                {isQuickEdit ? "Editar Notas Administrativas" : (editingUser ? "Configurar Perfil" : "Crear Usuario")}
                                             </h2>
                                             <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">
-                                                {editingUser ? `ID: ${editingUser.id}` : "Ingresá los datos del nuevo acceso"}
+                                                {editingUser ? `Usuario: ${editingUser.username}` : "Ingresá los datos del nuevo acceso"}
                                             </p>
                                         </div>
                                         <button type="button" onClick={() => setIsCreateModalOpen(false)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors text-slate-400">
@@ -275,87 +299,104 @@ export default function GestionUsuariosPage() {
                                         </button>
                                     </div>
 
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <div className="space-y-2">
-                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-2">
-                                                <Users className="w-3 h-3" /> Nombre de Usuario
-                                            </label>
-                                            <input
-                                                required
-                                                type="text"
-                                                value={formData.username}
-                                                onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-                                                className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-2xl py-4 px-6 text-sm font-bold focus:ring-2 focus:ring-indigo-500/30 dark:text-white"
-                                            />
+                                    {!isQuickEdit && (
+                                        <>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div className="space-y-2">
+                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-2">
+                                                    <Users className="w-3 h-3" /> Nombre de Usuario
+                                                </label>
+                                                <input
+                                                    required
+                                                    type="text"
+                                                    value={formData.username}
+                                                    onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                                                    className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-2xl py-4 px-6 text-sm font-bold focus:ring-2 focus:ring-indigo-500/30 dark:text-white"
+                                                />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-2">
+                                                    <Mail className="w-3 h-3" /> Email Institucional
+                                                </label>
+                                                <input
+                                                    required
+                                                    type="email"
+                                                    value={formData.email}
+                                                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                                                    className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-2xl py-4 px-6 text-sm font-bold focus:ring-2 focus:ring-indigo-500/30 dark:text-white"
+                                                />
+                                            </div>
                                         </div>
-                                        <div className="space-y-2">
-                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-2">
-                                                <Mail className="w-3 h-3" /> Email Institucional
-                                            </label>
-                                            <input
-                                                required
-                                                type="email"
-                                                value={formData.email}
-                                                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                                                className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-2xl py-4 px-6 text-sm font-bold focus:ring-2 focus:ring-indigo-500/30 dark:text-white"
-                                            />
-                                        </div>
-                                    </div>
 
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <div className="space-y-2">
-                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-2">
-                                                <KeyRound className="w-3 h-3" /> Contraseña Secreta
-                                            </label>
-                                            <input
-                                                required
-                                                type="password"
-                                                value={formData.password}
-                                                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                                                className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-2xl py-4 px-6 text-sm font-bold focus:ring-2 focus:ring-indigo-500/30 dark:text-white"
-                                            />
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div className="space-y-2">
+                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-2">
+                                                    <KeyRound className="w-3 h-3" /> Contraseña Secreta
+                                                </label>
+                                                <input
+                                                    required
+                                                    type="password"
+                                                    value={formData.password}
+                                                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                                                    className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-2xl py-4 px-6 text-sm font-bold focus:ring-2 focus:ring-indigo-500/30 dark:text-white"
+                                                />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-2">
+                                                    <ShieldAlert className="w-3 h-3" /> Rol del Sistema
+                                                </label>
+                                                <select
+                                                    value={formData.role}
+                                                    onChange={(e) => setFormData({ ...formData, role: e.target.value as UserRole })}
+                                                    className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-2xl py-4 px-6 text-sm font-bold focus:ring-2 focus:ring-indigo-500/30 dark:text-white cursor-pointer"
+                                                >
+                                                    <option value="admin">Administrador Full</option>
+                                                    <option value="mayorista">Revendedor Mayorista</option>
+                                                    <option value="minorista">Cliente Minorista</option>
+                                                </select>
+                                            </div>
                                         </div>
-                                        <div className="space-y-2">
-                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-2">
-                                                <ShieldAlert className="w-3 h-3" /> Rol del Sistema
-                                            </label>
-                                            <select
-                                                value={formData.role}
-                                                onChange={(e) => setFormData({ ...formData, role: e.target.value as UserRole })}
-                                                className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-2xl py-4 px-6 text-sm font-bold focus:ring-2 focus:ring-indigo-500/30 dark:text-white cursor-pointer"
-                                            >
-                                                <option value="admin">Administrador Full</option>
-                                                <option value="mayorista">Revendedor Mayorista</option>
-                                                <option value="minorista">Cliente Minorista</option>
-                                            </select>
-                                        </div>
-                                    </div>
+                                        </>
+                                    )}
 
                                     <div className="space-y-2">
-                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Estado de Acceso</label>
-                                        <div className="flex gap-2">
-                                            <button
-                                                type="button"
-                                                onClick={() => setFormData({ ...formData, status: 'Activo' })}
-                                                className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${formData.status === 'Activo' ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-500/20' : 'bg-slate-50 dark:bg-slate-800 text-slate-400'}`}
-                                            >
-                                                Habilitar Acceso
-                                            </button>
-                                            <button
-                                                type="button"
-                                                onClick={() => setFormData({ ...formData, status: 'Inactivo' })}
-                                                className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${formData.status === 'Inactivo' ? 'bg-rose-600 text-white shadow-lg shadow-rose-500/20' : 'bg-slate-50 dark:bg-slate-800 text-slate-400'}`}
-                                            >
-                                                Inhabilitar Acceso
-                                            </button>
-                                        </div>
+                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Notas Administrativas</label>
+                                        <textarea 
+                                            placeholder="Detalles sobre el usuario, motivo de la cuenta, etc..."
+                                            rows={2}
+                                            value={formData.notas}
+                                            onChange={(e) => setFormData({ ...formData, notas: e.target.value })}
+                                            className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-2xl py-4 px-6 text-sm font-bold focus:ring-2 focus:ring-indigo-500/30 dark:text-white resize-none"
+                                        />
                                     </div>
+
+                                    {!isQuickEdit && (
+                                        <div className="space-y-2">
+                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Estado de Acceso</label>
+                                            <div className="flex gap-2">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setFormData({ ...formData, status: 'Activo' })}
+                                                    className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${formData.status === 'Activo' ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-500/20' : 'bg-slate-50 dark:bg-slate-800 text-slate-400'}`}
+                                                >
+                                                    Habilitar Acceso
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setFormData({ ...formData, status: 'Inactivo' })}
+                                                    className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${formData.status === 'Inactivo' ? 'bg-rose-600 text-white shadow-lg shadow-rose-500/20' : 'bg-slate-50 dark:bg-slate-800 text-slate-400'}`}
+                                                >
+                                                    Inhabilitar Acceso
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )}
 
                                     <button
                                         type="submit"
                                         className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-5 rounded-2xl font-black text-lg transition-all shadow-xl shadow-indigo-600/20 active:scale-95"
                                     >
-                                        {editingUser ? "Actualizar Miembro" : "Crear Acceso Ahora"}
+                                        {isQuickEdit ? "Guardar Solo Notas" : (editingUser ? "Actualizar Miembro" : "Crear Acceso Ahora")}
                                     </button>
                                 </form>
                             )}

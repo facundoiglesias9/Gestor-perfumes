@@ -36,11 +36,12 @@ export default function PedidosSolicitudPage() {
 }
 
 function PedidosSolicitudContent() {
-    const { orders, updateOrderStatus, updateOrderPaymentStatus, setTransacciones, transacciones, setInventario, inventario, esencias, insumos, deleteOrder, currentUser, getNextId } = useAppContext();
+    const { orders, updateOrderStatus, updateOrderPaymentStatus, setTransacciones, transacciones, setInventario, inventario, esencias, insumos, cancelOrder, deleteOrder, currentUser, getNextId } = useAppContext();
     const searchParams = useSearchParams();
     const [searchTerm, setSearchTerm] = useState("");
     const [toast, setToast] = useState<{ message: string, type: "success" | "info" | "error" } | null>(null);
-    const [itemToDelete, setItemToDelete] = useState<string | null>(null);
+    const [itemToCancel, setItemToCancel] = useState<string | null>(null);
+    const [cancelReason, setCancelReason] = useState("");
 
     useEffect(() => {
         if (toast) {
@@ -67,19 +68,15 @@ function PedidosSolicitudContent() {
 
     const stages: { level: OrderStatus; label: string; icon: any; color: string }[] = [
         { level: "solicitud recibida", label: "Recibida", icon: Clock, color: "text-amber-500 bg-amber-50 dark:bg-amber-500/10" },
-        { level: "pedido confirmado", label: "Confirmado", icon: CheckCircle2, color: "text-blue-500 bg-blue-50 dark:bg-blue-500/10" },
+        { level: "pedido confirmed" as any, label: "Confirmado", icon: CheckCircle2, color: "text-blue-500 bg-blue-50 dark:bg-blue-500/10" },
         { level: "en preparacion", label: "En Preparación", icon: ClipboardList, color: "text-indigo-500 bg-indigo-50 dark:bg-indigo-500/10" },
         { level: "listo para entregar", label: "Listo / Enviado", icon: Truck, color: "text-emerald-500 bg-emerald-50 dark:bg-emerald-500/10" },
     ];
 
     const filteredOrders = orders.filter(o => {
-        // Search filter
         const matchesSearch = o.customerName.toLowerCase().includes(searchTerm.toLowerCase()) || o.id.includes(searchTerm);
-
-        // Role filter
         const isAdmin = currentUser?.role === "admin";
         const isMine = o.customerName.trim().toLowerCase() === currentUser?.username.trim().toLowerCase();
-
         return matchesSearch && (isAdmin || isMine);
     });
 
@@ -109,7 +106,6 @@ function PedidosSolicitudContent() {
                 </div>
             </header>
 
-            {/* Pipeline Overview */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 {stages.map((stage) => (
                     <div key={stage.level} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-sm">
@@ -153,7 +149,7 @@ function PedidosSolicitudContent() {
                     <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                         {filteredOrders.length === 0 ? (
                             <tr>
-                                <td colSpan={6} className="px-8 py-20 text-center">
+                                <td colSpan={7} className="px-8 py-20 text-center">
                                     <div className="flex flex-col items-center gap-4 text-slate-300 dark:text-slate-700">
                                         <ShoppingCart className="w-16 h-16" strokeWidth={1} />
                                         <p className="text-xl font-bold">No hay pedidos registrados</p>
@@ -164,7 +160,6 @@ function PedidosSolicitudContent() {
                             filteredOrders.map((order) => {
                                 const currentStage = stages.find(s => s.level === order.status);
                                 const nextStatus = getNextStatus(order.status);
-
                                 return (
                                     <tr key={order.id} className="group hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-all">
                                         <td className="px-8 py-6">
@@ -177,11 +172,9 @@ function PedidosSolicitudContent() {
                                             <p className="text-slate-900 dark:text-slate-100 font-bold">{order.customerName}</p>
                                         </td>
                                         <td className="px-8 py-6 text-center relative group/tooltip">
-                                            <span className="px-3 py-1 bg-slate-100 dark:bg-slate-800 rounded-lg text-xs font-black text-slate-600 dark:text-slate-400 cursor-help transition-colors group-hover/tooltip:bg-slate-200 dark:group-hover/tooltip:bg-slate-700">
+                                            <span className="px-3 py-1 bg-slate-100 dark:bg-slate-800 rounded-lg text-xs font-black text-slate-600 dark:text-slate-400 cursor-help">
                                                 {order.items.reduce((acc, item) => acc + item.quantity, 0)} items
                                             </span>
-
-                                            {/* Tooltip */}
                                             <div className="absolute left-1/2 -translate-x-1/2 bottom-1/2 mb-4 opacity-0 invisible group-hover/tooltip:opacity-100 group-hover/tooltip:visible transition-all duration-300 z-50 bg-slate-800 dark:bg-slate-700 text-white text-xs font-bold rounded-2xl shadow-[0_10px_50px_-10px_rgba(0,0,0,0.6)] w-max min-w-[320px] max-w-[450px] p-5 text-left pointer-events-none border border-slate-700 dark:border-slate-600">
                                                 <div className="space-y-3 max-h-[300px] overflow-y-auto custom-scrollbar pr-3">
                                                     {order.items.map((item, idx) => (
@@ -198,53 +191,44 @@ function PedidosSolicitudContent() {
                                             </div>
                                         </td>
                                         <td className="px-8 py-6 text-center">
-                                            <p className="text-indigo-600 dark:text-indigo-400 font-black">
-                                                ${order.total.toLocaleString()}
-                                            </p>
+                                            <p className="text-indigo-600 dark:text-indigo-400 font-black">${order.total.toLocaleString()}</p>
                                         </td>
                                         <td className="px-8 py-6 text-center">
                                             <div className="flex flex-col items-center gap-1">
-                                                <span className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest ${order.paymentMethod === 'qr'
-                                                    ? 'bg-purple-100 text-purple-700 dark:bg-purple-500/20 dark:text-purple-400'
-                                                    : order.paymentMethod === 'transferencia'
-                                                        ? 'bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400'
-                                                        : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
-                                                    }`}>
+                                                <span className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest ${order.paymentMethod === 'qr' ? 'bg-purple-100 text-purple-700 dark:bg-purple-500/20 dark:text-purple-400' : order.paymentMethod === 'transferencia' ? 'bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'}`}>
                                                     {order.paymentMethod === 'qr' ? 'Código QR' : order.paymentMethod === 'transferencia' ? 'Transferencia' : 'Efectivo'}
                                                 </span>
-                                                <span className={`text-[9px] font-black uppercase tracking-tight ${order.paymentStatus === 'pagado'
-                                                    ? 'text-emerald-500'
-                                                    : order.paymentStatus === 'confirmacion_pendiente'
-                                                        ? 'text-amber-500'
-                                                        : 'text-slate-400'
-                                                    }`}>
-                                                    {order.paymentStatus === 'pagado'
-                                                        ? '• Pagado'
-                                                        : order.paymentStatus === 'confirmacion_pendiente'
-                                                            ? '• Pendiente de confirmación'
-                                                            : '• Pendiente'}
+                                                <span className={`text-[9px] font-black uppercase tracking-tight ${
+                                                    order.paymentStatus === 'pagado' ? 'text-emerald-500' : 
+                                                    order.paymentStatus === 'confirmacion_pendiente' ? 'text-amber-500' : 
+                                                    order.paymentStatus === 'rechazado' ? 'text-rose-500 font-extrabold' : 'text-slate-400'
+                                                }`}>
+                                                    {order.paymentStatus === 'pagado' ? '• Pagado' : 
+                                                     order.paymentStatus === 'confirmacion_pendiente' ? '• Confirmación Pendiente' : 
+                                                     order.paymentStatus === 'rechazado' ? '• PAGO RECHAZADO' : '• Pendiente'}
                                                 </span>
-                                                {order.paymentMethod === 'transferencia' && order.paymentStatus === 'confirmacion_pendiente' && currentUser?.role !== 'admin' && (
-                                                    <span className="text-[8px] text-blue-500/80 font-bold italic animate-pulse">
-                                                        Aguarde a que el vendedor confirme
-                                                    </span>
-                                                )}
                                             </div>
                                         </td>
                                         <td className="px-8 py-6 text-center">
-                                            <div className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest ${currentStage?.color}`}>
-                                                {currentStage?.label}
+                                            <div className="flex flex-col items-center gap-1">
+                                                <div className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest ${order.status === 'cancelado' ? 'bg-rose-100 text-rose-600 dark:bg-rose-500/10' : currentStage?.color}`}>
+                                                    {order.status === 'cancelado' ? 'Cancelado' : currentStage?.label}
+                                                </div>
+                                                {order.cancelationReason && (
+                                                    <span className="text-[9px] text-rose-400 font-bold italic max-w-[120px] truncate" title={order.cancelationReason}>
+                                                        Motivo: {order.cancelationReason}
+                                                    </span>
+                                                )}
                                             </div>
                                         </td>
                                         <td className="px-8 py-6 text-right">
                                             <div className="flex items-center justify-end gap-3">
                                                 {currentUser?.role === "admin" ? (
                                                     <>
-                                                        {nextStatus ? (
+                                                        {nextStatus && order.status !== 'cancelado' ? (
                                                             <button
                                                                 onClick={() => {
-                                                                    // Check for stock if confirming
-                                                                    if (nextStatus === "pedido confirmado") {
+                                                                    if (nextStatus === "pedido confirmado" as any) {
                                                                         const requiredStock: Record<string, number> = {};
                                                                         order.items.forEach(cartItem => {
                                                                             cartItem.producto.components.forEach(comp => {
@@ -252,71 +236,70 @@ function PedidosSolicitudContent() {
                                                                                 requiredStock[key] = (requiredStock[key] || 0) + (comp.qty * cartItem.quantity);
                                                                             });
                                                                         });
-
                                                                         const missingItems: string[] = [];
                                                                         Object.entries(requiredStock).forEach(([name, qty]) => {
-                                                                            const invItem = inventario.find(inv =>
-                                                                                inv.name.toLowerCase().includes(name) ||
-                                                                                name.includes(inv.name.toLowerCase())
-                                                                            );
+                                                                            const invItem = inventario.find(inv => inv.name.toLowerCase().includes(name) || name.includes(inv.name.toLowerCase()));
                                                                             if (!invItem || invItem.qty < qty) {
                                                                                 const missing = qty - (invItem?.qty || 0);
                                                                                 missingItems.push(`${name} (${missing.toFixed(0)}${invItem?.unit || 'g'})`);
                                                                             }
                                                                         });
-
                                                                         if (missingItems.length > 0) {
-                                                                            setToast({
-                                                                                message: `Stock insuficiente para confirmar: ${missingItems.join(", ")}`,
-                                                                                type: "error"
-                                                                            });
+                                                                            setToast({ message: `Stock insuficiente: ${missingItems.join(", ")}`, type: "error" });
                                                                             return;
                                                                         }
                                                                     }
-
                                                                     updateOrderStatus(order.id, nextStatus);
-                                                                    setToast({
-                                                                        message: `Pedido #${order.id} movido a ${stages.find(s => s.level === nextStatus)?.label}.`,
-                                                                        type: "info"
-                                                                    });
+                                                                    setToast({ message: `Pedido #${order.id} movido a ${stages.find(s => s.level === nextStatus)?.label}.`, type: "info" });
                                                                 }}
                                                                 className="flex items-center gap-2 px-4 py-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-xl text-[10px] font-black uppercase tracking-widest hover:scale-105 transition-all shadow-lg active:scale-95"
                                                             >
-                                                                Pasar a {stages.find(s => s.level === nextStatus)?.label}
-                                                                <ArrowRight className="w-3.5 h-3.5" />
+                                                                Pasar a {stages.find(s => s.level === nextStatus)?.label} <ArrowRight className="w-3.5 h-3.5" />
                                                             </button>
                                                         ) : (
-                                                            <div className="flex items-center gap-2 text-emerald-500 font-black text-[10px] uppercase tracking-widest">
-                                                                <CheckCircle2 className="w-4 h-4" />
-                                                                Completado
+                                                            <div className={`flex items-center gap-2 font-black text-[10px] uppercase tracking-widest ${order.status === 'cancelado' ? 'text-rose-500' : 'text-emerald-500'}`}>
+                                                                {order.status === 'cancelado' ? <X className="w-4 h-4" /> : <CheckCircle2 className="w-4 h-4" />}
+                                                                {order.status === 'cancelado' ? 'Pedido Cancelado' : 'Completado'}
                                                             </div>
                                                         )}
-                                                        {order.paymentStatus !== 'pagado' && currentUser?.role === 'admin' && (
+                                                        {order.paymentStatus !== 'pagado' && currentUser?.role === 'admin' && order.status !== 'cancelado' && (
                                                             <button
                                                                 onClick={() => {
                                                                     updateOrderPaymentStatus(order.id, 'pagado');
-                                                                    setToast({ message: "Pago confirmado correctamente.", type: "success" });
+                                                                    setToast({ message: "Pago confirmado.", type: "success" });
                                                                 }}
                                                                 className="px-3 py-2 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-100 transition-all border border-emerald-100 dark:border-emerald-500/20"
-                                                                title="Confirmar pago manualmente"
+                                                                title="Confirmar Pago"
                                                             >
                                                                 Confirmar Pago
                                                             </button>
                                                         )}
-                                                        <button
-                                                            onClick={() => setItemToDelete(order.id)}
-                                                            className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl transition-all"
-                                                            title="Eliminar pedido"
-                                                        >
-                                                            <Trash2 className="w-4 h-4" />
-                                                        </button>
+                                                        {order.status !== 'cancelado' && order.status !== 'listo para entregar' && (
+                                                            <button
+                                                                onClick={() => setItemToCancel(order.id)}
+                                                                className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-xl transition-all"
+                                                                title="Cancelar pedido"
+                                                            >
+                                                                <Trash2 className="w-4 h-4" />
+                                                            </button>
+                                                        )}
+                                                        {order.status === 'cancelado' && (
+                                                            <button
+                                                                onClick={() => {
+                                                                    if (confirm("¿Eliminar este registro permanentemente de la base de datos?")) {
+                                                                        deleteOrder(order.id);
+                                                                    }
+                                                                }}
+                                                                className="p-2 text-slate-300 hover:text-rose-600 dark:hover:text-rose-500 transition-all"
+                                                                title="Eliminar definitivamente"
+                                                            >
+                                                                <Trash2 className="w-3.5 h-3.5" />
+                                                            </button>
+                                                        )}
                                                     </>
                                                 ) : (
-                                                    <div className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border ${order.status === "listo para entregar"
-                                                        ? "bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 border-emerald-100"
-                                                        : "bg-blue-50 dark:bg-blue-500/10 text-blue-600 border-blue-100"
-                                                        }`}>
-                                                        {stages.find(s => s.level === order.status)?.label || order.status}
+                                                    <div className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border ${order.status === "listo para entregar" ? "bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 border-emerald-100" : order.status === "cancelado" ? "bg-rose-50 dark:bg-rose-500/10 text-rose-600 border-rose-100" : "bg-blue-50 dark:bg-blue-500/10 text-blue-600 border-blue-100"}`}>
+                                                        {order.status === "cancelado" ? "Cancelado" : (stages.find(s => s.level === order.status)?.label || order.status)}
                                                     </div>
                                                 )}
                                             </div>
@@ -330,19 +313,49 @@ function PedidosSolicitudContent() {
             </div>
             {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
 
-            <ConfirmModal
-                isOpen={!!itemToDelete}
-                title="Eliminar Pedido"
-                message="¿Estás seguro de que deseas eliminar este pedido? Esta acción no se puede deshacer."
-                onConfirm={() => {
-                    if (itemToDelete) {
-                        deleteOrder(itemToDelete);
-                        setItemToDelete(null);
-                        setToast({ message: "Pedido eliminado correctamente.", type: "info" });
-                    }
-                }}
-                onCancel={() => setItemToDelete(null)}
-            />
+            {itemToCancel && (
+                <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-in fade-in duration-300">
+                    <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] p-8 md:p-10 w-full max-w-lg shadow-2xl border border-slate-200 dark:border-slate-800 animate-in zoom-in-95 duration-300">
+                        <div className="flex items-center gap-4 mb-6">
+                            <div className="p-3 bg-rose-50 dark:bg-rose-500/10 rounded-2xl">
+                                <X className="w-6 h-6 text-rose-500" />
+                            </div>
+                            <h2 className="text-2xl font-black text-slate-900 dark:text-slate-50 uppercase tracking-tight">Cancelar Pedido</h2>
+                        </div>
+                        <p className="text-slate-500 dark:text-slate-400 font-medium mb-6">
+                            ¿Por qué deseas cancelar el pedido <span className="text-slate-900 dark:text-slate-50 font-bold">#{itemToCancel}</span>? El motivo será enviado al cliente.
+                        </p>
+                        <div className="space-y-4">
+                            <textarea
+                                value={cancelReason}
+                                onChange={(e) => setCancelReason(e.target.value)}
+                                placeholder="Ej: Sin stock de envases de 50ml, pago rechazado..."
+                                className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 text-slate-900 dark:text-slate-50 focus:outline-none focus:ring-4 focus:ring-rose-500/10 focus:border-rose-500/50 transition-all font-semibold resize-none h-32"
+                            />
+                            <div className="grid grid-cols-2 gap-4 pt-4">
+                                <button
+                                    onClick={() => { setItemToCancel(null); setCancelReason(""); }}
+                                    className="px-6 py-4 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-black uppercase text-xs tracking-widest hover:bg-slate-200 transition-all"
+                                >
+                                    Volver
+                                </button>
+                                <button
+                                    disabled={!cancelReason.trim()}
+                                    onClick={() => {
+                                        cancelOrder(itemToCancel, cancelReason);
+                                        setItemToCancel(null);
+                                        setCancelReason("");
+                                        setToast({ message: "Pedido cancelado y notificado.", type: "error" });
+                                    }}
+                                    className="px-6 py-4 rounded-2xl bg-rose-600 text-white font-black uppercase text-xs tracking-widest hover:bg-rose-700 transition-all disabled:opacity-50"
+                                >
+                                    Confirmar Cancelación
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

@@ -1,7 +1,8 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, { createContext, useContext, useEffect, useState, useRef } from "react";
 import { supabase } from "@/lib/supabase";
+import { toast } from "sonner";
 
 export type Categoria = { id: string; name: string; count: number };
 export type Proveedor = { id: string; name: string; contact: string };
@@ -45,12 +46,12 @@ export type Producto = {
 };
 
 export type UserRole = "admin" | "minorista" | "mayorista";
-export type Usuario = { id: string; username: string; email?: string; password?: string; role: UserRole; status: "Activo" | "Inactivo"; lastLogin?: string };
+export type Usuario = { id: string; username: string; email?: string; password?: string; role: UserRole; status: "Activo" | "Inactivo"; lastLogin?: string; notas?: string };
 
 export type PermissionLevel = "Editor" | "Solo lectura" | "Sin acceso";
 export type CategoryPermissions = Record<string, PermissionLevel>;
 
-export type OrderStatus = "solicitud recibida" | "pedido confirmado" | "en preparacion" | "listo para entregar";
+export type OrderStatus = "solicitud recibida" | "pedido confirmado" | "en preparacion" | "listo para entregar" | "cancelado";
 export type CartItem = { producto: Producto; quantity: number; priceType: "mayorista" | "minorista"; customPrice?: number };
 export type Order = {
     id: string;
@@ -61,6 +62,7 @@ export type Order = {
     date: string;
     paymentMethod: "qr" | "transferencia" | "efectivo" | "otro";
     paymentStatus: "pendiente" | "pagado" | "confirmacion_pendiente" | "rechazado";
+    cancelationReason?: string;
 };
 
 export type ScraperStatus = {
@@ -75,6 +77,15 @@ export type Promotion = {
     discountPercentage: number;
     isActive: boolean;
     endDate?: string;
+};
+
+export type AppNotification = {
+    id: string;
+    title: string;
+    message: string;
+    date: string;
+    read: boolean;
+    orderId?: string;
 };
 
 // ─── Mapping helpers ────────────────────────────────────────────
@@ -171,7 +182,8 @@ function dbToUsuario(row: any): Usuario {
         password: row.password,
         role: row.role,
         status: row.status,
-        lastLogin: row.last_login ?? undefined
+        lastLogin: row.last_login ?? undefined,
+        notas: row.notas ?? undefined
     };
 }
 
@@ -185,6 +197,7 @@ function dbToOrder(row: any): Order {
         date: row.date ?? "",
         paymentMethod: row.payment_method ?? "efectivo",
         paymentStatus: row.payment_status ?? "pendiente",
+        cancelationReason: row.cancelation_reason ?? undefined,
     };
 }
 
@@ -230,6 +243,7 @@ interface AppContextProps {
     createOrder: (customerName: string, paymentMethod?: "qr" | "transferencia" | "efectivo" | "otro", cartType?: "mayorista" | "minorista") => void;
     updateOrderStatus: (orderId: string, status: OrderStatus) => Promise<void>;
     updateOrderPaymentStatus: (orderId: string, status: Order["paymentStatus"]) => Promise<void>;
+    cancelOrder: (orderId: string, reason: string) => Promise<void>;
     deleteOrder: (orderId: string) => Promise<void>;
     addInsumo: (insumo: Insumo) => Promise<void>;
     updateInsumo: (insumo: Insumo) => Promise<void>;
@@ -251,8 +265,25 @@ interface AppContextProps {
     paymentInfo: { alias: string; cbu: string; banco: string; mpAccessToken: string };
     setPaymentInfo: (info: { alias: string; cbu: string; banco: string; mpAccessToken: string }) => void;
     clearAllProductos: () => Promise<void>;
-    addSystemLog: (type: "info" | "error" | "db" | "auth", message: string, details?: any) => void;
+    addSystemLog: (type: "info" | "error" | "db" | "auth" | "warn", message: string, details?: any) => void;
     usdRate: number;
+    notifications: AppNotification[];
+    unreadCount: number;
+    markNotificationAsRead: (id: string) => void;
+    clearNotifications: () => void;
+    enviarSolicitudMayorista: (datos: {
+        nombre: string;
+        apellido: string;
+        mail: string;
+        celular: string;
+        motivo: string;
+    }) => Promise<{ success: boolean; error?: string }>;
+    solicitudesMinoristas: any[];
+    fetchSolicitudesMinoristas: () => Promise<void>;
+    eliminarSolicitudMinorista: (id: number) => Promise<void>;
+    aprobarSolicitudMinorista: (requestId: number, userId: string) => Promise<void>;
+    rechazarSolicitudMinorista: (requestId: number, motivo: string, fechaReintento: string) => Promise<void>;
+    solicitudPropia: any | null;
 }
 
 const AppContext = createContext<AppContextProps | undefined>(undefined);
@@ -327,6 +358,141 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         mpAccessToken: "APP_USR-155495615252903-022714-99162d4f5251c6825a4e8a791ba32942-691652994"
     });
 
+    const [notifications, setNotifications] = useState<AppNotification[]>([]);
+    const [solicitudesMinoristas, setSolicitudesMinoristas] = useState<any[]>([]);
+    const [solicitudPropia, setSolicitudPropia] = useState<any | null>(null);
+    const processedOrdersRef = useRef<Set<string>>(new Set());
+    const channelRef = useRef<any>(null);
+    const unreadCount = React.useMemo(() => notifications.filter(n => !n.read).length, [notifications]);
+
+    const markNotificationAsRead = (id: string) => {
+        setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+    };
+
+    const clearNotifications = () => {
+        setNotifications([]);
+    };
+
+    const fetchSolicitudesMinoristas = async () => {
+        const { data, error } = await supabase
+            .from('solicitudes_mayorista')
+            .select('*')
+            .eq('estado', 'pendiente')
+            .order('created_at', { ascending: false });
+        
+        if (error) {
+            console.error("Error al cargar solicitudes:", error);
+        } else {
+            setSolicitudesMinoristas(data || []);
+        }
+    };
+
+    const eliminarSolicitudMinorista = async (id: number) => {
+        setSolicitudesMinoristas(prev => prev.filter(s => s.id !== id));
+        const { error } = await supabase.from('solicitudes_mayorista').delete().eq('id', id);
+        
+        if (error) {
+            console.error("Error al borrar solicitud:", error);
+            fetchSolicitudesMinoristas();
+        } else {
+            addSystemLog('info', `Solicitud minorista #${id} eliminada.`);
+        }
+    };
+
+    const aprobarSolicitudMinorista = async (requestId: number, userId: string) => {
+        try {
+            // 1. Obtener datos de la solicitud para guardar como notas
+            const { data: requestData } = await supabase.from('solicitudes_mayorista').select('*').eq('id', requestId).single();
+            
+            const notasFormateadas = requestData ? 
+                `--- SOLICITUD MAYORISTA APROBADA ---\nFecha: ${new Date().toLocaleDateString()}\nNombre: ${requestData.nombre} ${requestData.apellido}\nEmail: ${requestData.mail}\nCelular: ${requestData.celular}\nMotivo: ${requestData.motivo}\n-----------------------------------` 
+                : "";
+
+            // 2. Cambiar rol del usuario y añadir notas
+            const { error: userError } = await supabase.from('usuarios').update({ 
+                role: 'mayorista',
+                notas: notasFormateadas 
+            }).eq('id', userId);
+            
+            if (userError) throw userError;
+
+            // 3. Marcar solicitud como aprobada
+            const { error: reqError } = await supabase.from('solicitudes_mayorista').update({ estado: 'aprobada' }).eq('id', requestId);
+            if (reqError) throw reqError;
+
+            // 4. Actualizar estados locales
+            setSolicitudesMinoristas(prev => prev.filter(s => s.id !== requestId));
+            setUsuarios(prev => prev.map(u => u.id === userId ? { ...u, role: 'mayorista', notas: notasFormateadas } : u));
+            
+            addSystemLog('info', `Usuario ${userId} ascendido a Mayorista.`);
+            toast.success("¡Solicitud Aprobada!", { description: "El usuario ahora es Mayorista y se guardaron sus notas." });
+        } catch (error: any) {
+            toast.error("Error al aprobar solicitud: " + error.message);
+        }
+    };
+
+    const rechazarSolicitudMinorista = async (requestId: number, motivo: string, fechaReintento: string) => {
+        try {
+            const { error } = await supabase.from('solicitudes_mayorista').update({ 
+                estado: 'rechazada',
+                motivo_rechazo: motivo,
+                fecha_reintento: fechaReintento
+            }).eq('id', requestId);
+            
+            if (error) throw error;
+
+            setSolicitudesMinoristas(prev => prev.filter(s => s.id !== requestId));
+            addSystemLog('info', `Solicitud #${requestId} rechazada.`);
+            toast.info("Solicitud Rechazada", { description: "Se notificó el motivo al usuario." });
+        } catch (error: any) {
+            toast.error("Error al rechazar: " + error.message);
+        }
+    };
+
+    const enviarSolicitudMayorista = async (datos: {
+        nombre: string;
+        apellido: string;
+        mail: string;
+        celular: string;
+        motivo: string;
+    }) => {
+        if (!currentUser) return { success: false, error: "No hay usuario activo" };
+
+        try {
+            // Guardado silencioso en base de datos
+            const { data: newSolicitud, error: insertError } = await supabase.from('solicitudes_mayorista').insert([{
+                user_id: currentUser.id,
+                username: currentUser.username,
+                ...datos,
+                estado: 'pendiente'
+            }]).select('*').single();
+
+            if (!insertError && newSolicitud) {
+                setSolicitudPropia(newSolicitud);
+            }
+
+            // Notificación Real-time al admin con evento dedicado
+            if (channelRef.current) {
+                channelRef.current.send({
+                    type: 'broadcast',
+                    event: 'solicitud_mayorista',
+                    payload: {
+                        username: currentUser.username,
+                        senderId: currentUser.id
+                    }
+                });
+            }
+
+            // Recargar localmente si somos admin para ver el cambio instantáneo
+            if (currentUser.role === 'admin') fetchSolicitudesMinoristas();
+
+            addSystemLog('info', `Solicitud de mayorista de ${currentUser.username} enviada.`);
+            return { success: true };
+        } catch (error: any) {
+            return { success: false, error: error.message };
+        }
+    };
+
     const [usdRate, setUsdRate] = useState<number>(1000); // Default placeholder
     const [mounted, setMounted] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
@@ -379,42 +545,37 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         });
 
         if (shouldUpdate) {
-            _setEsencias(updatedEsencias);
+            setEsencias(updatedEsencias);
         }
-    }, [usdRate, mounted, esencias]);
+    }, [usdRate, mounted]);
 
-    // ── Global Logger with Realtime Broadcast ──────────────────────
-    const addSystemLog = (type: "info" | "error" | "db" | "auth", message: string, details?: any) => {
+    // Shared log channel to avoid creating thousands of connections
+    const logChannelRef = useRef<any>(null);
+
+    const addSystemLog = (type: "info" | "error" | "db" | "auth" | "warn", message: string, details?: any) => {
         const newLog = {
             id: Math.random().toString(36).substr(2, 9),
             timestamp: new Date().toLocaleString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' }),
             type,
             message,
-            details: details ? JSON.parse(JSON.stringify(details)) : null // Ensure serializable
+            details: details ? JSON.parse(JSON.stringify(details)) : null 
         };
 
-        // 1. Store locally for this machine
         try {
             const currentLogs = JSON.parse(localStorage.getItem("system_logs") || "[]");
             const updatedLogs = [newLog, ...currentLogs].slice(0, 100);
             localStorage.setItem("system_logs", JSON.stringify(updatedLogs));
         } catch (e) { }
 
-        // 2. Broadcast via Supabase Realtime (Live Monitoring)
-        const channel = supabase.channel('system_logs_broadcast', {
-            config: { broadcast: { self: true } }
-        });
-        channel.subscribe((status) => {
-            if (status === 'SUBSCRIBED') {
-                channel.send({
-                    type: 'broadcast',
-                    event: 'new_log',
-                    payload: newLog
-                });
-            }
-        });
+        // Emit log via the dedicated realtime channel if available
+        if (channelRef.current && channelRef.current.state === 'joined') {
+            channelRef.current.send({
+                type: 'broadcast',
+                event: 'new_log',
+                payload: newLog
+            });
+        }
 
-        // 3. Trigger UI update if on Logs page (internal state sync)
         if ((window as any).__onNewLog) (window as any).__onNewLog(newLog);
     };
 
@@ -500,19 +661,32 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                     supabase.from("bases").select("*").order("name"),
                     supabase.from("usuarios").select("*").order("username"),
                     supabase.from("orders").select("*").order("date", { ascending: false }),
+                    supabase.from("solicitudes_mayorista").select("*").eq('estado', 'pendiente').order('created_at', { ascending: false }),
                 ] : [];
 
                 const results = await Promise.all([...essentialRequests, ...adminRequests]);
 
                 const [catResult, prodResult, promoResult] = results;
                 const [
-                    provResult, escResult, insResult, invResult, transResult, basesResult, usersResult, ordersResult
-                ] = isAdmin ? results.slice(3) : [null, null, null, null, null, null, null, null];
+                    provResult, escResult, insResult, invResult, transResult, basesResult, usersResult, ordersResult, solicitudesResult
+                ] = isAdmin ? results.slice(3) : [null, null, null, null, null, null, null, null, null];
 
                 // Diagnostic log for results array
-                addSystemLog("info", "Resultados de peticiones paralelas recibidos", {
-                    total_requests: results.length,
-                    isAdmin_context: isAdmin
+                addSystemLog("info", "Sincronización inicial completada", {
+                    tablas_cargadas: {
+                        categorias: catResult?.data?.length || 0,
+                        productos: prodResult?.data?.length || 0,
+                        promociones: promoResult?.data?.length || 0,
+                        proveedores: provResult?.data?.length || 0,
+                        esencias: escResult?.data?.length || 0,
+                        insumos: insResult?.data?.length || 0,
+                        inventario: invResult?.data?.length || 0,
+                        transacciones: transResult?.data?.length || 0,
+                        usuarios: usersResult?.data?.length || 0,
+                        pedidos: ordersResult?.data?.length || 0
+                    },
+                    errores: results.filter(r => r?.error).map(r => r?.error?.message),
+                    contexto_admin: isAdmin
                 });
 
                 // Helper: use Supabase if available, else localStorage. Returns {data, fromLS}
@@ -577,7 +751,20 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                     setBases(basesRes.data);
                     setUsuarios(usersRes.data);
                     setOrders(ordersRes.data);
+                    
+                    if (solicitudesResult && !solicitudesResult.error) {
+                        setSolicitudesMinoristas(solicitudesResult.data || []);
+                    }
                 } else if (!isAdmin && resolvedUser) {
+                    // Cargar solicitud propia si es minorista
+                    const { data: personalReq } = await supabase
+                        .from("solicitudes_mayorista")
+                        .select("*")
+                        .eq("user_id", resolvedUser.id)
+                        .maybeSingle();
+                    
+                    if (personalReq) setSolicitudPropia(personalReq);
+
                     // Wholesalers/Retailers only need THEIR orders
                     // Use ilike for case-insensitive matching to avoid issues with typed vs stored names
                     const { data: ownOrders, error: ordersErr } = await supabase
@@ -645,6 +832,175 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
         return () => subscription.unsubscribe();
     }, []);
+
+    // ── Real-time Notifications for Everyone ──────────────────────
+    useEffect(() => {
+        if (!currentUser || !mounted) return;
+
+        const isUserAdmin = currentUser.role === "admin";
+        const channel = supabase.channel('order_system_sync');
+        channelRef.current = channel;
+
+        // 1. Sincronizar los datos en silencio
+        const handleOrderDataSync = (data: any) => {
+            const { orderId, newStatus, reason } = data;
+            setOrders(prev => prev.map(o => {
+                if (o.id === orderId) {
+                    const nextStatus = (newStatus === "Cancelado" || newStatus === "cancelado") ? "cancelado" : newStatus;
+                    // Limpiar la notificación de la campana si ya no es un pedido nuevo
+                    if (nextStatus !== "solicitud recibida") {
+                        setNotifications(prevNotif => prevNotif.filter(n => n.orderId !== orderId));
+                    }
+                    return { 
+                        ...o, 
+                        status: newStatus.toLowerCase().includes("pago") ? o.status : (nextStatus as any),
+                        paymentStatus: (newStatus.toLowerCase().includes("pagado") || newStatus === "cancelado") ? (newStatus === "cancelado" ? "rechazado" : "pagado") : o.paymentStatus,
+                        cancelationReason: reason || o.cancelationReason
+                    };
+                }
+                return o;
+            }));
+        };
+
+        // 2. Mostrar la notificación visual (Toast)
+        const handleOrderNotification = (data: any) => {
+            const { orderId, newStatus, customerName, reason, senderId } = data;
+            
+            console.log("🛎️ NOTIFICACION RECIBIDA:", { orderId, newStatus, senderId, me: currentUser?.id });
+
+            // Si soy yo mismo quien hizo la accion (Admin cancelando su propio pedido por ej), no molesto con cartel
+            if (senderId && senderId === currentUser?.id) {
+                console.log("🚫 Notificación omitida por ser acción propia.");
+                return;
+            }
+
+            // Normalización extrema para evitar fallos por espacios o mayúsculas
+            const myName = String(currentUser?.username || "").trim().toLowerCase();
+            const targetName = String(customerName || "").trim().toLowerCase();
+
+            // REGLA DE ENVIO:
+            // - Si soy admin, quiero ver TODO lo que pasa (menos lo mío)
+            // - Si soy cliente, solo quiero ver lo que me pertenece
+            const isRelevant = isUserAdmin || (targetName !== "" && targetName === myName);
+
+            if (isRelevant) {
+                console.log("✅ Mostrando Toast para pedido:", orderId);
+                addSystemLog("info", `Realtime: Notificación de pedido recibida (#${orderId}) - Nuevo Estado: ${newStatus}${reason ? ` (Motivo: ${reason})` : ""}`);
+                toast.info("Actualización de Pedido", {
+                    id: `update-${orderId}-${newStatus}`,
+                    description: `Pedido ${orderId}: ${newStatus}${reason ? ` - Motivo: ${reason}` : ""}`,
+                    duration: 12000,
+                    icon: "🔔"
+                });
+            }
+        };
+
+        const handleNewOrder = (orderData: any) => {
+            if (!isUserAdmin) return;
+            
+            // Si el pedido lo cree yo mismo, no me notifico (evitar eco)
+            if (orderData.senderId === currentUser?.id) return;
+
+            const newOrder = dbToOrder(orderData);
+            if (!newOrder.id) return;
+
+            // Actualizar lista local si no esta
+            setOrders(prev => {
+                if (prev.some(n => n.id === newOrder.id)) return prev;
+                return [newOrder, ...prev];
+            });
+
+            setNotifications(prev => {
+                if (prev.some(n => n.orderId === newOrder.id)) return prev;
+                const newNotif: AppNotification = {
+                    id: `notif-${newOrder.id}-${Date.now()}`,
+                    title: "Nuevo Pedido",
+                    message: `Pedido de ${newOrder.customerName || 'Cliente'} por $${(newOrder.total || 0).toLocaleString("es-AR")}`,
+                    date: new Date().toISOString(),
+                    read: false,
+                    orderId: newOrder.id
+                };
+                toast.success("Nuevo pedido recibido", {
+                    id: `order-notif-${newOrder.id}`,
+                    description: `De ${newOrder.customerName} - $${(newOrder.total || 0).toLocaleString("es-AR")}`,
+                    action: { label: "Ver Pedido", onClick: () => window.location.href = "/pedidos-solicitud" },
+                });
+                return [newNotif, ...prev];
+            });
+        };
+
+        channel
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orders' }, (payload) => handleNewOrder(payload.new))
+            .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'orders' }, (payload) => {
+                const updated = dbToOrder(payload.new);
+                handleOrderDataSync({
+                    orderId: updated.id,
+                    newStatus: updated.status,
+                    reason: updated.cancelationReason
+                });
+            })
+            .on('broadcast', { event: 'order_created' }, ({ payload }) => handleNewOrder(payload))
+            .on('broadcast', { event: 'order_updated' }, ({ payload }) => {
+                handleOrderDataSync(payload);
+                handleOrderNotification(payload);
+            })
+            .on('broadcast', { event: 'solicitud_mayorista' }, ({ payload }) => {
+                if (isUserAdmin && payload.senderId !== currentUser?.id) {
+                    toast.info("Nueva Solicitud Minorista", {
+                        description: `${payload.username} ha enviado una postulación.`,
+                        action: { label: "Ver Solicitudes", onClick: () => window.location.href = "/solicitudes-minoristas" },
+                        duration: 10000,
+                        icon: "🤝"
+                    });
+                    fetchSolicitudesMinoristas();
+                }
+            })
+            .subscribe((status) => {
+                if (status === 'TIMED_OUT') setTimeout(() => mounted && channel.subscribe(), 3000);
+            });
+
+        return () => { supabase.removeChannel(channel); };
+    }, [currentUser?.id, currentUser?.role, currentUser?.username, mounted]);
+
+    // Persist notifications & Initial Load from Orders
+    useEffect(() => {
+        if (mounted && currentUser?.role === "admin") {
+            const stored = localStorage.getItem("app_notifications");
+            let hasValidStored = false;
+            
+            if (stored) {
+                try { 
+                    const parsed = JSON.parse(stored);
+                    if (Array.isArray(parsed) && parsed.length > 0) {
+                        setNotifications(parsed);
+                        hasValidStored = true;
+                    }
+                } catch (e) {}
+            }
+
+            if (!hasValidStored && orders.length > 0) {
+                console.log("Realtime: Inicializando notificaciones desde historial...");
+                const pendingOrders = orders
+                    .filter(o => o.status === "solicitud recibida")
+                    .slice(0, 15)
+                    .map(o => ({
+                        id: `init-${o.id}-${Date.now()}`,
+                        title: "Pedido Pendiente",
+                        message: `Pedido de ${o.customerName} espera confirmación ($${o.total.toLocaleString()})`,
+                        date: o.date || new Date().toISOString(),
+                        read: false,
+                        orderId: o.id
+                    }));
+                setNotifications(pendingOrders);
+            }
+        }
+    }, [mounted, orders.length, currentUser?.id]);
+
+    useEffect(() => {
+        if (mounted) {
+            localStorage.setItem("app_notifications", JSON.stringify(notifications));
+        }
+    }, [notifications, mounted]);
 
     // ── Update persistence for ephemeral objects ──────────────────
     useEffect(() => {
@@ -752,7 +1108,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     };
 
     const addUsuario = async (user: Usuario) => {
-        _setUsuarios(prev => [user, ...prev]);
+        setUsuarios(prev => [user, ...prev]);
         await supabase.from("usuarios").insert({
             id: user.id,
             username: user.username,
@@ -765,7 +1121,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     };
 
     const updateUsuario = async (updated: Usuario) => {
-        _setUsuarios(prev => prev.map(u => u.id === updated.id ? updated : u));
+        setUsuarios(prev => prev.map(u => u.id === updated.id ? updated : u));
         const { error } = await supabase.from("usuarios").upsert({
             id: updated.id,
             username: updated.username,
@@ -782,7 +1138,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     };
 
     const deleteUsuario = async (id: string) => {
-        _setUsuarios(prev => prev.filter(u => u.id !== id));
+        setUsuarios(prev => prev.filter(u => u.id !== id));
         await supabase.from("usuarios").delete().eq("id", id);
     };
 
@@ -961,6 +1317,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             });
         } else {
             addSystemLog("info", `Pedido ${newId} guardado correctamente en Supabase`);
+            
+            // Broadcast the event to all online users via Ref
+            if (channelRef.current) {
+                console.log("Broadcasting new order notification via persistent channel...");
+                channelRef.current.send({
+                    type: 'broadcast',
+                    event: 'order_created',
+                    payload: { ...payload, senderId: currentUser?.id }
+                });
+            }
         }
     };
 
@@ -985,11 +1351,21 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                     }
                 });
             });
-            _setInventario(updatedInv);
+            setInventario(updatedInv);
         }
 
         setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status } : o));
         await supabase.from("orders").update({ status }).eq("id", orderId);
+        
+        // Notificar al cliente vía el canal central
+        if (channelRef.current) {
+            channelRef.current.send({
+                type: 'broadcast',
+                event: 'order_updated',
+                payload: { orderId, newStatus: status, customerName: order?.customerName, senderId: currentUser?.id }
+            });
+            addSystemLog("info", `Broadcast de estado enviado para #${orderId} (estado: ${status})`);
+        }
     };
 
     const updateOrderPaymentStatus = async (orderId: string, paymentStatus: Order["paymentStatus"]) => {
@@ -1004,14 +1380,58 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                 description: `${order.items.map(i => i.producto.name).join(", ")} - Cliente: ${order.customerName}`,
                 date: new Date().toLocaleDateString("es-AR")
             };
-            _setTransacciones(prev => [newTransaction, ...prev]);
+            setTransacciones(prev => [newTransaction, ...prev]);
         }
 
         setOrders(prev => prev.map(o => o.id === orderId ? { ...o, paymentStatus } : o));
         const { error } = await supabase.from("orders").update({ payment_status: paymentStatus }).eq("id", orderId);
-        if (error && error.code === 'PGRST204') {
-            console.warn("Ignored payment_status update due to missing column in Supabase.");
-            alert("⚠️ ERROR: No se guardó el pago.\n\nFaltan las columnas de pago en tu base de datos de Supabase. El cambio solo se ve en tu pantalla hasta que recargues.\n\nPor favor, ejecuta el código SQL que te pasé en el Dashboard de Supabase para arreglarlo definitivamente.");
+        
+        if (error) {
+            addSystemLog("error", "Error actualizando pago", error);
+        } else {
+            // Notificar al cliente vía el canal central
+            if (channelRef.current) {
+                channelRef.current.send({
+                    type: 'broadcast',
+                    event: 'order_updated',
+                    payload: { orderId, newStatus: `Pago ${paymentStatus}`, customerName: order?.customerName, senderId: currentUser?.id }
+                });
+                addSystemLog("info", `Broadcast de pago enviado para #${orderId} (pago: ${paymentStatus})`);
+            }
+        }
+    };
+
+    const cancelOrder = async (orderId: string, reason: string) => {
+        const order = orders.find(o => o.id === orderId);
+        if (!order) return;
+
+        setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: "cancelado", paymentStatus: "rechazado", cancelationReason: reason } : o));
+        
+        const { error } = await supabase.from("orders").update({ 
+            status: "cancelado",
+            payment_status: "rechazado",
+            cancelation_reason: reason 
+        }).eq("id", orderId);
+
+        if (!error) {
+            addSystemLog("info", `Pedido ${orderId} cancelado localmente. Motivo: ${reason}`);
+            
+            // Avisar por el canal central
+            if (channelRef.current) {
+                channelRef.current.send({
+                    type: 'broadcast',
+                    event: 'order_updated',
+                    payload: { orderId, newStatus: "Cancelado", customerName: order.customerName, reason: reason, senderId: currentUser?.id }
+                });
+                addSystemLog("info", `Broadcast de cancelación enviado para #${orderId}`);
+            }
+        } else {
+            console.error("Error al cancelar en DB:", error);
+            addSystemLog("error", "Fallo al cancelar pedido en Base de Datos", error);
+            toast.error("Error al guardar en la base de datos. Verifica los logs.");
+            
+            // Revertir el estado local para no confundir al usuario
+            setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: order.status, cancelationReason: order.cancelationReason } : o));
         }
     };
 
@@ -1556,67 +1976,87 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         }
     }, [mounted, scraperStatus.lastRun, scraperStatus.status]);
 
+    const contextValue = React.useMemo(() => ({
+        categorias, setCategorias: _setCategorias,
+        proveedores, setProveedores: _setProveedores,
+        esencias, setEsencias: _setEsencias,
+        insumos, setInsumos: _setInsumos,
+        inventario, setInventario: _setInventario,
+        transacciones, setTransacciones: _setTransacciones,
+        bases, setBases: _setBases,
+        productos, setProductos: _setProductos,
+        usuarios, setUsuarios: _setUsuarios,
+        globalPermissions,
+        cart,
+        orders,
+        scraperStatus,
+        setScraperStatus,
+        updateProducto,
+        deleteProducto,
+        addUsuario,
+        updateUsuario,
+        deleteUsuario,
+        updatePermissions,
+        addToCart,
+        removeFromCart,
+        updateCartQuantity,
+        updateCartItemPrice,
+        clearCart,
+        createOrder,
+        updateOrderStatus,
+        updateOrderPaymentStatus,
+        cancelOrder,
+        deleteOrder,
+        addInsumo,
+        updateInsumo,
+        deleteInsumo,
+        addInventarioItem,
+        deleteInventarioItem,
+        runScraper,
+        login,
+        currentUser,
+        logout,
+        generos,
+        setGeneros,
+        mounted,
+        generateProductsFromBase,
+        getNextId: getNextSequenceId,
+        categoryMargins,
+        setCategoryMargins,
+        promotions,
+        addPromotion,
+        deletePromotion,
+        paymentInfo,
+        setPaymentInfo: setPaymentInfoState,
+        isLoading,
+        addSystemLog,
+        clearAllProductos,
+        usdRate,
+        notifications,
+        unreadCount,
+        markNotificationAsRead,
+        clearNotifications,
+        enviarSolicitudMayorista,
+        solicitudesMinoristas,
+        fetchSolicitudesMinoristas,
+        eliminarSolicitudMinorista,
+        aprobarSolicitudMinorista,
+        rechazarSolicitudMinorista,
+        solicitudPropia
+    }), [
+        categorias, proveedores, esencias, insumos, inventario, transacciones,
+        bases, productos, usuarios, globalPermissions, cart, orders,
+        scraperStatus, currentUser, generos, mounted, categoryMargins,
+        promotions, paymentInfo, isLoading, usdRate, notifications, unreadCount,
+        solicitudesMinoristas, solicitudPropia
+    ]);
+
     if (!mounted) {
         return <div className="min-h-screen bg-slate-50 dark:bg-[#0f172a]"></div>;
     }
 
     return (
-        <AppContext.Provider value={{
-            categorias, setCategorias: _setCategorias,
-            proveedores, setProveedores: _setProveedores,
-            esencias, setEsencias: _setEsencias,
-            insumos, setInsumos: _setInsumos,
-            inventario, setInventario: _setInventario,
-            transacciones, setTransacciones: _setTransacciones,
-            bases, setBases: _setBases,
-            productos, setProductos: _setProductos,
-            usuarios, setUsuarios: _setUsuarios,
-            globalPermissions,
-            cart,
-            orders,
-            scraperStatus,
-            setScraperStatus,
-            updateProducto,
-            deleteProducto,
-            addUsuario,
-            updateUsuario,
-            deleteUsuario,
-            updatePermissions,
-            addToCart,
-            removeFromCart,
-            updateCartQuantity,
-            updateCartItemPrice,
-            clearCart,
-            createOrder,
-            updateOrderStatus,
-            updateOrderPaymentStatus,
-            deleteOrder,
-            addInsumo,
-            updateInsumo,
-            deleteInsumo,
-            addInventarioItem,
-            deleteInventarioItem,
-            runScraper,
-            login,
-            currentUser,
-            logout,
-            generos,
-            setGeneros,
-            mounted,
-            generateProductsFromBase,
-            getNextId: getNextSequenceId,
-            categoryMargins,
-            setCategoryMargins,
-            promotions,
-            addPromotion,
-            deletePromotion,
-            paymentInfo,
-            setPaymentInfo: setPaymentInfoState,
-            isLoading,
-            addSystemLog,
-            clearAllProductos,
-            usdRate
-        }}>
+        <AppContext.Provider value={contextValue}>
             {children}
         </AppContext.Provider>
     );
