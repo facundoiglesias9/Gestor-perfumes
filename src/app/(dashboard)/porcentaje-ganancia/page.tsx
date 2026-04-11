@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useAppContext, Producto } from "@/context/AppContext";
-import { supabase } from "@/lib/supabase";
+import { upsertRecords } from "@/lib/db-actions";
 import { 
     Percent, 
     Save, 
@@ -130,7 +130,7 @@ export default function PorcentajeGananciaPage() {
             last_update: updated.lastUpdate,
         }));
 
-        const { error } = await supabase.from("productos").upsert(dbItems);
+        const { error } = await upsertRecords("productos", dbItems);
 
         if (error) {
             setToast({ message: "Ocurrió un error sincronizando con la base de datos.", type: "error" });

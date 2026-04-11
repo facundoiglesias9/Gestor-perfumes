@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useEffect, useState, useRef } from "react";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
+import { fetchTable, upsertRecord, upsertRecords, deleteRecord, deleteRecords, clearTable } from "@/lib/db-actions";
 
 export type Categoria = { id: string; name: string; count: number };
 export type Proveedor = { id: string; name: string; contact: string };
@@ -188,10 +189,14 @@ function dbToUsuario(row: any): Usuario {
 }
 
 function dbToOrder(row: any): Order {
+    let parsedItems = row.items;
+    if (typeof parsedItems === 'string') {
+        try { parsedItems = JSON.parse(parsedItems); } catch(e) { parsedItems = []; }
+    }
     return {
         id: row.id,
-        items: row.items ?? [],
-        total: row.total ?? 0,
+        items: parsedItems ?? [],
+        total: Number(row.total) ?? 0,
         status: row.status ?? "solicitud recibida",
         customerName: row.customer_name ?? "",
         date: row.date ?? "",
@@ -374,11 +379,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     };
 
     const fetchSolicitudesMinoristas = async () => {
-        const { data, error } = await supabase
-            .from('solicitudes_mayorista')
-            .select('*')
-            .eq('estado', 'pendiente')
-            .order('created_at', { ascending: false });
+        const { data, error } = await fetchTable('solicitudes_mayorista', { 
+            filter: { estado: 'pendiente' },
+            orderBy: 'created_at',
+            orderDir: 'desc'
+        });
         
         if (error) {
             console.error("Error al cargar solicitudes:", error);
@@ -389,7 +394,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
     const eliminarSolicitudMinorista = async (id: number) => {
         setSolicitudesMinoristas(prev => prev.filter(s => s.id !== id));
-        const { error } = await supabase.from('solicitudes_mayorista').delete().eq('id', id);
+        const { error } = await deleteRecord('solicitudes_mayorista', id);
         
         if (error) {
             console.error("Error al borrar solicitud:", error);
@@ -402,23 +407,25 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const aprobarSolicitudMinorista = async (requestId: number, userId: string) => {
         try {
             // 1. Obtener datos de la solicitud para guardar como notas
-            const { data: requestData } = await supabase.from('solicitudes_mayorista').select('*').eq('id', requestId).single();
+            const { data: results } = await fetchTable('solicitudes_mayorista', { filter: { id: requestId } });
+            const requestData = results?.[0];
             
             const notasFormateadas = requestData ? 
                 `--- SOLICITUD MAYORISTA APROBADA ---\nFecha: ${new Date().toLocaleDateString()}\nNombre: ${requestData.nombre} ${requestData.apellido}\nEmail: ${requestData.mail}\nCelular: ${requestData.celular}\nMotivo: ${requestData.motivo}\n-----------------------------------` 
                 : "";
 
             // 2. Cambiar rol del usuario y añadir notas
-            const { error: userError } = await supabase.from('usuarios').update({ 
+            const { error: userError } = await upsertRecord('usuarios', { 
+                id: userId,
                 role: 'mayorista',
                 notas: notasFormateadas 
-            }).eq('id', userId);
+            });
             
-            if (userError) throw userError;
+            if (userError) throw new Error(userError);
 
             // 3. Marcar solicitud como aprobada
-            const { error: reqError } = await supabase.from('solicitudes_mayorista').update({ estado: 'aprobada' }).eq('id', requestId);
-            if (reqError) throw reqError;
+            const { error: reqError } = await upsertRecord('solicitudes_mayorista', { id: requestId, estado: 'aprobada' });
+            if (reqError) throw new Error(reqError);
 
             // 4. Actualizar estados locales
             setSolicitudesMinoristas(prev => prev.filter(s => s.id !== requestId));
@@ -433,11 +440,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
     const rechazarSolicitudMinorista = async (requestId: number, motivo: string, fechaReintento: string) => {
         try {
-            const { error } = await supabase.from('solicitudes_mayorista').update({ 
+            const { error } = await upsertRecord('solicitudes_mayorista', { 
+                id: requestId,
                 estado: 'rechazada',
                 motivo_rechazo: motivo,
                 fecha_reintento: fechaReintento
-            }).eq('id', requestId);
+            });
             
             if (error) throw error;
 
@@ -460,12 +468,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
         try {
             // Guardado silencioso en base de datos
-            const { data: newSolicitud, error: insertError } = await supabase.from('solicitudes_mayorista').insert([{
+            const { data: newSolicitud, error: insertError } = await upsertRecord('solicitudes_mayorista', {
                 user_id: currentUser.id,
                 username: currentUser.username,
                 ...datos,
                 estado: 'pendiente'
-            }]).select('*').single();
+            });
 
             if (!insertError && newSolicitud) {
                 setSolicitudPropia(newSolicitud);
@@ -595,12 +603,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
                 // Get user record to know the role early
                 if (user) {
-                    const { data: userData } = await supabase.from("usuarios").select("*").eq("id", user.id).single();
+                    const { data: usersData } = await fetchTable("usuarios", { filter: { id: user.id } });
+                    const userData = usersData?.[0];
                     if (userData) {
                         resolvedUser = dbToUsuario(userData);
                     } else {
                         // try by email if id failed (legacy)
-                        const { data: userDataEmail } = await supabase.from("usuarios").select("*").ilike("username", user.email || "").single();
+                        const { data: usersEmail } = await fetchTable("usuarios", { filter: { username: user.email || "" } });
+                        const userDataEmail = usersEmail?.[0];
                         if (userDataEmail) resolvedUser = dbToUsuario(userDataEmail);
                     }
                 } else {
@@ -631,37 +641,23 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                     if (localPromo) setPromotions(JSON.parse(localPromo));
                 } catch (e) { }
 
-                // Function with retry for large tables
-                const fetchWithRetry = async (query: any, retries = 2) => {
-                    for (let i = 0; i <= retries; i++) {
-                        const res = await query;
-                        if (!res.error) return res;
-                        if (i < retries) {
-                            addSystemLog("info", `Reintentando fetch (${i + 1}/${retries})...`);
-                            await new Promise(resolve => setTimeout(resolve, 1000));
-                        } else {
-                            return res;
-                        }
-                    }
-                };
-
-                // 2. Parallel fetch essential vs admin data (Supabase Refetch)
+                // 2. Parallel fetch essential vs admin data (Xata Refetch)
                 const essentialRequests = [
-                    fetchWithRetry(supabase.from("categorias").select("*").order("name")),
-                    fetchWithRetry(supabase.from("productos").select("*")),
-                    fetchWithRetry(supabase.from("promociones").select("*")),
+                    fetchTable("categorias", { orderBy: "name" }),
+                    fetchTable("productos"),
+                    fetchTable("promociones"),
                 ];
-
+                
                 const adminRequests = isAdmin ? [
-                    supabase.from("proveedores").select("*").order("name"),
-                    supabase.from("esencias").select("*").order("name"),
-                    supabase.from("insumos").select("*").order("name"),
-                    supabase.from("inventario").select("*").order("name"),
-                    supabase.from("transacciones").select("*").order("created_at", { ascending: false }),
-                    supabase.from("bases").select("*").order("name"),
-                    supabase.from("usuarios").select("*").order("username"),
-                    supabase.from("orders").select("*").order("date", { ascending: false }),
-                    supabase.from("solicitudes_mayorista").select("*").eq('estado', 'pendiente').order('created_at', { ascending: false }),
+                    fetchTable("proveedores", { orderBy: "name" }),
+                    fetchTable("esencias", { orderBy: "name" }),
+                    fetchTable("insumos", { orderBy: "name" }),
+                    fetchTable("inventario", { orderBy: "name" }),
+                    fetchTable("transacciones", { orderBy: "created_at", orderDir: "desc" }),
+                    fetchTable("bases", { orderBy: "name" }),
+                    fetchTable("usuarios", { orderBy: "username" }),
+                    fetchTable("orders", { orderBy: "date", orderDir: "desc" }),
+                    fetchTable("solicitudes_mayorista", { filter: { estado: 'pendiente' }, orderBy: 'created_at', orderDir: 'desc' }),
                 ] : [];
 
                 const results = await Promise.all([...essentialRequests, ...adminRequests]);
@@ -697,8 +693,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                     }
 
                     if (result?.error) {
-                        console.error(`Error fetching ${lsKey} from Supabase:`, result.error);
-                        addSystemLog("error", `Fallo en Supabase (${lsKey})`, {
+                        console.error(`Error fetching ${lsKey} from Database:`, result.error);
+                        addSystemLog("error", `Fallo en Base de Datos (${lsKey})`, {
                             message: result.error?.message || "Error desconocido",
                             code: result.error?.code,
                         });
@@ -1066,7 +1062,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     // ── Productos ─────────────────────────────────────────────────
     const updateProducto = async (updated: Producto) => {
         setProductos(prev => prev.map(p => p.id === updated.id ? updated : p));
-        await supabase.from("productos").upsert({
+        await upsertRecord("productos", {
             id: updated.id,
             name: updated.name,
             category: updated.category,
@@ -1088,10 +1084,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             return;
         }
         setProductos([]);
-        localStorage.removeItem("productos"); // Limpiamos memoria del navegador
+        localStorage.removeItem("productos");
         
-        // Borramos en Supabase (filtro infalible: todos los menores de la Z o con ID)
-        const { error } = await supabase.from("productos").delete().neq("id", "-1");
+        const { error } = await clearTable("productos");
         
         if (error) {
             addSystemLog("error", "Error al vaciar productos", error);
@@ -1104,12 +1099,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
     const deleteProducto = async (id: string) => {
         setProductos(prev => prev.filter(p => p.id !== id));
-        await supabase.from("productos").delete().eq("id", id);
+        await deleteRecord("productos", id);
     };
 
     const addUsuario = async (user: Usuario) => {
         setUsuarios(prev => [user, ...prev]);
-        await supabase.from("usuarios").insert({
+        await upsertRecord("usuarios", {
             id: user.id,
             username: user.username,
             email: user.email,
@@ -1122,7 +1117,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
     const updateUsuario = async (updated: Usuario) => {
         setUsuarios(prev => prev.map(u => u.id === updated.id ? updated : u));
-        const { error } = await supabase.from("usuarios").upsert({
+        const { error } = await upsertRecord("usuarios", {
             id: updated.id,
             username: updated.username,
             email: updated.email,
@@ -1133,19 +1128,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         });
         if (error) {
             console.error("Error upserting usuario natively:", error);
-            // Ignore missing column errors, but log others
         }
     };
 
     const deleteUsuario = async (id: string) => {
         setUsuarios(prev => prev.filter(u => u.id !== id));
-        await supabase.from("usuarios").delete().eq("id", id);
+        await deleteRecord("usuarios", id);
     };
 
     // ── Insumos e Inventario ──────────────────────────────────────
     const addInsumo = async (insumo: Insumo) => {
         setInsumos(prev => [insumo, ...prev]);
-        await supabase.from("insumos").insert({
+        await upsertRecord("insumos", {
             id: insumo.id,
             name: insumo.name,
             category: insumo.category,
@@ -1159,7 +1153,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
     const updateInsumo = async (updated: Insumo) => {
         setInsumos(prev => prev.map(i => i.id === updated.id ? updated : i));
-        await supabase.from("insumos").upsert({
+        await upsertRecord("insumos", {
             id: updated.id,
             name: updated.name,
             category: updated.category,
@@ -1173,12 +1167,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
     const deleteInsumo = async (id: string) => {
         setInsumos(prev => prev.filter(i => i.id !== id));
-        await supabase.from("insumos").delete().eq("id", id);
+        await deleteRecord("insumos", id);
     };
 
     const addInventarioItem = async (item: InventarioItem) => {
         setInventario(prev => [item, ...prev]);
-        const { error } = await supabase.from("inventario").insert({
+        const { error } = await upsertRecord("inventario", {
             id: item.id,
             name: item.name,
             type: item.type,
@@ -1196,7 +1190,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
     const deleteInventarioItem = async (id: string) => {
         setInventario(prev => prev.filter(i => i.id !== id));
-        await supabase.from("inventario").delete().eq("id", id);
+        await deleteRecord("inventario", id);
     };
 
     // ── Permissions (localStorage only) ──────────────────────────
@@ -1286,41 +1280,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             payment_status: newOrder.paymentStatus
         };
 
-        console.log("DEBUG: Sending order payload to Supabase:", payload);
+        console.log("DEBUG: Sending order payload to Xata:", payload);
 
-        let { error } = await supabase.from("orders").insert(payload);
-
-        // PGRST204: Column not found. Legacy schema fix.
-        if (error && error.code === 'PGRST204') {
-            const legacyPayload = { ...payload };
-            delete (legacyPayload as any).payment_method;
-            delete (legacyPayload as any).payment_status;
-            const retryRes = await supabase.from("orders").insert(legacyPayload);
-            error = retryRes.error;
-        }
+        const { error } = await upsertRecord("orders", payload);
 
         if (error) {
-            console.error("CRITICAL: Error inserting order into Supabase:", {
-                message: error.message,
-                details: error.details,
-                hint: error.hint,
-                code: error.code
-            });
-            alert(`Error crítico al guardar pedido en la base de datos.\n\nMensaje: ${error.message || 'Error desconocido'}\nCódigo: ${error.code || 'N/A'}`);
-
-            // Rollback optimistic state
+            console.error("CRITICAL: Error inserting order into Xata:", error);
+            alert(`Error crítico al guardar pedido en la base de datos.`);
             setOrders(prev => prev.filter(o => o.id !== newId));
-
-            addSystemLog("error", "Error crítico al guardar pedido", {
-                orderId: newId,
-                error
-            });
+            addSystemLog("error", "Error crítico al guardar pedido", { orderId: newId, error });
         } else {
-            addSystemLog("info", `Pedido ${newId} guardado correctamente en Supabase`);
-            
-            // Broadcast the event to all online users via Ref
+            addSystemLog("info", `Pedido ${newId} guardado correctamente en Xata`);
             if (channelRef.current) {
-                console.log("Broadcasting new order notification via persistent channel...");
                 channelRef.current.send({
                     type: 'broadcast',
                     event: 'order_created',
@@ -1355,7 +1326,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         }
 
         setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status } : o));
-        await supabase.from("orders").update({ status }).eq("id", orderId);
+        await upsertRecord("orders", { id: orderId, status });
         
         // Notificar al cliente vía el canal central
         if (channelRef.current) {
@@ -1384,7 +1355,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         }
 
         setOrders(prev => prev.map(o => o.id === orderId ? { ...o, paymentStatus } : o));
-        const { error } = await supabase.from("orders").update({ payment_status: paymentStatus }).eq("id", orderId);
+        const { error } = await upsertRecord("orders", { id: orderId, payment_status: paymentStatus });
         
         if (error) {
             addSystemLog("error", "Error actualizando pago", error);
@@ -1407,11 +1378,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
         setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: "cancelado", paymentStatus: "rechazado", cancelationReason: reason } : o));
         
-        const { error } = await supabase.from("orders").update({ 
+        const { error } = await upsertRecord("orders", { 
+            id: orderId,
             status: "cancelado",
             payment_status: "rechazado",
             cancelation_reason: reason 
-        }).eq("id", orderId);
+        });
 
         if (!error) {
             addSystemLog("info", `Pedido ${orderId} cancelado localmente. Motivo: ${reason}`);
@@ -1437,7 +1409,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
     const deleteOrder = async (orderId: string) => {
         setOrders(prev => prev.filter(o => o.id !== orderId));
-        await supabase.from("orders").delete().eq("id", orderId);
+        await deleteRecord("orders", orderId);
     };
 
     const addPromotion = async (promo: Promotion) => {
@@ -1452,7 +1424,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             localStorage.setItem("promociones", JSON.stringify(updatedPromos));
             return updatedPromos;
         });
-        await supabase.from("promociones").upsert({
+        await upsertRecord("promociones", {
             id: promo.id,
             product_id: promo.productId,
             discount_percentage: promo.discountPercentage,
@@ -1467,7 +1439,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             localStorage.setItem("promociones", JSON.stringify(next));
             return next;
         });
-        await supabase.from("promociones").delete().eq("id", id);
+        await deleteRecord("promociones", id);
     };
 
     // ── Generate Products from Base ───────────────────────────────
@@ -1476,8 +1448,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             const base = bases.find(b => b.id === baseId);
             if (!base) return reject(new Error("Base no encontrada"));
 
-            // OBTENER ESTADO FRESCO: Consultamos directamente para que el cálculo sea real
-            const { data: dbProds, error: fetchErr } = await supabase.from("productos").select("*");
+            // OBTENER ESTADO FRESCO
+            const { data: dbProds, error: fetchErr } = await fetchTable("productos");
             const currentProds = dbProds ? (dbProds as any[]).map(r => ({
                 id: r.id,
                 name: r.name,
@@ -1701,7 +1673,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                 const processChunks = async () => {
                     for (let i = 0; i < uniqueUpsert.length; i += CHUNK_SIZE) {
                         const chunk = uniqueUpsert.slice(i, i + CHUNK_SIZE);
-                        await supabase.from("productos").upsert(chunk);
+                        await upsertRecords("productos", chunk);
                     }
                 };
 
@@ -1713,71 +1685,42 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     };
 
     // ── Sync state changes to Supabase ────────────────────────────
-    const syncDiffToSupabase = (table: string, prev: any[], next: any[], mapFn: (item: any) => any) => {
+    const syncDiffToSupabase = async (table: string, prev: any[], next: any[], mapFn: (item: any) => any) => {
         if (!mounted) return;
 
-        // Create a map for O(1) lookups
         const prevMap = new Map(prev.map(p => [p.id, p]));
         const nextIds = new Set(next.map(n => n.id));
 
         const toDelete = prev.filter(p => !nextIds.has(p.id));
         const toUpsert = next.filter(n => {
             const p = prevMap.get(n.id);
-            // If it doesn't exist, or reference changed and content changed
             if (!p) return true;
             if (p === n) return false;
             return JSON.stringify(p) !== JSON.stringify(n);
         });
 
         if (toDelete.length > 0) {
-            supabase.from(table).delete().in("id", toDelete.map(d => d.id)).then(({ error }) => {
-                if (error) {
-                    console.error(`Delete ${table} error:`, error);
-                    addSystemLog("error", `Error eliminando en ${table}`, { error });
-                }
-            });
+            const { error } = await deleteRecords(table, toDelete.map(d => d.id));
+            if (error) {
+                console.error(`Delete ${table} error:`, error);
+                addSystemLog("error", `Error eliminando en ${table}`, { error });
+            }
         }
+        
         if (toUpsert.length > 0) {
             const fullPayload = toUpsert.map(mapFn);
-            supabase.from(table).upsert(fullPayload).then(async ({ error }) => {
-                if (error) {
-                    // Check if it's a missing column error (code: PGRST204 / 42703) BEFORE logging as error
-                    // to avoid Next.js dev overlay from catching console.error for handled fallbacks.
-                    if (error.code === 'PGRST204' || error.code === '42703') {
-                        console.warn(`Attempting legacy fallback for ${table} due to missing columns...`);
-                        const legacyPayload = fullPayload.map(item => {
-                            const clone = { ...item };
-                            delete clone.gender;
-                            delete clone.last_update;
-                            delete clone.payment_method;
-                            delete clone.payment_status;
-                            if (table === "bases") delete clone.category;
-                            return clone;
-                        });
+            const { error } = await upsertRecords(table, fullPayload);
+            if (error) {
+                 console.error(`Upsert ${table} error:`, {
+                    message: error,
+                    table
+                });
 
-                        const { error: retryError } = await supabase.from(table).upsert(legacyPayload);
-                        if (!retryError) {
-                            console.info(`Recovered ${table} upsert via legacy mode (some metadata might be lost). Please update DB schema.`);
-                            return;
-                        } else {
-                            console.error(`Retry failed for ${table}:`, retryError);
-                        }
-                    } else {
-                        console.error(`Upsert ${table} error:`, {
-                            message: error.message,
-                            code: error.code,
-                            details: error.details,
-                            table
-                        });
-                    }
-
-                    addSystemLog("error", `Error guardando en ${table}`, {
-                        error: error.message,
-                        code: error.code,
-                        table
-                    });
-                }
-            });
+                addSystemLog("error", `Error guardando en ${table}`, {
+                    error,
+                    table
+                });
+            }
         }
     };
 

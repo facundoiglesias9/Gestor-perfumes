@@ -4,6 +4,7 @@ import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 import { KeyRound, User, Loader2 } from "lucide-react";
 import Link from "next/link";
+import { fetchTable } from "@/lib/db-actions";
 
 import { useAppContext } from "@/context/AppContext";
 import ThemeToggle from "@/components/ThemeToggle";
@@ -73,12 +74,10 @@ export default function LoginPage() {
 
         // 3. Try searching the custom 'usuarios' table (for non-admin users on new machines)
         try {
-            const { data: dbUser, error: dbError } = await supabase
-                .from("usuarios")
-                .select("*")
-                .ilike("username", email)
-                .eq("password", password)
-                .single();
+            const { data: usersData, error: dbError } = await fetchTable("usuarios", { 
+                filter: { username: email, password: password } 
+            });
+            const dbUser = usersData?.[0];
 
             if (!dbError && dbUser) {
                 if (dbUser.status === "Inactivo") {
