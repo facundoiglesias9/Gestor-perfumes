@@ -55,8 +55,11 @@ export default function DashboardPage() {
         });
         orders.forEach(o => months.add(getMonthYear(o.date)));
         return Array.from(months).filter(m => m !== "Desconocido").sort((a, b) => {
-            // Sort roughly by date (could be improved)
-            return a.localeCompare(b);
+            const monthsOrder = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+            const [mA, yA] = a.split(" ");
+            const [mB, yB] = b.split(" ");
+            if (yA !== yB) return yA.localeCompare(yB);
+            return monthsOrder.indexOf(mA) - monthsOrder.indexOf(mB);
         });
     }, [transacciones, orders]);
 
@@ -72,7 +75,24 @@ export default function DashboardPage() {
         });
 
         let data = Array.from(salesMap.entries()).map(([name, Ingresos]) => ({ name, Ingresos }));
-        data.sort((a, b) => a.name.localeCompare(b.name));
+        
+        // Chronological sort for the chart
+        data.sort((a, b) => {
+            const monthsOrder = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+            
+            // Handle day format (dd/mm) vs month format (Month YYYY)
+            if (a.name.includes("/") && b.name.includes("/")) {
+                const [dA, moA] = a.name.split("/").map(Number);
+                const [dB, moB] = b.name.split("/").map(Number);
+                if (moA !== moB) return moA - moB;
+                return dA - dB;
+            }
+            
+            const [mA, yA] = a.name.split(" ");
+            const [mB, yB] = b.name.split(" ");
+            if (yA !== yB) return (yA || "").localeCompare(yB || "");
+            return monthsOrder.indexOf(mA) - monthsOrder.indexOf(mB);
+        });
         return data;
     }, [transacciones, salesMonth]);
 
@@ -103,6 +123,13 @@ export default function DashboardPage() {
         filteredOrders.forEach(o => {
             const cName = o.customerName || "Consumidor Final";
             if (cName.trim() === "") return;
+            
+            // Check if this is a wholesale order (revendedor)
+            // An order is considered wholesale if it was created from the wholesale cart
+            // or if it has items with mayorista price type.
+            const isMayorista = o.items.some(item => item.priceType === "mayorista");
+            if (!isMayorista) return;
+
             resellerSales.set(cName, (resellerSales.get(cName) || 0) + o.total);
         });
 

@@ -9,7 +9,7 @@ import { Menu, X, CheckCircle2, Loader2 } from "lucide-react";
 function DashboardContent({ children }: { children: ReactNode }) {
     const pathname = usePathname();
     const router = useRouter();
-    const { currentUser, mounted, usdRate } = useAppContext();
+    const { currentUser, mounted, usdRate, usdLastUpdate } = useAppContext();
     const [isAuthorized, setIsAuthorized] = useState(false);
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
@@ -124,9 +124,12 @@ function DashboardContent({ children }: { children: ReactNode }) {
                 {/* Live USD Widget */}
                 {isAuthorized && currentUser?.role === "admin" && (
                     <div className="fixed top-5 right-6 lg:top-8 lg:right-10 z-[60] print:hidden flex flex-col items-end group animate-in slide-in-from-top-10 fade-in duration-700">
-                        <div className="flex items-center gap-2.5 bg-slate-900/80 dark:bg-black/80 backdrop-blur-xl px-4 py-2.5 rounded-2xl border border-emerald-500/20 shadow-xl shadow-emerald-500/10 hover:border-emerald-500/50 hover:bg-slate-900 dark:hover:bg-black transition-all cursor-default">
+                        <div 
+                            className="flex items-center gap-2.5 bg-slate-900/80 dark:bg-black/80 backdrop-blur-xl px-4 py-2.5 rounded-2xl border border-emerald-500/20 shadow-xl shadow-emerald-500/10 hover:border-emerald-500/50 hover:bg-slate-900 dark:hover:bg-black transition-all cursor-default"
+                            title={usdLastUpdate ? `Última actualización: ${new Date(usdLastUpdate).toLocaleString('es-AR')}` : "Sin datos de fecha"}
+                        >
                             <span className="flex h-2 w-2 relative">
-                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                                <span className={`animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75`}></span>
                                 <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
                             </span>
                             <span className="text-emerald-500 font-bold text-xs tracking-widest uppercase">USD BLUE</span>
@@ -135,9 +138,16 @@ function DashboardContent({ children }: { children: ReactNode }) {
                                 ${usdRate?.toLocaleString('es-AR') || "---"}
                             </span>
                         </div>
-                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-2 mr-2 opacity-0 group-hover:opacity-100 transition-opacity drop-shadow-md">
-                            Auto-sync DolarAPI
-                        </span>
+                        <div className="flex flex-col items-end mt-2 mr-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest drop-shadow-md">
+                                Auto-sync DolarAPI
+                            </span>
+                            {usdLastUpdate && (
+                                <span className="text-[8px] font-bold text-slate-500 uppercase tracking-tighter mt-0.5">
+                                    {new Date(usdLastUpdate).toLocaleDateString('es-AR')} {new Date(usdLastUpdate).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}
+                                </span>
+                            )}
+                        </div>
                     </div>
                 )}
 

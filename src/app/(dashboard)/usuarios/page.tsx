@@ -58,23 +58,28 @@ export default function GestionUsuariosPage() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (editingUser) {
-            await updateUsuario({ ...editingUser, ...formData });
-        } else {
-            const newUser: Usuario = {
-                id: Math.random().toString(36).substr(2, 9),
-                ...formData
-            };
-            await addUsuario(newUser);
-        }
+        try {
+            if (editingUser) {
+                await updateUsuario({ ...editingUser, ...formData });
+            } else {
+                const newUser: Usuario = {
+                    id: Math.random().toString(36).substr(2, 9),
+                    ...formData
+                };
+                await addUsuario(newUser);
+            }
 
-        setIsSuccess(true);
-        setTimeout(() => {
-            setIsSuccess(false);
-            setIsCreateModalOpen(false);
-            setEditingUser(null);
-            setFormData({ username: "", email: "", password: "", role: "minorista", status: "Activo", notas: "" });
-        }, 1500);
+            setIsSuccess(true);
+            setTimeout(() => {
+                setIsSuccess(false);
+                setIsCreateModalOpen(false);
+                setEditingUser(null);
+                setFormData({ username: "", email: "", password: "", role: "minorista", status: "Activo", notas: "" });
+            }, 1500);
+        } catch (err: any) {
+            console.error("Error submitting user:", err);
+            alert("Error al guardar el usuario: " + err.message);
+        }
     };
 
     const handleEdit = (user: Usuario, quick: boolean = false) => {

@@ -87,6 +87,8 @@ async function getProductsFromCategory(baseUrl: string, gender: "Femenino" | "Ma
     return products;
 }
 
+import { fetchTable, upsertRecords } from "@/lib/db-actions";
+
 export async function GET() {
     try {
         const femaleProducts = await getProductsFromCategory(FEMALE_BASE_URL, "Femenino", 9);

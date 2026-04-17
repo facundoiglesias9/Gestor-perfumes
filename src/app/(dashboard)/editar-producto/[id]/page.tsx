@@ -5,7 +5,6 @@ import { useState, useMemo, useEffect, useCallback } from "react";
 import { useAppContext, BaseComponent, Producto } from "@/context/AppContext";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
-import { supabase } from "@/lib/supabase";
 
 export default function EditarProductoPage() {
     const { bases, insumos, esencias, categorias, updateProducto, productos, generos } = useAppContext();
@@ -126,24 +125,6 @@ export default function EditarProductoPage() {
     };
 
     const handleDeleteImage = async () => {
-        if (!imageUrl) return;
-
-        if (imageUrl.includes('supabase.co')) {
-            try {
-                // Extract filename from URL
-                const urlParts = imageUrl.split('/');
-                const fileName = urlParts[urlParts.length - 1];
-
-                await fetch('/api/upload', {
-                    method: 'DELETE',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ fileName })
-                });
-            } catch (error) {
-                console.error("Error al eliminar imagen:", error);
-            }
-        }
-
         setImageUrl("");
     };
 

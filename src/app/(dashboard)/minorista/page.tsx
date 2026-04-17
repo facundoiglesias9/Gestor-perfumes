@@ -31,6 +31,7 @@ import { useState, useMemo, useEffect } from "react";
 import { useAppContext, Producto, Promotion } from "@/context/AppContext";
 import { motion, AnimatePresence } from "framer-motion";
 import { exportToExcel, exportToPDF } from "@/lib/export-utils";
+import { formatNumber } from "@/lib/format-utils";
 import { FileSpreadsheet, FileText } from "lucide-react";
 
 const extractBrand = (name: string) => {
@@ -419,16 +420,17 @@ export default function ListaMinoristaPage() {
                             </div>
 
                             {/* Gender Badge */}
-                            <div className="absolute top-4 left-4 z-10">
-                                <span className={`inline-flex items-center px-3 py-1.5 rounded-xl font-black text-[10px] uppercase tracking-widest shadow-xl backdrop-blur-md border ${
-                                    prod.gender === 'Femenino' ? 'bg-pink-600/90 text-white border-pink-400/50' :
-                                    prod.gender === 'Masculino' ? 'bg-sky-600/90 text-white border-sky-400/50' :
-                                    prod.gender === 'Unisex' ? 'bg-emerald-600/90 text-white border-emerald-400/50' :
-                                    (prod.gender === 'Ambiente' || (typeof prod.gender === 'string' && prod.gender.toLowerCase().includes('ambiente'))) ? 'bg-amber-600/90 text-white border-amber-400/50' :
-                                    (prod.gender === 'Auto' || (typeof prod.gender === 'string' && prod.gender.toLowerCase().includes('auto'))) ? 'bg-violet-600/90 text-white border-violet-400/50' :
-                                    (typeof prod.gender === 'string' && prod.gender.toLowerCase().includes('limpia')) ? 'bg-cyan-600/90 text-white border-cyan-400/50' :
-                                    'bg-slate-800/90 text-white border-slate-600/50'
+                            <div className="absolute top-4 left-4 z-10 transition-transform duration-300 group-hover:scale-105">
+                                <span className={`inline-flex items-center px-3.5 py-1.5 rounded-2xl font-black text-[10px] uppercase tracking-[0.05em] shadow-xl border border-white/20 text-white ${
+                                    prod.gender === 'Femenino' ? 'bg-gradient-to-br from-pink-500 to-rose-600 shadow-pink-500/20' :
+                                    prod.gender === 'Masculino' ? 'bg-gradient-to-br from-indigo-500 to-blue-700 shadow-indigo-500/20' :
+                                    prod.gender === 'Unisex' ? 'bg-gradient-to-br from-emerald-500 to-teal-700 shadow-emerald-500/20' :
+                                    (prod.gender === 'Ambiente' || (typeof prod.gender === 'string' && prod.gender.toLowerCase().includes('ambiente'))) ? 'bg-gradient-to-br from-orange-500 to-amber-600 shadow-orange-500/20' :
+                                    (prod.gender === 'Auto' || (typeof prod.gender === 'string' && prod.gender.toLowerCase().includes('auto'))) ? 'bg-gradient-to-br from-violet-500 to-purple-700 shadow-violet-500/20' :
+                                    (typeof prod.gender === 'string' && prod.gender.toLowerCase().includes('limpia')) ? 'bg-gradient-to-br from-cyan-500 to-blue-600 shadow-cyan-500/20' :
+                                    'bg-gradient-to-br from-slate-600 to-slate-800 shadow-slate-500/20'
                                     }`}>
+                                    <span className="mr-2 w-1.5 h-1.5 rounded-full bg-white/40 animate-pulse"></span>
                                     {prod.gender}
                                 </span>
                             </div>
@@ -501,11 +503,11 @@ export default function ListaMinoristaPage() {
                                                     return (
                                                         <>
                                                             <p className="text-xs text-slate-400 line-through font-bold mb-0.5 opacity-60">
-                                                                ${prod.priceMinorista.toLocaleString()}
+                                                                ${formatNumber(prod.priceMinorista)}
                                                             </p>
                                                             <p className="text-3xl font-black text-violet-600 dark:text-violet-400 tracking-tight">
                                                                 <span className="text-xl mr-0.5">$</span>
-                                                                {Math.round(prod.priceMinorista * (1 - promo.discountPercentage / 100)).toLocaleString()}
+                                                                {formatNumber(Math.round(prod.priceMinorista * (1 - promo.discountPercentage / 100)))}
                                                             </p>
                                                         </>
                                                     );
@@ -520,7 +522,7 @@ export default function ListaMinoristaPage() {
                                             return (
                                                 <p className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">
                                                     <span className="text-xl text-slate-400 mr-0.5">$</span>
-                                                    {prod.priceMinorista.toLocaleString("es-AR")}
+                                                    {formatNumber(prod.priceMinorista)}
                                                 </p>
                                             );
                                             })()}

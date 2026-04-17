@@ -47,7 +47,11 @@ export default function HistorialComprasPage() {
     // Only show completed orders of the current mayorista
     const myCompletedOrders = useMemo(() => {
         if (!currentUser) return [];
-        return orders.filter(o => o.customerName.trim().toLowerCase() === currentUser.username.trim().toLowerCase() && o.paymentStatus === "pagado");
+        return orders.filter(o => 
+            o.customerName.trim().toLowerCase() === currentUser.username.trim().toLowerCase() && 
+            o.paymentStatus === "pagado" &&
+            o.status === "entregado"
+        );
     }, [orders, currentUser]);
 
     // Flatten order items to track their individual sales

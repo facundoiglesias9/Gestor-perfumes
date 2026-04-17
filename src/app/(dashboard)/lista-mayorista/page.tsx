@@ -29,6 +29,7 @@ import { getOptimizedImageUrl } from "@/lib/image-optimizer";
 import { useState, useMemo, useEffect } from "react";
 import { useAppContext, Producto } from "@/context/AppContext";
 import { exportToExcel, exportToPDF } from "@/lib/export-utils";
+import { formatNumber } from "@/lib/format-utils";
 import { FileSpreadsheet, FileText } from "lucide-react";
 
 const extractBrand = (name: string) => {
@@ -464,7 +465,7 @@ export default function ListaMayoristaPage() {
                                         ) : (
                                             <p className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">
                                                 <span className="text-xl text-slate-400 mr-0.5">$</span>
-                                                {prod.price.toLocaleString("es-AR")}
+                                                {formatNumber(prod.price)}
                                             </p>
                                         )}
                                     </div>

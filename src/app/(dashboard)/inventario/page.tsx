@@ -6,9 +6,12 @@ import { useAppContext } from "@/context/AppContext";
 import ConfirmModal from "@/components/ConfirmModal";
 
 export default function InventarioPage() {
-    const { inventario, esencias, insumos, getNextId, addInventarioItem, deleteInventarioItem } = useAppContext();
+    const { inventario, esencias, insumos, getNextId, addInventarioItem, deleteInventarioItem, updateInventarioItem } = useAppContext();
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [itemToDelete, setItemToDelete] = useState<string | null>(null);
+    const [editingItem, setEditingItem] = useState<any | null>(null);
+    const [editQty, setEditQty] = useState("");
 
     const [formData, setFormData] = useState({
         type: "Esencia" as "Esencia" | "Insumo",
@@ -153,6 +156,16 @@ export default function InventarioPage() {
         if (itemToDelete) {
             deleteInventarioItem(itemToDelete);
             setItemToDelete(null);
+        }
+    };
+
+    const handleEditSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (editingItem && editQty) {
+            updateInventarioItem(editingItem.id, parseFloat(editQty));
+            setIsEditModalOpen(false);
+            setEditingItem(null);
+            setEditQty("");
         }
     };
 
@@ -331,6 +344,17 @@ export default function InventarioPage() {
                                                     title="Configurar Alerta"
                                                 >
                                                     <AlertCircle className="w-5 h-5" />
+                                                </button>
+                                                <button
+                                                    onClick={() => {
+                                                        setEditingItem(item);
+                                                        setEditQty(item.qty.toString());
+                                                        setIsEditModalOpen(true);
+                                                    }}
+                                                    className="p-2.5 text-slate-400 dark:text-slate-500 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 rounded-xl transition-colors"
+                                                    title="Editar Stock"
+                                                >
+                                                    <Edit2 className="w-5 h-5" />
                                                 </button>
                                                 <button
                                                     onClick={() => setItemToDelete(item.id)}
@@ -586,6 +610,49 @@ export default function InventarioPage() {
                                 </div>
                             )}
                         </div>
+                    </div>
+                </div>
+            )}
+            {/* Modal Editar Cantidad (Lápiz) */}
+            {isEditModalOpen && (
+                <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-950/40 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="bg-white dark:bg-slate-900 rounded-[2rem] shadow-2xl w-full max-w-sm overflow-hidden border border-slate-100 dark:border-slate-800">
+                        <div className="p-6 pb-4 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
+                            <div>
+                                <h2 className="text-lg font-black text-slate-900 dark:text-slate-50">Ajustar Stock</h2>
+                                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">{editingItem?.name}</p>
+                            </div>
+                            <button
+                                onClick={() => setIsEditModalOpen(false)}
+                                className="p-2 bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-rose-600 rounded-xl transition-all"
+                            >
+                                <X className="w-4 h-4" />
+                            </button>
+                        </div>
+                        <form onSubmit={handleEditSubmit} className="p-6 space-y-6">
+                            <div className="space-y-3">
+                                <label className="text-[11px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest block text-center">
+                                    Cantidad actual en stock ({editingItem?.unit}):
+                                </label>
+                                <div className="flex justify-center">
+                                    <input
+                                        type="number"
+                                        step="0.01"
+                                        value={editQty}
+                                        onChange={(e) => setEditQty(e.target.value)}
+                                        className="w-40 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl py-4 px-4 text-center text-3xl font-black text-slate-900 dark:text-slate-50 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all"
+                                        autoFocus
+                                        onFocus={(e) => e.target.select()}
+                                    />
+                                </div>
+                            </div>
+                            <button
+                                type="submit"
+                                className="w-full py-4 rounded-xl font-bold bg-emerald-600 text-white hover:bg-emerald-700 transition-colors shadow-lg shadow-emerald-600/20 flex items-center justify-center gap-2"
+                            >
+                                Actualizar Stock
+                            </button>
+                        </form>
                     </div>
                 </div>
             )}

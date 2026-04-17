@@ -3,7 +3,9 @@
 import { Wallet, TrendingUp, TrendingDown, ArrowDownLeft, ArrowUpRight, Search, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { useAppContext } from "@/context/AppContext";
+import { formatCurrency } from "@/lib/format-utils";
 import ConfirmModal from "@/components/ConfirmModal";
+import { upsertRecord } from "@/lib/db-actions";
 
 export default function CajaPage() {
     const { transacciones, setTransacciones, getNextId } = useAppContext();
@@ -16,23 +18,43 @@ export default function CajaPage() {
         description: ""
     });
 
-    // Cálculos de saldo
-    const totalIngresos = transacciones.filter(t => t.type === "Ingreso").reduce((acc, t) => acc + t.amount, 0);
-    const totalEgresos = transacciones.filter(t => t.type === "Egreso").reduce((acc, t) => acc + t.amount, 0);
+    const formatARS = (amount: number) => {
+        return formatCurrency(amount, true);
+    };
+
+    // Cálculos de saldo - Aseguramos que sean números
+    const totalIngresos = transacciones
+        .filter(t => t.type === "Ingreso")
+        .reduce((acc, t) => acc + Number(t.amount || 0), 0);
+        
+    const totalEgresos = transacciones
+        .filter(t => t.type === "Egreso")
+        .reduce((acc, t) => acc + Number(t.amount || 0), 0);
+        
     const saldoActual = totalIngresos - totalEgresos;
 
-    const handleAddSubmit = (e: React.FormEvent) => {
+    const handleAddSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        setTransacciones([
-            {
-                id: getNextId(transacciones, "T-"),
-                type: formData.type,
-                amount: parseFloat(formData.amount),
-                description: formData.description,
-                date: new Date().toLocaleDateString("es-AR")
-            },
-            ...transacciones
-        ]);
+        const newId = getNextId(transacciones, "T-");
+        const newTransaction = {
+            id: newId,
+            type: formData.type,
+            amount: parseFloat(formData.amount),
+            description: formData.description,
+            date: new Date().toLocaleDateString("es-AR")
+        };
+        
+        setTransacciones([newTransaction, ...transacciones]);
+        
+        // Persist to Xata
+        await upsertRecord("transacciones", {
+            id: newTransaction.id,
+            type: newTransaction.type,
+            amount: newTransaction.amount,
+            description: newTransaction.description,
+            date: newTransaction.date
+        });
+
         setFormData({ type: "Ingreso", amount: "", description: "" });
         setIsAddModalOpen(false);
     };
@@ -40,6 +62,9 @@ export default function CajaPage() {
     const confirmDelete = () => {
         if (itemToDelete) {
             setTransacciones(transacciones.filter(t => t.id !== itemToDelete));
+            // Also delete from DB
+            const { deleteRecord } = require("@/lib/db-actions");
+            deleteRecord("transacciones", itemToDelete);
             setItemToDelete(null);
         }
     };
@@ -81,7 +106,7 @@ export default function CajaPage() {
                         Plata en Caja
                     </div>
                     <div className="relative z-10 mt-4">
-                        <span className="text-5xl font-black tracking-tight">${saldoActual.toLocaleString()}</span>
+                        <span className="text-5xl font-black tracking-tight">{formatARS(saldoActual)}</span>
                     </div>
                 </div>
 
@@ -93,7 +118,7 @@ export default function CajaPage() {
                             </div>
                             Ingresos Totales
                         </div>
-                        <p className="text-3xl font-black text-slate-900 dark:text-slate-50">${totalIngresos.toLocaleString()}</p>
+                        <p className="text-3xl font-black text-slate-900 dark:text-slate-50">{formatARS(totalIngresos)}</p>
                     </div>
 
                     <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-8 rounded-[2.5rem] shadow-[0_2px_10px_rgb(0,0,0,0.02)] flex flex-col justify-center gap-4">
@@ -103,7 +128,7 @@ export default function CajaPage() {
                             </div>
                             Egresos Totales
                         </div>
-                        <p className="text-3xl font-black text-slate-900 dark:text-slate-50">${totalEgresos.toLocaleString()}</p>
+                        <p className="text-3xl font-black text-slate-900 dark:text-slate-50">{formatARS(totalEgresos)}</p>
                     </div>
                 </div>
             </div>
@@ -148,7 +173,7 @@ export default function CajaPage() {
                                     <td className="px-8 py-6 text-right">
                                         <p className={`font-black text-lg ${item.type === "Ingreso" ? "text-emerald-600 dark:text-emerald-400" : "text-slate-900 dark:text-slate-100"
                                             }`}>
-                                            {item.type === "Ingreso" ? "+" : "-"}${item.amount.toLocaleString()}
+                                            {item.type === "Ingreso" ? "+" : "-"}{formatARS(item.amount)}
                                         </p>
                                     </td>
                                     <td className="px-8 py-6 text-right">

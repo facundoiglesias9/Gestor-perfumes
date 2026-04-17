@@ -35,7 +35,7 @@ export default function VentasRevendedoresPage() {
                     orderDate = new Date(order.date);
                 }
                 const isMyOrder = order.customerName.trim().toLowerCase() === reseller.username.trim().toLowerCase();
-                const isInPeriod = orderDate.getMonth() === selectedMonth && orderDate.getFullYear() === selectedYear;
+                const isInPeriod = (selectedMonth === -1 || orderDate.getMonth() === selectedMonth) && orderDate.getFullYear() === selectedYear;
                 return isMyOrder && isInPeriod;
             });
 
@@ -59,8 +59,11 @@ export default function VentasRevendedoresPage() {
 
     const topProducts = useMemo(() => {
         const productMap: Record<string, { name: string, qty: number, total: number }> = {};
+        const mayoristaNames = new Set(usuarios.filter(u => u.role === "mayorista").map(u => u.username.trim().toLowerCase()));
 
         orders.forEach(order => {
+            if (!mayoristaNames.has(order.customerName.trim().toLowerCase())) return;
+
             let orderDate: Date;
             if (order.date.includes('/')) {
                 const [d, m, y] = order.date.split('/');
@@ -68,7 +71,7 @@ export default function VentasRevendedoresPage() {
             } else {
                 orderDate = new Date(order.date);
             }
-            if (orderDate.getMonth() !== selectedMonth || orderDate.getFullYear() !== selectedYear) return;
+            if ((selectedMonth !== -1 && orderDate.getMonth() !== selectedMonth) || orderDate.getFullYear() !== selectedYear) return;
 
             order.items.forEach(item => {
                 const key = item.producto.name;
@@ -118,6 +121,7 @@ export default function VentasRevendedoresPage() {
                             onChange={(e) => setSelectedMonth(Number(e.target.value))}
                             className="bg-transparent text-sm font-bold text-slate-700 dark:text-slate-300 px-4 py-2 focus:outline-none"
                         >
+                            <option value={-1} className="bg-white dark:bg-slate-900 font-extrabold text-indigo-600">Total Anual</option>
                             {months.map((m, i) => (
                                 <option key={i} value={i} className="bg-white dark:bg-slate-900">{m}</option>
                             ))}
@@ -142,7 +146,7 @@ export default function VentasRevendedoresPage() {
                         <BarChart3 className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
                     </div>
                     <div>
-                        <p className="text-slate-400 text-xs font-black uppercase tracking-widest">Monto Mayorista Mes</p>
+                        <p className="text-slate-400 text-xs font-black uppercase tracking-widest">{selectedMonth === -1 ? 'Monto Mayorista Anual' : 'Monto Mayorista Mes'}</p>
                         <h3 className="text-3xl font-black text-slate-900 dark:text-slate-50 mt-1">${globalStats.totalValue.toLocaleString()}</h3>
                     </div>
                 </div>

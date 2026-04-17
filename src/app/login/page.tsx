@@ -1,6 +1,5 @@
 "use client";
 import { useState } from "react";
-import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 import { KeyRound, User, Loader2 } from "lucide-react";
 import Link from "next/link";
@@ -87,7 +86,7 @@ export default function LoginPage() {
                 }
 
                 if (dbUser.username.toLowerCase() !== "facundo") {
-                    addSystemLog("auth", `Inicio de sesión exitoso: ${dbUser.username} (${dbUser.role || 'usuario'})`, { method: "supabase_table" });
+                    addSystemLog("auth", `Inicio de sesión exitoso: ${dbUser.username} (${dbUser.role || 'usuario'})`, { method: "xata_table" });
                 }
 
                 const foundUser = {
@@ -121,30 +120,10 @@ export default function LoginPage() {
             addSystemLog("error", "Error al intentar iniciar sesión en DB", { error: err });
         }
 
-        // 4. Try Supabase Auth as last resort (for production users)
-        try {
-            const { data, error: sbError } = await supabase.auth.signInWithPassword({
-                email, // Supabase expects email format
-                password,
-            });
-
-            if (!sbError) {
-                if (email.toLowerCase() !== "facundo") {
-                    addSystemLog("auth", `Inicio de sesión exitoso (Supabase Auth): ${email}`, { method: "supabase_auth" });
-                }
-                // Supabase flow will trigger onAuthStateChange in AppContext
-                window.location.href = "/dashboard";
-                return;
-            }
-
-            // If it reached here and didn't find a mock user, it's a real failure
-            setError("Credenciales incorrectas.");
-            addSystemLog("auth", `Intento de inicio de sesión fallido para: ${email}`);
-        } catch (err) {
-            setError("Error de conexión.");
-        } finally {
-            setLoading(false);
-        }
+        // 4. Failed
+        setError("Credenciales incorrectas.");
+        addSystemLog("auth", `Intento de inicio de sesión fallido para: ${email}`);
+        setLoading(false);
     };
 
     return (

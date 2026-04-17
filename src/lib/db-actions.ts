@@ -11,7 +11,10 @@ export async function fetchTable(tableName: string, options: any = {}) {
     if (filter) {
         const keys = Object.keys(filter);
         if (keys.length > 0) {
-            query = sql`SELECT * FROM ${sql(tableName)} WHERE ${sql(filter)}`;
+            // Join filters with AND instead of using the default comma separation
+            const conditions = Object.keys(filter).map(key => sql`${sql(key)} = ${filter[key]}`);
+            const whereClause = conditions.reduce((acc, curr) => sql`${acc} AND ${curr}`);
+            query = sql`SELECT * FROM ${sql(tableName)} WHERE ${whereClause}`;
         } else {
             query = sql`SELECT * FROM ${sql(tableName)}`;
         }
@@ -77,18 +80,27 @@ export async function upsertRecords(tableName: string, records: any[]) {
   try {
     const columns = Object.keys(records[0]);
     const updateColumns = columns.filter(c => c !== 'id');
-    
-    // Postgres library handles batch insert by passing an array
-    const result = await sql`
-      INSERT INTO ${sql(tableName)} ${sql(records)}
-      ON CONFLICT (id) DO UPDATE SET
-        ${sql(records[0], ...updateColumns)}
-      RETURNING *
-    `;
-    return { data: result, error: null };
+    const setClause = updateColumns.map(col => `"${col}" = EXCLUDED."${col}"`).join(', ');
+
+    const results = [];
+    for (let i = 0; i < records.length; i += 50) {
+      const chunk = records.slice(i, i + 50);
+      const res = await sql`
+        INSERT INTO ${sql(tableName)} ${sql(chunk)}
+        ON CONFLICT (id) DO UPDATE SET
+          ${sql.unsafe(setClause)}
+        RETURNING *
+      `;
+      results.push(...res);
+    }
+    return { data: results, error: null };
   } catch (err: any) {
-    console.error(`DB Error (upsertRecords ${tableName}):`, err);
-    return { data: null, error: err.message };
+    if (err.severity_local) {
+      console.error(`DB Error (upsertRecords ${tableName}):`, { message: err.message, code: err.code, position: err.position, routine: err.routine });
+      return { data: null, error: err.message || err.code || "PostgresError" };
+    }
+    console.error(`DB Error (upsertRecords ${tableName}):`, String(err));
+    return { data: null, error: String(err) };
   }
 }
 

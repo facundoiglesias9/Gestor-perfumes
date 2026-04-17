@@ -1,7 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useState, useRef } from "react";
-import { supabase } from "@/lib/supabase";
+import React, { createContext, useContext, useEffect, useState, useRef, useMemo } from "react";
 import { toast } from "sonner";
 import { fetchTable, upsertRecord, upsertRecords, deleteRecord, deleteRecords, clearTable } from "@/lib/db-actions";
 
@@ -52,7 +51,7 @@ export type Usuario = { id: string; username: string; email?: string; password?:
 export type PermissionLevel = "Editor" | "Solo lectura" | "Sin acceso";
 export type CategoryPermissions = Record<string, PermissionLevel>;
 
-export type OrderStatus = "solicitud recibida" | "pedido confirmado" | "en preparacion" | "listo para entregar" | "cancelado";
+export type OrderStatus = "solicitud recibida" | "pedido confirmado" | "en preparacion" | "listo para entregar" | "entregado" | "cancelado";
 export type CartItem = { producto: Producto; quantity: number; priceType: "mayorista" | "minorista"; customPrice?: number };
 export type Order = {
     id: string;
@@ -99,9 +98,9 @@ function dbToEsencia(row: any): Esencia {
         provider: row.provider ?? "Van Rossum",
         cost: row.cost ?? 0,
         qty: row.qty ?? 0,
-        price30g: row.price30g === null ? "consultar" : row.price30g,
-        price100g: row.price100g === null ? "consultar" : row.price100g,
-        price250g: row.price250g === null ? "consultar" : row.price250g,
+        price30g: row.price30g === null ? "consultar" : (isNaN(parseFloat(row.price30g)) ? "consultar" : parseFloat(row.price30g)),
+        price100g: row.price100g === null ? "consultar" : (isNaN(parseFloat(row.price100g)) ? "consultar" : parseFloat(row.price100g)),
+        price250g: row.price250g === null ? "consultar" : (isNaN(parseFloat(row.price250g)) ? "consultar" : parseFloat(row.price250g)),
         price100gUsd: row.price100g_usd ?? undefined,
         price250gUsd: row.price250g_usd ?? undefined,
         lastUpdate: row.last_update ?? undefined,
@@ -169,7 +168,7 @@ function dbToTransaccion(row: any): Transaccion {
     return {
         id: row.id,
         type: row.type,
-        amount: row.amount,
+        amount: Number(row.amount) || 0,
         description: row.description,
         date: row.date,
     };
@@ -233,7 +232,6 @@ interface AppContextProps {
     setScraperStatus: React.Dispatch<React.SetStateAction<ScraperStatus>>;
     currentUser: Usuario | null;
     mounted: boolean;
-    isLoading: boolean;
     updateProducto: (updated: Producto) => void;
     deleteProducto: (id: string) => void;
     addUsuario: (user: Usuario) => void;
@@ -255,6 +253,7 @@ interface AppContextProps {
     deleteInsumo: (id: string) => Promise<void>;
     addInventarioItem: (item: InventarioItem) => Promise<void>;
     deleteInventarioItem: (id: string) => Promise<void>;
+    updateInventarioItem: (id: string, qty: number) => Promise<void>;
     runScraper: () => Promise<void>;
     login: (user: Usuario) => void;
     logout: () => void;
@@ -270,8 +269,11 @@ interface AppContextProps {
     paymentInfo: { alias: string; cbu: string; banco: string; mpAccessToken: string };
     setPaymentInfo: (info: { alias: string; cbu: string; banco: string; mpAccessToken: string }) => void;
     clearAllProductos: () => Promise<void>;
-    addSystemLog: (type: "info" | "error" | "db" | "auth" | "warn", message: string, details?: any) => void;
     usdRate: number;
+    usdLastUpdate: string;
+    syncUsdRate: () => Promise<{ rate: number, date: string } | null>;
+    addSystemLog: (type: "info" | "error" | "db" | "auth" | "warn", message: string, details?: any) => void;
+    isLoading: boolean;
     notifications: AppNotification[];
     unreadCount: number;
     markNotificationAsRead: (id: string) => void;
@@ -501,21 +503,55 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         }
     };
 
-    const [usdRate, setUsdRate] = useState<number>(1000); // Default placeholder
+    const [usdRate, setUsdRate] = useState<number>(1000); 
+    const [usdLastUpdate, setUsdLastUpdate] = useState<string>("");
     const [mounted, setMounted] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
 
-    // Fetch USD rate on mount
+    // Fetch USD rate from API and sync to DB
+    const syncUsdRate = async () => {
+        try {
+            const res = await fetch("https://dolarapi.com/v1/dolares/blue");
+            const data = await res.json();
+            
+            if (data && data.venta) {
+                const newRate = data.venta;
+                const now = new Date().toISOString();
+                
+                setUsdRate(newRate);
+                setUsdLastUpdate(now);
+                
+                // Persist to DB config
+                await upsertRecord("config", { key: "usd_rate", value: newRate.toString(), updated_at: now });
+                await upsertRecord("config", { key: "usd_last_update", value: now, updated_at: now });
+                
+                addSystemLog("info", `Dólar Blue actualizado: $${newRate}`, { source: "DolarAPI" });
+                return { rate: newRate, date: now };
+            }
+        } catch (error) {
+            console.error("Could not fetch dollar rate:", error);
+            addSystemLog("error", "Error al sincronizar dólar", { error });
+        }
+        return null;
+    };
+
+    // Auto-sync effect once a day
     useEffect(() => {
-        fetch("https://dolarapi.com/v1/dolares/blue")
-            .then(res => res.json())
-            .then(data => {
-                if (data && data.venta) {
-                    setUsdRate(data.venta);
-                }
-            })
-            .catch(() => console.error("Could not fetch dollar rate"));
-    }, []);
+        if (!mounted) return;
+        
+        const checkAndSync = async () => {
+            const lastUpdate = usdLastUpdate;
+            const today = new Date().toLocaleDateString();
+            
+            // Si nunca se actualizó o no fue hoy
+            if (!lastUpdate || new Date(lastUpdate).toLocaleDateString() !== today) {
+                console.log("USD Rate outdated, syncing...");
+                await syncUsdRate();
+            }
+        };
+        
+        checkAndSync();
+    }, [mounted, usdLastUpdate]);
 
     // Keep USD costs in sync with the DolarAPI rate
     useEffect(() => {
@@ -554,6 +590,87 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
         if (shouldUpdate) {
             setEsencias(updatedEsencias);
+            
+            // Trigger products update separately to avoid nested setter calls
+            setTimeout(() => {
+                setProductos(prevProducts => {
+                    let anyProductChanged = false;
+                    const nextProducts = prevProducts.map(prod => {
+                        let prodChanged = false;
+                        const updatedComponents = prod.components.map(comp => {
+                            if (comp.type === "Esencia") {
+                                const esc = updatedEsencias.find(e => e.id === comp.id);
+                                if (esc && esc.cost !== (esencias.find(e => e.id === comp.id)?.cost)) {
+                                    prodChanged = true;
+                                }
+                            }
+                            return comp;
+                        });
+
+                        if (prodChanged) {
+                            anyProductChanged = true;
+                            const newCost = updatedComponents.reduce((acc, comp) => {
+                                const source = comp.type === "Esencia" 
+                                    ? updatedEsencias.find(e => e.id === comp.id)
+                                    : insumos.find(i => i.id === comp.id);
+                                if (!source) return acc;
+                                
+                                let unitCost = 0;
+                                if (comp.type === "Esencia") {
+                                    const e = source as Esencia;
+                                    const p100 = parseFloat(e.price100g as any);
+                                    const p250 = parseFloat(e.price250g as any);
+                                    if (!isNaN(p100) && p100 > 0) unitCost = p100 / 100;
+                                    else if (!isNaN(p250) && p250 > 0) unitCost = p250 / 250;
+                                    else unitCost = e.cost / (e.qty || 1);
+                                } else {
+                                    unitCost = source.cost / (source.qty || 1);
+                                }
+                                return acc + (unitCost * comp.qty);
+                            }, 0);
+
+                            const targetCategory = prod.category || "Perfumería Fina";
+                            const margins = categoryMargins[targetCategory] || { mayorista: 1.5, minorista: 2.0 };
+                            const roundUpTo1000 = (num: number) => Math.ceil(num / 1000) * 1000;
+
+                            return {
+                                ...prod,
+                                cost: newCost,
+                                price: prod.price === 0 ? 0 : roundUpTo1000(newCost * margins.mayorista),
+                                priceMinorista: prod.priceMinorista === 0 ? 0 : roundUpTo1000(newCost * margins.minorista),
+                                lastUpdate: new Date().toISOString()
+                            };
+                        }
+                        return prod;
+                    });
+
+                    if (anyProductChanged) {
+                        // Persist immediately since we can't easily wait for state here
+                        const toUpsert = nextProducts
+                            .filter((n, i) => JSON.stringify(n) !== JSON.stringify(prevProducts[i]))
+                            .map(p => ({
+                                id: p.id,
+                                name: p.name,
+                                category: p.category,
+                                base_id: p.baseId,
+                                components: p.components,
+                                cost: p.cost,
+                                price: p.price,
+                                price_minorista: p.priceMinorista,
+                                stock: p.stock,
+                                description: p.description,
+                                gender: p.gender,
+                                last_update: p.lastUpdate ?? null,
+                                image_url: p.imageUrl ?? null
+                            }));
+                        
+                        if (toUpsert.length > 0) {
+                            upsertRecords("productos", toUpsert);
+                        }
+                    }
+                    return nextProducts;
+                });
+            }, 0);
         }
     }, [usdRate, mounted]);
 
@@ -597,25 +714,31 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     useEffect(() => {
         const initializeApp = async () => {
             try {
-                // 1. Auth check first - mandatory to know what to load
-                const { data: { user } } = await supabase.auth.getUser();
-                let resolvedUser: Usuario | null = null;
+                const { data: configRows } = await fetchTable("config");
+                if (configRows) {
+                    const rateRow = configRows.find((r: any) => r.key === "usd_rate");
+                    const updateRow = configRows.find((r: any) => r.key === "usd_last_update");
+                    if (rateRow) setUsdRate(parseFloat(rateRow.value));
+                    if (updateRow) setUsdLastUpdate(updateRow.value);
+                }
 
-                // Get user record to know the role early
-                if (user) {
-                    const { data: usersData } = await fetchTable("usuarios", { filter: { id: user.id } });
-                    const userData = usersData?.[0];
-                    if (userData) {
-                        resolvedUser = dbToUsuario(userData);
-                    } else {
-                        // try by email if id failed (legacy)
-                        const { data: usersEmail } = await fetchTable("usuarios", { filter: { username: user.email || "" } });
-                        const userDataEmail = usersEmail?.[0];
-                        if (userDataEmail) resolvedUser = dbToUsuario(userDataEmail);
+                // 1. Auth check - only from local storage mock for now
+                let resolvedUser: Usuario | null = null;
+                const mock = localStorage.getItem("mockUser");
+                if (mock) {
+                    try { 
+                        const parsed = JSON.parse(mock);
+                        // Re-verify against DB to get latest role/status
+                        const { data: usersData } = await fetchTable("usuarios", { filter: { id: parsed.id } });
+                        if (usersData?.[0]) {
+                            resolvedUser = dbToUsuario(usersData[0]);
+                            localStorage.setItem("mockUser", JSON.stringify(resolvedUser));
+                        } else {
+                            resolvedUser = parsed;
+                        }
+                    } catch (e) { 
+                        resolvedUser = null; 
                     }
-                } else {
-                    const mock = localStorage.getItem("mockUser");
-                    if (mock) resolvedUser = JSON.parse(mock);
                 }
                 setCurrentUser(resolvedUser);
 
@@ -646,6 +769,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                     fetchTable("categorias", { orderBy: "name" }),
                     fetchTable("productos"),
                     fetchTable("promociones"),
+                    fetchTable("config"),
                 ];
                 
                 const adminRequests = isAdmin ? [
@@ -662,10 +786,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
                 const results = await Promise.all([...essentialRequests, ...adminRequests]);
 
-                const [catResult, prodResult, promoResult] = results;
+                const [catResult, prodResult, promoResult, configResult] = results;
                 const [
                     provResult, escResult, insResult, invResult, transResult, basesResult, usersResult, ordersResult, solicitudesResult
-                ] = isAdmin ? results.slice(3) : [null, null, null, null, null, null, null, null, null];
+                ] = isAdmin ? results.slice(4) : [null, null, null, null, null, null, null, null, null];
+
+                // Apply config (USD Rate, etc)
+                if (configResult && configResult.data) {
+                    const usdRow = configResult.data.find((r: any) => r.key === 'usd_rate');
+                    const lastUpdateRow = configResult.data.find((r: any) => r.key === 'usd_last_update');
+                    if (usdRow) setUsdRate(parseFloat(usdRow.value) || 1000);
+                    if (lastUpdateRow) setUsdLastUpdate(lastUpdateRow.value);
+                }
 
                 // Diagnostic log for results array
                 addSystemLog("info", "Sincronización inicial completada", {
@@ -753,21 +885,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                     }
                 } else if (!isAdmin && resolvedUser) {
                     // Cargar solicitud propia si es minorista
-                    const { data: personalReq } = await supabase
-                        .from("solicitudes_mayorista")
-                        .select("*")
-                        .eq("user_id", resolvedUser.id)
-                        .maybeSingle();
-                    
+                    const { data: requests } = await fetchTable("solicitudes_mayorista", { filter: { user_id: resolvedUser.id } });
+                    const personalReq = requests?.[0];
                     if (personalReq) setSolicitudPropia(personalReq);
 
                     // Wholesalers/Retailers only need THEIR orders
-                    // Use ilike for case-insensitive matching to avoid issues with typed vs stored names
-                    const { data: ownOrders, error: ordersErr } = await supabase
-                        .from("orders")
-                        .select("*")
-                        .ilike("customer_name", resolvedUser.username.trim())
-                        .order("date", { ascending: false });
+                    const { data: ownOrders, error: ordersErr } = await fetchTable("orders", { 
+                        filter: { customer_name: resolvedUser.username.trim() },
+                        orderBy: "date",
+                        orderDir: "desc"
+                    });
 
                     if (ordersErr) {
                         console.error("Error fetching own orders:", ordersErr);
@@ -805,158 +932,34 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         };
 
         initializeApp();
-
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-            if (session?.user) {
-                const storedUsuarios = localStorage.getItem("usuarios");
-                const allUsers: Usuario[] = storedUsuarios ? JSON.parse(storedUsuarios) : [];
-                const found = allUsers.find(u =>
-                    u.username.toLowerCase() === session.user.email?.toLowerCase() ||
-                    u.id === session.user.id
-                );
-                if (found) setCurrentUser(found);
-                if (found) setCurrentUser(found);
-            } else {
-                const mock = localStorage.getItem("mockUser");
-                if (mock) {
-                    // if possible let's just refresh next reload, but for now set mock
-                    setCurrentUser(JSON.parse(mock));
-                }
-                else setCurrentUser(null);
-            }
-        });
-
-        return () => subscription.unsubscribe();
     }, []);
 
-    // ── Real-time Notifications for Everyone ──────────────────────
+    // --- Realtime Replacement: Interval Refresh for Admin & Users ---
     useEffect(() => {
-        if (!currentUser || !mounted) return;
+        if (!mounted || !currentUser) return;
 
         const isUserAdmin = currentUser.role === "admin";
-        const channel = supabase.channel('order_system_sync');
-        channelRef.current = channel;
-
-        // 1. Sincronizar los datos en silencio
-        const handleOrderDataSync = (data: any) => {
-            const { orderId, newStatus, reason } = data;
-            setOrders(prev => prev.map(o => {
-                if (o.id === orderId) {
-                    const nextStatus = (newStatus === "Cancelado" || newStatus === "cancelado") ? "cancelado" : newStatus;
-                    // Limpiar la notificación de la campana si ya no es un pedido nuevo
-                    if (nextStatus !== "solicitud recibida") {
-                        setNotifications(prevNotif => prevNotif.filter(n => n.orderId !== orderId));
-                    }
-                    return { 
-                        ...o, 
-                        status: newStatus.toLowerCase().includes("pago") ? o.status : (nextStatus as any),
-                        paymentStatus: (newStatus.toLowerCase().includes("pagado") || newStatus === "cancelado") ? (newStatus === "cancelado" ? "rechazado" : "pagado") : o.paymentStatus,
-                        cancelationReason: reason || o.cancelationReason
-                    };
-                }
-                return o;
-            }));
-        };
-
-        // 2. Mostrar la notificación visual (Toast)
-        const handleOrderNotification = (data: any) => {
-            const { orderId, newStatus, customerName, reason, senderId } = data;
-            
-            console.log("🛎️ NOTIFICACION RECIBIDA:", { orderId, newStatus, senderId, me: currentUser?.id });
-
-            // Si soy yo mismo quien hizo la accion (Admin cancelando su propio pedido por ej), no molesto con cartel
-            if (senderId && senderId === currentUser?.id) {
-                console.log("🚫 Notificación omitida por ser acción propia.");
-                return;
-            }
-
-            // Normalización extrema para evitar fallos por espacios o mayúsculas
-            const myName = String(currentUser?.username || "").trim().toLowerCase();
-            const targetName = String(customerName || "").trim().toLowerCase();
-
-            // REGLA DE ENVIO:
-            // - Si soy admin, quiero ver TODO lo que pasa (menos lo mío)
-            // - Si soy cliente, solo quiero ver lo que me pertenece
-            const isRelevant = isUserAdmin || (targetName !== "" && targetName === myName);
-
-            if (isRelevant) {
-                console.log("✅ Mostrando Toast para pedido:", orderId);
-                addSystemLog("info", `Realtime: Notificación de pedido recibida (#${orderId}) - Nuevo Estado: ${newStatus}${reason ? ` (Motivo: ${reason})` : ""}`);
-                toast.info("Actualización de Pedido", {
-                    id: `update-${orderId}-${newStatus}`,
-                    description: `Pedido ${orderId}: ${newStatus}${reason ? ` - Motivo: ${reason}` : ""}`,
-                    duration: 12000,
-                    icon: "🔔"
+        
+        const refreshData = async () => {
+            console.log("Refreshing data (Realtime substitute)...");
+            if (isUserAdmin) {
+                const { data } = await fetchTable("orders", { orderBy: "date", orderDir: "desc" });
+                if (data) setOrders(data.map(dbToOrder));
+                await fetchSolicitudesMinoristas();
+            } else {
+                const { data } = await fetchTable("orders", { 
+                    filter: { customer_name: currentUser.username.trim() },
+                    orderBy: "date",
+                    orderDir: "desc"
                 });
+                if (data) setOrders(data.map(dbToOrder));
             }
         };
 
-        const handleNewOrder = (orderData: any) => {
-            if (!isUserAdmin) return;
-            
-            // Si el pedido lo cree yo mismo, no me notifico (evitar eco)
-            if (orderData.senderId === currentUser?.id) return;
-
-            const newOrder = dbToOrder(orderData);
-            if (!newOrder.id) return;
-
-            // Actualizar lista local si no esta
-            setOrders(prev => {
-                if (prev.some(n => n.id === newOrder.id)) return prev;
-                return [newOrder, ...prev];
-            });
-
-            setNotifications(prev => {
-                if (prev.some(n => n.orderId === newOrder.id)) return prev;
-                const newNotif: AppNotification = {
-                    id: `notif-${newOrder.id}-${Date.now()}`,
-                    title: "Nuevo Pedido",
-                    message: `Pedido de ${newOrder.customerName || 'Cliente'} por $${(newOrder.total || 0).toLocaleString("es-AR")}`,
-                    date: new Date().toISOString(),
-                    read: false,
-                    orderId: newOrder.id
-                };
-                toast.success("Nuevo pedido recibido", {
-                    id: `order-notif-${newOrder.id}`,
-                    description: `De ${newOrder.customerName} - $${(newOrder.total || 0).toLocaleString("es-AR")}`,
-                    action: { label: "Ver Pedido", onClick: () => window.location.href = "/pedidos-solicitud" },
-                });
-                return [newNotif, ...prev];
-            });
-        };
-
-        channel
-            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orders' }, (payload) => handleNewOrder(payload.new))
-            .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'orders' }, (payload) => {
-                const updated = dbToOrder(payload.new);
-                handleOrderDataSync({
-                    orderId: updated.id,
-                    newStatus: updated.status,
-                    reason: updated.cancelationReason
-                });
-            })
-            .on('broadcast', { event: 'order_created' }, ({ payload }) => handleNewOrder(payload))
-            .on('broadcast', { event: 'order_updated' }, ({ payload }) => {
-                handleOrderDataSync(payload);
-                handleOrderNotification(payload);
-            })
-            .on('broadcast', { event: 'solicitud_mayorista' }, ({ payload }) => {
-                if (isUserAdmin && payload.senderId !== currentUser?.id) {
-                    toast.info("Nueva Solicitud Minorista", {
-                        description: `${payload.username} ha enviado una postulación.`,
-                        action: { label: "Ver Solicitudes", onClick: () => window.location.href = "/solicitudes-minoristas" },
-                        duration: 10000,
-                        icon: "🤝"
-                    });
-                    fetchSolicitudesMinoristas();
-                }
-            })
-            .subscribe((status) => {
-                if (status === 'TIMED_OUT') setTimeout(() => mounted && channel.subscribe(), 3000);
-            });
-
-        return () => { supabase.removeChannel(channel); };
-    }, [currentUser?.id, currentUser?.role, currentUser?.username, mounted]);
+        const interval = setInterval(refreshData, 30000); // Poll every 30s
+        
+        return () => clearInterval(interval);
+    }, [mounted, currentUser?.id, currentUser?.role]);
 
     // Persist notifications & Initial Load from Orders
     useEffect(() => {
@@ -1054,7 +1057,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     };
 
     const logout = async () => {
-        await supabase.auth.signOut();
         localStorage.removeItem("mockUser");
         setCurrentUser(null);
     };
@@ -1104,7 +1106,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
     const addUsuario = async (user: Usuario) => {
         setUsuarios(prev => [user, ...prev]);
-        await upsertRecord("usuarios", {
+        const { error } = await upsertRecord("usuarios", {
             id: user.id,
             username: user.username,
             email: user.email,
@@ -1112,11 +1114,25 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             role: user.role,
             status: user.status,
             last_login: user.lastLogin || null,
+            notas: user.notas || null
         });
+        
+        if (error) {
+            addSystemLog("error", "Error al crear usuario en DB", { error, user: user.username });
+            throw new Error(error);
+        } else {
+            addSystemLog("info", `Nuevo usuario creado: ${user.username}`);
+        }
     };
 
     const updateUsuario = async (updated: Usuario) => {
         setUsuarios(prev => prev.map(u => u.id === updated.id ? updated : u));
+        
+        // If updating the current user, keep the state in sync
+        if (currentUser && currentUser.id === updated.id) {
+            setCurrentUser(updated);
+        }
+
         const { error } = await upsertRecord("usuarios", {
             id: updated.id,
             username: updated.username,
@@ -1125,9 +1141,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             role: updated.role,
             status: updated.status,
             last_login: updated.lastLogin || null,
+            notas: updated.notas || null
         });
+        
         if (error) {
-            console.error("Error upserting usuario natively:", error);
+            console.error("Error updating usuario natively:", error);
+            addSystemLog("error", "Error al actualizar usuario en DB", { error, user: updated.username });
+            throw new Error(error);
+        } else {
+            addSystemLog("info", `Usuario actualizado: ${updated.username}`);
         }
     };
 
@@ -1171,21 +1193,63 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     };
 
     const addInventarioItem = async (item: InventarioItem) => {
-        setInventario(prev => [item, ...prev]);
-        const { error } = await upsertRecord("inventario", {
-            id: item.id,
-            name: item.name,
-            type: item.type,
-            category: item.category,
-            qty: item.qty,
-            last_update: item.lastUpdate,
-            unit: item.unit,
-            gender: item.gender
-        });
-        if (error) {
-            console.error("Error saving inventory item:", error);
-            addSystemLog("error", "Error al guardar en inventario", error);
+        // 1. Update master records (Esencias or Insumos)
+        if (item.type === "Esencia") {
+            _setEsencias(prev => prev.map(e => e.name === item.name ? { ...e, qty: Number(e.qty || 0) + item.qty } : e));
+        } else if (item.type === "Insumo") {
+            _setInsumos(prev => prev.map(i => i.name === item.name ? { ...i, stock: Number(i.stock || 0) + item.qty } : i));
         }
+
+        // 2. Update Inventario (Physical List) with Upsert logic
+        _setInventario(prev => {
+            const existingIdx = prev.findIndex(i => i.name === item.name && i.type === item.type && i.unit === item.unit);
+            if (existingIdx !== -1) {
+                const updated = [...prev];
+                updated[existingIdx] = {
+                    ...updated[existingIdx],
+                    qty: Number(updated[existingIdx].qty || 0) + item.qty,
+                    lastUpdate: item.lastUpdate
+                };
+                return updated;
+            }
+            return [item, ...prev];
+        });
+        
+        addSystemLog("info", `Ingreso de stock: ${item.name} (${item.qty} ${item.unit})`);
+    };
+
+    const updateInventarioItem = async (id: string, qty: number) => {
+        let itemName = "";
+        let itemType = "";
+
+        // 1. Update Inventario (Physical List)
+        setInventario(prev => {
+            const idx = prev.findIndex(i => i.id === id);
+            if (idx === -1) return prev;
+            
+            const updated = [...prev];
+            itemName = updated[idx].name;
+            itemType = updated[idx].type;
+            
+            updated[idx] = {
+                ...updated[idx],
+                qty: qty,
+                lastUpdate: new Date().toLocaleDateString("es-AR")
+            };
+            return updated;
+        });
+
+        // 2. Sync to DB
+        await upsertRecord("inventario", { id, qty, last_update: new Date().toLocaleDateString("es-AR") });
+
+        // 3. Keep Master records in sync
+        if (itemType === "Esencia") {
+            _setEsencias(prev => prev.map(e => e.name === itemName ? { ...e, qty: qty } : e));
+        } else if (itemType === "Insumo") {
+            _setInsumos(prev => prev.map(i => i.name === itemName ? { ...i, stock: qty } : i));
+        }
+
+        addSystemLog("info", `Ajuste manual de stock: ${itemName} a ${qty}`);
     };
 
     const deleteInventarioItem = async (id: string) => {
@@ -1303,26 +1367,83 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
     const updateOrderStatus = async (orderId: string, status: OrderStatus) => {
         const order = orders.find(o => o.id === orderId);
+        if (!order) return;
 
-        // Logical Trigger: Deduct stock when confirming
-        if (order && status === "pedido confirmado" && order.status === "solicitud recibida") {
-            const updatedInv = [...inventario];
+        // Requirement 5: Check stock before ANY transition (except cancellation or revert to received)
+        if (status !== "solicitud recibida" && status !== "cancelado" && order.status !== "entregado") {
+            const requiredStock: Record<string, number> = {};
             order.items.forEach(cartItem => {
                 cartItem.producto.components.forEach(comp => {
-                    const totalToDeduct = comp.qty * cartItem.quantity;
-                    const invIndex = updatedInv.findIndex(inv =>
-                        inv.name.toLowerCase().includes(comp.name.toLowerCase()) ||
-                        comp.name.toLowerCase().includes(inv.name.toLowerCase())
-                    );
-                    if (invIndex !== -1) {
-                        updatedInv[invIndex] = {
-                            ...updatedInv[invIndex],
-                            qty: Math.max(0, updatedInv[invIndex].qty - totalToDeduct)
-                        };
-                    }
+                    const key = comp.name.toLowerCase();
+                    requiredStock[key] = (requiredStock[key] || 0) + (comp.qty * cartItem.quantity);
                 });
             });
-            setInventario(updatedInv);
+
+            const missingItems: string[] = [];
+            Object.entries(requiredStock).forEach(([name, qty]) => {
+                const invItem = inventario.find(inv => inv.name.toLowerCase().includes(name) || name.includes(inv.name.toLowerCase()));
+                if (!invItem || (Number(invItem.qty || 0)) < qty) {
+                    const missing = qty - (Number(invItem?.qty || 0));
+                    missingItems.push(`${name} (Faltan ${missing.toFixed(0)}${invItem?.unit || 'g/un'})`);
+                }
+            });
+
+            if (missingItems.length > 0) {
+                toast.error("Stock insuficiente", {
+                    description: `No se puede avanzar el pedido. Faltan: ${missingItems.join(", ")}`
+                });
+                return;
+            }
+        }
+
+        // Requirement 6: Deduct stock ONLY when moving to "entregado"
+        if (order && status === "entregado" && order.status !== "entregado") {
+            // We use functional updates to ensure we are using the ABSOLUTE LATEST state
+            // to avoid race conditions and inadvertent state reverts.
+            
+            // 1. Update Esencias
+            _setEsencias(prev => {
+                const updated = [...prev];
+                order.items.forEach(cartItem => {
+                    cartItem.producto.components.forEach(comp => {
+                        if (comp.type === "Esencia") {
+                            const totalToDeduct = comp.qty * cartItem.quantity;
+                            const idx = updated.findIndex(e => e.id === comp.id || e.name.toLowerCase().includes(comp.name.toLowerCase()) || comp.name.toLowerCase().includes(e.name.toLowerCase()));
+                            if (idx !== -1) {
+                                updated[idx] = {
+                                    ...updated[idx],
+                                    qty: Math.max(0, Number(updated[idx].qty || 0) - totalToDeduct)
+                                };
+                            }
+                        }
+                    });
+                });
+                return updated;
+            });
+
+            // 2. Update Insumos
+            _setInsumos(prev => {
+                const updated = [...prev];
+                order.items.forEach(cartItem => {
+                    cartItem.producto.components.forEach(comp => {
+                        if (comp.type === "Insumo") {
+                            const totalToDeduct = comp.qty * cartItem.quantity;
+                            const idx = updated.findIndex(i => i.id === comp.id || i.name.toLowerCase().includes(comp.name.toLowerCase()) || comp.name.toLowerCase().includes(i.name.toLowerCase()));
+                            if (idx !== -1) {
+                                updated[idx] = {
+                                    ...updated[idx],
+                                    stock: Math.max(0, Number(updated[idx].stock || 0) - totalToDeduct)
+                                };
+                            }
+                        }
+                    });
+                });
+                return updated;
+            });
+
+
+            
+            addSystemLog("info", `Stock descontado para pedido #${orderId}`, { items: order.items.length });
         }
 
         setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status } : o));
@@ -1352,6 +1473,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                 date: new Date().toLocaleDateString("es-AR")
             };
             setTransacciones(prev => [newTransaction, ...prev]);
+            await upsertRecord("transacciones", {
+                id: newTransaction.id,
+                type: newTransaction.type,
+                amount: newTransaction.amount,
+                description: newTransaction.description,
+                date: newTransaction.date
+            });
         }
 
         setOrders(prev => prev.map(o => o.id === orderId ? { ...o, paymentStatus } : o));
@@ -1709,17 +1837,22 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         
         if (toUpsert.length > 0) {
             const fullPayload = toUpsert.map(mapFn);
-            const { error } = await upsertRecords(table, fullPayload);
-            if (error) {
-                 console.error(`Upsert ${table} error:`, {
-                    message: error,
-                    table
-                });
+            
+            for (let i = 0; i < fullPayload.length; i += 50) {
+                const chunk = fullPayload.slice(i, i + 50);
+                const { error } = await upsertRecords(table, chunk);
+                
+                if (error) {
+                     console.error(`Upsert ${table} error en chunk ${i}:`, {
+                        message: error,
+                        table
+                    });
 
-                addSystemLog("error", `Error guardando en ${table}`, {
-                    error,
-                    table
-                });
+                    addSystemLog("error", `Error guardando en ${table} (chunk ${i})`, {
+                        error,
+                        table
+                    });
+                }
             }
         }
     };
@@ -1728,7 +1861,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const _setCategorias: typeof setCategorias = (value) => {
         setCategorias(prev => {
             const next = typeof value === "function" ? (value as any)(prev) : value;
-            syncDiffToSupabase("categorias", prev, next, (c: Categoria) => ({ id: c.id, name: c.name, count: c.count }));
+            setTimeout(() => syncDiffToSupabase("categorias", prev, next, (c: Categoria) => ({ id: c.id, name: c.name, count: c.count })), 0);
             return next;
         });
     };
@@ -1736,7 +1869,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const _setProveedores: typeof setProveedores = (value) => {
         setProveedores(prev => {
             const next = typeof value === "function" ? (value as any)(prev) : value;
-            syncDiffToSupabase("proveedores", prev, next, (p: Proveedor) => ({ id: p.id, name: p.name, contact: p.contact }));
+            setTimeout(() => syncDiffToSupabase("proveedores", prev, next, (p: Proveedor) => ({ id: p.id, name: p.name, contact: p.contact })), 0);
             return next;
         });
     };
@@ -1744,22 +1877,40 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const _setEsencias: typeof setEsencias = (value) => {
         setEsencias(prev => {
             const next = typeof value === "function" ? (value as any)(prev) : value;
-            syncDiffToSupabase("esencias", prev, next, (e: Esencia) => ({
-                id: e.id,
-                name: e.name,
-                category: e.category ?? "Perfumería Fina",
-                gender: e.gender ?? "Femenino",
-                provider: e.provider ?? "Van Rossum",
-                cost: e.cost ?? 0,
-                qty: e.qty ?? 0,
-                price30g: e.price30g === "consultar" ? null : (e.price30g ?? null),
-                price100g: e.price100g === "consultar" ? null : (e.price100g ?? null),
-                price250g: e.price250g === "consultar" ? null : (e.price250g ?? null),
-                price100g_usd: e.price100gUsd ?? null,
-                price250g_usd: e.price250gUsd ?? null,
-                last_update: e.lastUpdate ?? null,
-                source: e.source ?? "manual",
-            }));
+            setTimeout(() => {
+                syncDiffToSupabase("esencias", prev, next, (e: Esencia) => ({
+                    id: e.id,
+                    name: e.name,
+                    category: e.category ?? "Perfumería Fina",
+                    gender: e.gender ?? "Femenino",
+                    provider: e.provider ?? "Van Rossum",
+                    cost: e.cost ?? 0,
+                    qty: e.qty ?? 0,
+                    price30g: e.price30g === "consultar" ? null : (e.price30g ?? null),
+                    price100g: e.price100g === "consultar" ? null : (e.price100g ?? null),
+                    price250g: e.price250g === "consultar" ? null : (e.price250g ?? null),
+                    price100g_usd: e.price100gUsd ?? null,
+                    price250g_usd: e.price250gUsd ?? null,
+                    last_update: e.lastUpdate ?? null,
+                    source: e.source ?? "manual",
+                }));
+                
+                // Keep Inventario in sync with Master records
+                _setInventario(invPrev => {
+                    let changed = false;
+                    const nextInv = invPrev.map(invItem => {
+                        const matchingNext = (next as Esencia[]).find(e => e.id === invItem.id || (invItem.type === "Esencia" && (e.name.toLowerCase().includes(invItem.name.toLowerCase()) || invItem.name.toLowerCase().includes(e.name.toLowerCase()))));
+                        if (matchingNext) {
+                          if (invItem.qty !== matchingNext.qty || invItem.name !== matchingNext.name) {
+                            changed = true;
+                            return { ...invItem, qty: matchingNext.qty, name: matchingNext.name, lastUpdate: new Date().toLocaleDateString("es-AR") };
+                          }
+                        }
+                        return invItem;
+                    });
+                    return changed ? nextInv : invPrev;
+                });
+            }, 0);
             return next;
         });
     };
@@ -1767,16 +1918,34 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const _setInsumos: typeof setInsumos = (value) => {
         setInsumos(prev => {
             const next = typeof value === "function" ? (value as any)(prev) : value;
-            syncDiffToSupabase("insumos", prev, next, (i: Insumo) => ({
-                id: i.id,
-                name: i.name,
-                category: i.category,
-                provider: i.provider,
-                cost: i.cost,
-                qty: i.qty,
-                stock: i.stock ?? 0,
-                unit: i.unit ?? "un.",
-            }));
+            setTimeout(() => {
+                syncDiffToSupabase("insumos", prev, next, (i: Insumo) => ({
+                    id: i.id,
+                    name: i.name,
+                    category: i.category,
+                    provider: i.provider,
+                    cost: i.cost,
+                    qty: i.qty,
+                    stock: i.stock ?? 0,
+                    unit: i.unit ?? "un.",
+                }));
+
+                // Keep Inventario in sync with Master records
+                _setInventario(invPrev => {
+                    let changed = false;
+                    const nextInv = invPrev.map(invItem => {
+                        const matchingNext = (next as Insumo[]).find(i => i.id === invItem.id || (invItem.type === "Insumo" && (i.name.toLowerCase().includes(invItem.name.toLowerCase()) || invItem.name.toLowerCase().includes(i.name.toLowerCase()))));
+                        if (matchingNext) {
+                            if (invItem.qty !== matchingNext.stock || invItem.name !== matchingNext.name) {
+                                changed = true;
+                                return { ...invItem, qty: matchingNext.stock, name: matchingNext.name, lastUpdate: new Date().toLocaleDateString("es-AR") };
+                            }
+                        }
+                        return invItem;
+                    });
+                    return changed ? nextInv : invPrev;
+                });
+            }, 0);
             return next;
         });
     };
@@ -1784,7 +1953,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const _setInventario: typeof setInventario = (value) => {
         setInventario(prev => {
             const next = typeof value === "function" ? (value as any)(prev) : value;
-            syncDiffToSupabase("inventario", prev, next, (i: InventarioItem) => ({
+            setTimeout(() => syncDiffToSupabase("inventario", prev, next, (i: InventarioItem) => ({
                 id: i.id,
                 name: i.name,
                 type: i.type,
@@ -1793,7 +1962,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                 last_update: i.lastUpdate,
                 unit: i.unit,
                 gender: i.gender || null
-            }));
+            })), 0);
             return next;
         });
     };
@@ -1801,13 +1970,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const _setTransacciones: typeof setTransacciones = (value) => {
         setTransacciones(prev => {
             const next = typeof value === "function" ? (value as any)(prev) : value;
-            syncDiffToSupabase("transacciones", prev, next, (t: Transaccion) => ({
+            setTimeout(() => syncDiffToSupabase("transacciones", prev, next, (t: Transaccion) => ({
                 id: t.id,
                 type: t.type,
                 amount: t.amount,
                 description: t.description,
                 date: t.date,
-            }));
+            })), 0);
             return next;
         });
     };
@@ -1815,14 +1984,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const _setBases: typeof setBases = (value) => {
         setBases(prev => {
             const next = typeof value === "function" ? (value as any)(prev) : value;
-            syncDiffToSupabase("bases", prev, next, (b: Base) => ({
+            setTimeout(() => syncDiffToSupabase("bases", prev, next, (b: Base) => ({
                 id: b.id,
                 name: b.name,
                 components: b.components,
                 essence_gender: b.essenceGender ?? null,
                 essence_grams: b.essenceGrams ?? null,
                 category: b.category ?? null,
-            }));
+            })), 0);
             return next;
         });
     };
@@ -1830,7 +1999,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const _setProductos: typeof setProductos = (value) => {
         setProductos(prev => {
             const next = typeof value === "function" ? (value as any)(prev) : value;
-            syncDiffToSupabase("productos", prev, next, (p: Producto) => ({
+            setTimeout(() => syncDiffToSupabase("productos", prev, next, (p: Producto) => ({
                 id: p.id,
                 name: p.name,
                 category: p.category,
@@ -1844,7 +2013,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                 gender: p.gender,
                 last_update: p.lastUpdate ?? null,
                 image_url: p.imageUrl ?? null,
-            }));
+            })), 0);
             return next;
         });
     };
@@ -1852,7 +2021,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const _setUsuarios: typeof setUsuarios = (value) => {
         setUsuarios(prev => {
             const next = typeof value === "function" ? (value as any)(prev) : value;
-            syncDiffToSupabase("usuarios", prev, next, (u: Usuario) => ({
+            setTimeout(() => syncDiffToSupabase("usuarios", prev, next, (u: Usuario) => ({
                 id: u.id,
                 username: u.username,
                 email: u.email,
@@ -1860,12 +2029,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                 role: u.role,
                 status: u.status,
                 last_login: u.lastLogin || null,
-            }));
+            })), 0);
             return next;
         });
     };
 
-    // ── Scraper ───────────────────────────────────────────────────
     const runScraper = async () => {
         setScraperStatus(prev => ({ ...prev, status: "loading" }));
         try {
@@ -1875,21 +2043,33 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                 const scrapedEsencias = (data.esencias as Esencia[]).map(e => ({ ...e, source: "scraped" as const }));
 
                 _setEsencias(prev => {
-                    // Limpieza agresiva nivel Dios: Normalizamos nombre quitando símbolos y espacios
                     const uniqueMap = new Map();
-                    
                     const normalize = (name: string) => name.replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
 
-                    // Primero volcamos lo que ya tenemos
+                    // 1. Maintain ALL existing items to prevent accidental deletions (especially Limpia Pisos, Ambiente)
                     prev.forEach(e => {
                         const key = `${normalize(e.name)}_${(e.gender || "U").toUpperCase()}`;
                         uniqueMap.set(key, e);
                     });
                     
-                    // Luego volcamos lo nuevo del scrapper (pisando duplicados por nombre normalizado)
+                    // 2. Overwrite / merge scraped updates
                     scrapedEsencias.forEach(e => {
                         const key = `${normalize(e.name)}_${(e.gender || "U").toUpperCase()}`;
-                        uniqueMap.set(key, e);
+                        const existing = uniqueMap.get(key);
+                        if (existing) {
+                            // Preserve critical manual logic like QTY, manual Categories, original IDs
+                            uniqueMap.set(key, {
+                                ...existing,
+                                name: e.name, // in case of minor casing updates
+                                price30g: e.price30g,
+                                price100g: e.price100g,
+                                cost: typeof e.price30g === "number" ? e.price30g : (existing.cost || 0),
+                                source: "scraped",
+                                lastUpdate: new Date().toLocaleDateString()
+                            });
+                        } else {
+                            uniqueMap.set(key, e);
+                        }
                     });
                     
                     return Array.from(uniqueMap.values());
@@ -1910,14 +2090,22 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
     useEffect(() => {
         if (!mounted) return;
-        const lastRunStr = scraperStatus.lastRun;
-        const todayStr = new Date().toLocaleDateString(); // ej: "23/3/2026"
-        
-        // Solo corre si es un día distinto al guardado
-        if (lastRunStr !== todayStr && scraperStatus.status === "idle") {
-            runScraper();
-        }
-    }, [mounted, scraperStatus.lastRun, scraperStatus.status]);
+
+        const checkSync = () => {
+            const currentStatus = JSON.parse(localStorage.getItem("scraperStatus") || "{}");
+            const lastRunStr = currentStatus.lastRun || scraperStatus.lastRun;
+            const todayStr = new Date().toLocaleDateString();
+            
+            if (lastRunStr !== todayStr && currentStatus.status !== "loading") {
+                runScraper();
+            }
+        };
+
+        checkSync(); // Correr al inicio
+        const intervalId = setInterval(checkSync, 60000); // Revisar cada minuto en el fondo (útil si dejan la pestaña abierta 24/7)
+
+        return () => clearInterval(intervalId);
+    }, [mounted]); // Removemos las dependencias excesivas para evitar loops, leer de localstorage es seguro aqui
 
     const contextValue = React.useMemo(() => ({
         categorias, setCategorias: _setCategorias,
@@ -1955,6 +2143,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         deleteInsumo,
         addInventarioItem,
         deleteInventarioItem,
+        updateInventarioItem,
         runScraper,
         login,
         currentUser,
@@ -1975,6 +2164,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         addSystemLog,
         clearAllProductos,
         usdRate,
+        usdLastUpdate,
+        syncUsdRate,
         notifications,
         unreadCount,
         markNotificationAsRead,
