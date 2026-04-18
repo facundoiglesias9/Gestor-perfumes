@@ -863,23 +863,21 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                 // Actualizar DB sobre el render optimista
                 setCategorias(catRes.data);
                 setProductos(sanitizedProducts);
+                localStorage.setItem("productos", JSON.stringify(sanitizedProducts));
                 setPromotions(promoData.data);
 
-                // LAZY LOAD IMAGES: Fetch images in the background if the first fetch was partial
-                setTimeout(async () => {
-                    const { data: imgData, error: imgError } = await fetchTable("productos", { columns: ["id", "image_url"] });
-                    if (!imgError && imgData) {
-                        setProductos(prev => {
-                            const newProds = prev.map(p => {
-                                const row = imgData.find((r: any) => r.id === p.id);
-                                return row && row.image_url ? { ...p, imageUrl: row.image_url } : p;
+                    // LAZY LOAD IMAGES: Fetch images in the background
+                    setTimeout(async () => {
+                        const { data: imgData, error: imgError } = await fetchTable("productos", { columns: ["id", "image_url"] });
+                        if (!imgError && imgData) {
+                            setProductos(prev => {
+                                return prev.map(p => {
+                                    const row = imgData.find((r: any) => r.id === p.id);
+                                    return row && row.image_url ? { ...p, imageUrl: row.image_url } : p;
+                                });
                             });
-                            // Store the COMPLETE data in localStorage once images are arrived
-                            localStorage.setItem("productos", JSON.stringify(newProds));
-                            return newProds;
-                        });
-                    }
-                }, 500);
+                        }
+                    }, 500);
 
                 // Admin-only data
                 if (isAdmin) {
