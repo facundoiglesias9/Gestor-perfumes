@@ -16,7 +16,8 @@ const eslintConfig = [
       "react/no-unescaped-entities": "off",
       "@next/next/no-img-element": "off",
       "react-hooks/preserve-manual-memoization": "off",
-      "react-hooks/purity": "off"
+      "react-hooks/purity": "off",
+      "@typescript-eslint/no-require-imports": "off"
     }
   },
   {
