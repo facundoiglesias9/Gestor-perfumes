@@ -264,42 +264,36 @@ export default function StudioPage() {
 
         // 5. Cálculo Dinámico de Textos
         const details = extractDetails(prod.name);
-        const titleStr = labelConfig.customTitle || details.title;
-        const brandStr = labelConfig.customBrand || details.brand;
+        const titleStr = (labelConfig.customTitle || details.title).toUpperCase();
+        const brandStr = (labelConfig.customBrand || details.brand).toUpperCase();
         const maxWidth = labelConfig.labelWidth * 0.85;
 
         // Medir alturas
         ctx.font = `900 ${labelConfig.fontSizeTitle}px Inter, sans-serif`;
-        const tInfo = getWrappedInfo(ctx, titleStr, maxWidth, labelConfig.fontSizeTitle * 0.85);
+        const tInfo = getWrappedInfo(ctx, titleStr, maxWidth, labelConfig.fontSizeTitle * 0.9);
         
         ctx.font = `bold ${labelConfig.fontSizeBrand}px Inter, sans-serif`;
         const bInfo = brandStr ? getWrappedInfo(ctx, brandStr, maxWidth, labelConfig.fontSizeBrand * 1.2) : { lines: [], height: 0 };
 
-        const totalTextHeight = tInfo.height + (brandStr ? 20 : 0) + bInfo.height;
+        // Punto de inicio del Título: 45% de la etiqueta + Offset manual
+        const drawYTitleBase = labelY + (labelConfig.labelHeight * 0.45) + labelConfig.titleOffsetY;
         
-        // Área central (de 45% a 85% de la etiqueta)
-        const areaTop = labelY + (labelConfig.labelHeight * 0.45);
-        const areaHeight = labelConfig.labelHeight * 0.4; // 40% de la altura total reservada para texto
-        
-        let currentY = areaTop + (areaHeight - totalTextHeight) / 2 + (labelConfig.fontSizeTitle * 0.7);
-
         // Dibujar Título
         ctx.textAlign = "center";
         ctx.fillStyle = labelConfig.textColor;
         ctx.font = `900 ${labelConfig.fontSizeTitle}px Inter, sans-serif`;
-        const drawYTitle = currentY + labelConfig.titleOffsetY;
         tInfo.lines.forEach((l, i) => {
-            ctx.fillText(l, centerX + labelConfig.titleOffsetX, drawYTitle + (i * labelConfig.fontSizeTitle * 0.85));
+            ctx.fillText(l, centerX + labelConfig.titleOffsetX, drawYTitleBase + (i * labelConfig.fontSizeTitle * 0.9));
         });
 
-        // Dibujar Marca
+        // Dibujar Marca (Siempre después del título con un gap de 20px + su offset)
         if (brandStr) {
             ctx.save();
             ctx.globalAlpha = 0.7;
             ctx.font = `bold ${labelConfig.fontSizeBrand}px Inter, sans-serif`;
-            const drawYBrand = drawYTitle + tInfo.height + 15 + labelConfig.brandOffsetY;
+            const drawYBrandBase = drawYTitleBase + tInfo.height + 20 + labelConfig.brandOffsetY;
             bInfo.lines.forEach((l, i) => {
-                ctx.fillText(l, centerX + labelConfig.brandOffsetX, drawYBrand + (i * labelConfig.fontSizeBrand * 1.2));
+                ctx.fillText(l, centerX + labelConfig.brandOffsetX, drawYBrandBase + (i * labelConfig.fontSizeBrand * 1.2));
             });
             ctx.restore();
         }
@@ -383,45 +377,54 @@ export default function StudioPage() {
                     zIndex: 20
                 }}
             >
-                {/* Logo */}
-                {logoImage && (
-                    <div className="absolute pointer-events-none" style={{
-                        width: `${labelConfig.logoSize}px`, height: `${labelConfig.logoSize}px`,
-                        left: `calc(50% + ${labelConfig.logoOffsetX}px)`, 
-                        top: `calc(28% + ${labelConfig.logoOffsetY}px)`,
-                        transform: 'translate(-50%, -50%)', zIndex: 10
-                    }}>
-                        <img src={logoImage} className="w-full h-full object-contain" alt="logo" />
-                    </div>
-                )}
-
                 {/* Bloque de Textos (Flex Centered Area) */}
-                <div className="absolute inset-x-0 bottom-[8%] top-[45%] pointer-events-none flex flex-col items-center justify-center p-8 text-center" style={{
-                    paddingLeft: '10%', paddingRight: '10%'
-                }}>
-                    {/* Título */}
-                    <h2 className="font-black text-center uppercase whitespace-normal break-words leading-[0.85] tracking-tighter" style={{
-                        color: labelConfig.textColor, 
-                        fontSize: `${labelConfig.fontSizeTitle}px`,
-                        transform: `translate(calc(-50% + ${labelConfig.titleOffsetX}px), ${labelConfig.titleOffsetY}px)`,
-                        width: '100%',
-                        left: '50%',
-                        position: 'absolute'
+                <div className="absolute inset-0 pointer-events-none">
+                    {/* Logo (Centered at 28%) */}
+                    <div style={{ 
+                        position: 'absolute',
+                        top: '28%', left: '50%',
+                        width: `${labelConfig.logoSize}px`, 
+                        height: `${labelConfig.logoSize}px`,
+                        transform: `translate(calc(-50% + ${labelConfig.logoOffsetX}px), calc(-50% + ${labelConfig.logoOffsetY}px))`
                     }}>
-                        {labelConfig.customTitle || details.title}
-                    </h2>
+                        <img 
+                            src={logoImage || "/logo.png"} 
+                            alt="Logo" 
+                            className="w-full h-full object-contain"
+                            style={{ filter: labelConfig.textColor === "#ffffff" ? "brightness(0) invert(1)" : "none" }}
+                        />
+                    </div>
 
-                    {/* Marca */}
-                    {(labelConfig.customBrand || details.brand) && (
-                        <p className="font-black uppercase tracking-[0.2em] text-center opacity-70 leading-tight absolute w-full left-1/2" style={{
+                    {/* Título (Starting at 45%) */}
+                    <div style={{ 
+                        position: 'absolute',
+                        top: '45%', left: '50%',
+                        width: '90%',
+                        transform: `translate(-50%, ${labelConfig.titleOffsetY}px)`,
+                        textAlign: 'center'
+                    }}>
+                        <h2 className="font-black uppercase whitespace-normal break-words leading-[0.9] tracking-tighter" style={{
                             color: labelConfig.textColor, 
-                            fontSize: `${labelConfig.fontSizeBrand}px`,
-                            transform: `translate(calc(-50% + ${labelConfig.brandOffsetX}px), ${labelConfig.brandOffsetY}px)`,
-                            top: `calc(45% + ${labelConfig.fontSizeTitle}px + 20px)`
+                            fontSize: `${labelConfig.fontSizeTitle}px`
                         }}>
-                            {labelConfig.customBrand || details.brand}
-                        </p>
-                    )}
+                            {labelConfig.customTitle || details.title}
+                        </h2>
+
+                        {/* Marca (Following Title) */}
+                        {(labelConfig.customBrand || details.brand) && (
+                            <div style={{ 
+                                marginTop: '20px',
+                                transform: `translateY(${labelConfig.brandOffsetY}px)`
+                            }}>
+                                <p className="font-black uppercase tracking-[0.2em] opacity-70 leading-tight" style={{
+                                    color: labelConfig.textColor, 
+                                    fontSize: `${labelConfig.fontSizeBrand}px`
+                                }}>
+                                    {labelConfig.customBrand || details.brand}
+                                </p>
+                            </div>
+                        )}
+                    </div>
                 </div>
 
                 {/* Footer Badge */}
