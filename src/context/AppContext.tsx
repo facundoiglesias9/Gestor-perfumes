@@ -1135,17 +1135,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         const uniqueProducts = new Map<string, Producto>();
         const toDelete: string[] = [];
         
-        // Criterio de unicidad: Nombre + ID Esencia
+        // Criterio de unicidad agresivo: Nombre Limpio + Esencia (ID o Nombre)
         productos.forEach(p => {
             const pEsc = p.components.find(c => c.type === "Esencia");
-            const essenceId = pEsc ? pEsc.id : "no-esc";
-            const key = `${(p.name || "").trim().toUpperCase()}_${essenceId}`;
+            // Usamos tanto el ID como el nombre de la esencia para el match
+            const essenceKey = pEsc ? (pEsc.id || pEsc.name).trim().toUpperCase() : "no-esc";
+            // Limpiamos el nombre de cualquier espacio fantasma
+            const cleanName = (p.name || "").trim().replace(/\s+/g, ' ').toUpperCase();
+            const key = `${cleanName}_${p.gender}_${essenceKey}`;
             
             if (uniqueProducts.has(key)) {
-                // Ya existe, marcar este para borrar
-                // Priorizar quedarnos con el que tenga stock o imagen si uno tiene y el otro no
                 const existing = uniqueProducts.get(key)!;
-                if ((!existing.imageUrl && p.imageUrl) || (existing.stock === 0 && p.stock > 0)) {
+                // Nos quedamos con el que tenga imagen o más info
+                if (!existing.imageUrl && p.imageUrl) {
                     toDelete.push(existing.id);
                     uniqueProducts.set(key, p);
                 } else {
