@@ -5,6 +5,7 @@ import { useState, useMemo, useEffect } from "react";
 import { useAppContext, Base, BaseComponent, Producto, Esencia, Insumo } from "@/context/AppContext";
 import { useRouter } from "next/navigation";
 import SelectorModal from "@/components/SelectorModal";
+import { upsertRecord } from "@/lib/db-actions";
 
 export default function CrearProductoPage() {
     const { bases, insumos, esencias, categorias, productos, setProductos, generos } = useAppContext();
@@ -17,6 +18,8 @@ export default function CrearProductoPage() {
     const [description, setDescription] = useState("");
     const [imageUrl, setImageUrl] = useState("");
     const [uploadingImage, setUploadingImage] = useState(false);
+    const [availabilityStatus, setAvailabilityStatus] = useState<any>("disponible");
+    const [deliveryDays, setDeliveryDays] = useState("0");
 
     // Pricing state
     const [priceMayorista, setPriceMayorista] = useState("");
@@ -43,9 +46,12 @@ export default function CrearProductoPage() {
         let unitCost = 0;
         if (comp.type === "Esencia") {
             const esc = sourceItem as any;
+            const p250 = parseFloat(esc.price250g);
             const p100 = parseFloat(esc.price100g);
             const p30 = parseFloat(esc.price30g);
-            if (!isNaN(p100) && p100 > 0) {
+            if (!isNaN(p250) && p250 > 0) {
+                unitCost = p250 / 250;
+            } else if (!isNaN(p100) && p100 > 0) {
                 unitCost = p100 / 100;
             } else if (!isNaN(p30) && p30 > 0) {
                 unitCost = p30 / 30;
@@ -69,8 +75,8 @@ export default function CrearProductoPage() {
         }, 0);
     }, [currentComponents, esencias, insumos]);
 
-    const roundUpTo1000 = (num: number) => {
-        return Math.ceil(num / 1000) * 1000;
+    const roundUpTo100 = (num: number) => {
+        return Math.ceil(num / 100) * 100;
     };
 
     const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -116,54 +122,54 @@ export default function CrearProductoPage() {
         if (totalCost > 0) {
             // Update Mayorista Price if in percentage mode
             if (marginTypeMayor === "porcentaje") {
-                const p = roundUpTo1000(totalCost * (1 + (parseFloat(marginMayor) || 0) / 100));
-                setPriceMayorista(p.toString());
-            } else {
-                const p = totalCost + (parseFloat(marginMayor) || 0);
-                setPriceMayorista(p.toFixed(0));
-            }
-
-            // Update Minorista Price if in percentage mode
-            if (marginTypeMinor === "porcentaje") {
-                const p = roundUpTo1000(totalCost * (1 + (parseFloat(marginMinor) || 0) / 100));
-                setPriceMinorista(p.toString());
-            } else {
-                const p = totalCost + (parseFloat(marginMinor) || 0);
-                setPriceMinorista(p.toFixed(0));
-            }
-        }
-    }, [totalCost]);
-
-    const handleBaseChange = (baseId: string) => {
-        setSelectedBaseId(baseId);
-        const base = bases.find(b => b.id === baseId);
-        if (base) {
-            setCurrentComponents([...base.components]);
-            if (!name) setName(base.name);
-            // Default margins as requested
-            setMarginMayor("50");
-            setMarginMinor("100");
-            setMarginTypeMayor("porcentaje");
-            setMarginTypeMinor("porcentaje");
-        }
-    };
-
-    const handleMarginMayoristaChange = (val: string) => {
-        setMarginMayor(val);
-        const numVal = parseFloat(val) || 0;
-        if (marginTypeMayor === "porcentaje") {
-            const p = roundUpTo1000(totalCost * (1 + numVal / 100));
+            const p = roundUpTo100(totalCost * (1 + (parseFloat(marginMayor) || 0) / 100));
             setPriceMayorista(p.toString());
         } else {
-            setPriceMayorista((totalCost + numVal).toFixed(0));
+            const p = totalCost + (parseFloat(marginMayor) || 0);
+            setPriceMayorista(p.toFixed(0));
         }
-    };
 
-    const handleMarginMinoristaChange = (val: string) => {
-        setMarginMinor(val);
-        const numVal = parseFloat(val) || 0;
+        // Update Minorista Price if in percentage mode
         if (marginTypeMinor === "porcentaje") {
-            const p = roundUpTo1000(totalCost * (1 + numVal / 100));
+            const p = roundUpTo100(totalCost * (1 + (parseFloat(marginMinor) || 0) / 100));
+            setPriceMinorista(p.toString());
+        } else {
+            const p = totalCost + (parseFloat(marginMinor) || 0);
+            setPriceMinorista(p.toFixed(0));
+        }
+    }
+}, [totalCost]);
+
+const handleBaseChange = (baseId: string) => {
+    setSelectedBaseId(baseId);
+    const base = bases.find(b => b.id === baseId);
+    if (base) {
+        setCurrentComponents([...base.components]);
+        if (!name) setName(base.name);
+        // Default margins as requested
+        setMarginMayor("50");
+        setMarginMinor("100");
+        setMarginTypeMayor("porcentaje");
+        setMarginTypeMinor("porcentaje");
+    }
+};
+
+const handleMarginMayoristaChange = (val: string) => {
+    setMarginMayor(val);
+    const numVal = parseFloat(val) || 0;
+    if (marginTypeMayor === "porcentaje") {
+        const p = roundUpTo100(totalCost * (1 + numVal / 100));
+        setPriceMayorista(p.toString());
+    } else {
+        setPriceMayorista((totalCost + numVal).toFixed(0));
+    }
+};
+
+const handleMarginMinoristaChange = (val: string) => {
+    setMarginMinor(val);
+    const numVal = parseFloat(val) || 0;
+    if (marginTypeMinor === "porcentaje") {
+        const p = roundUpTo100(totalCost * (1 + numVal / 100));
             setPriceMinorista(p.toString());
         } else {
             setPriceMinorista((totalCost + numVal).toFixed(0));
@@ -245,10 +251,31 @@ export default function CrearProductoPage() {
             priceMinorista: parseFloat(priceMinorista) || 0,
             stock: 0,
             description,
-            imageUrl
+            imageUrl,
+            availabilityStatus,
+            deliveryDays: parseInt(deliveryDays) || 0
         };
         setProductos([newProduct, ...productos]);
-        router.push("/");
+
+        // Guardar en la base de datos
+        upsertRecord("productos", {
+            id: newProduct.id,
+            name: newProduct.name,
+            category: newProduct.category,
+            gender: newProduct.gender,
+            base_id: newProduct.baseId,
+            components: newProduct.components,
+            cost: newProduct.cost,
+            price: newProduct.price,
+            price_minorista: newProduct.priceMinorista,
+            stock: newProduct.stock,
+            description: newProduct.description,
+            image_url: newProduct.imageUrl,
+            availability_status: newProduct.availabilityStatus,
+            delivery_days: newProduct.deliveryDays
+        });
+
+        router.push("/lista-mayorista");
     };
 
     return (
@@ -383,7 +410,31 @@ export default function CrearProductoPage() {
                                     value={name}
                                     onChange={e => setName(e.target.value)}
                                     placeholder="Ej: Floral Mystery 100ml"
-                                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl py-3.5 px-4 text-slate-900 dark:text-slate-100 font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-bold"
+                                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl py-3.5 px-4 text-slate-900 dark:text-slate-100 font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+                                />
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest pl-1">Estado de Disponibilidad</label>
+                                <select
+                                    value={availabilityStatus}
+                                    onChange={(e) => setAvailabilityStatus(e.target.value)}
+                                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl py-3.5 px-4 text-slate-900 dark:text-slate-100 font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+                                >
+                                    <option value="disponible">En Mano / Inmediata</option>
+                                    <option value="demora">Con Demora (X Días)</option>
+                                    <option value="no-disponible">Faltante / Consultar</option>
+                                </select>
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest pl-1">Días de Demora</label>
+                                <input
+                                    type="number"
+                                    disabled={availabilityStatus !== "demora"}
+                                    value={deliveryDays}
+                                    onChange={e => setDeliveryDays(e.target.value)}
+                                    className={`w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl py-3.5 px-4 text-slate-900 dark:text-slate-100 font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all ${availabilityStatus !== "demora" ? "opacity-30 grayscale" : ""}`}
                                 />
                             </div>
                         </div>

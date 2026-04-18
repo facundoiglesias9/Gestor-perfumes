@@ -83,23 +83,27 @@ function DashboardContent({ children }: { children: ReactNode }) {
 
             {/* Mobile Header */}
             <div className="lg:hidden flex shrink-0 items-center justify-between p-5 bg-white dark:bg-[#1e293b] border-b border-slate-200 dark:border-slate-800 z-40 shadow-sm relative print:hidden">
-                <div className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400 font-extrabold text-2xl tracking-tighter">
-                    <span className="bg-clip-text text-transparent bg-gradient-to-r from-indigo-700 via-violet-600 to-indigo-700 dark:from-indigo-400 dark:via-violet-400 dark:to-indigo-400 font-black">
-                        Scenta<span className="text-slate-900 dark:text-slate-100 font-semibold opacity-50 underline decoration-indigo-500/30 underline-offset-4"></span>
-                    </span>
+                <div className="flex items-center gap-4">
+                    <button
+                        onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+                        className="p-2 text-slate-600 dark:text-slate-100 bg-slate-100 dark:bg-slate-800 rounded-xl transition-all active:scale-95 shadow-sm"
+                        aria-label="Menu"
+                    >
+                        {isSidebarOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+                    </button>
+                    <div className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400 font-extrabold text-2xl tracking-tighter">
+                        <span className="bg-clip-text text-transparent bg-gradient-to-r from-indigo-700 via-violet-600 to-indigo-700 dark:from-indigo-400 dark:via-violet-400 dark:to-indigo-400 font-black">
+                            Scenta
+                        </span>
+                    </div>
                 </div>
+                
                 <div className="flex items-center gap-3">
                     {currentUser && (
-                        <div className="w-8 h-8 rounded-full bg-indigo-600 dark:bg-indigo-500 flex items-center justify-center text-white font-black text-xs shadow-lg shadow-indigo-500/20">
+                        <div className="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center text-white font-black text-xs shadow-lg shadow-indigo-500/20 border-2 border-white/10">
                             {currentUser.username.charAt(0).toUpperCase()}
                         </div>
                     )}
-                    <button
-                        onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-                        className="p-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors"
-                    >
-                        {isSidebarOpen ? <X className="w-6 h-6 pointer-events-none" /> : <Menu className="w-6 h-6 pointer-events-none" />}
-                    </button>
                 </div>
             </div>
 
@@ -121,9 +125,8 @@ function DashboardContent({ children }: { children: ReactNode }) {
                 {/* Background Grid Pattern */}
                 <div className="absolute inset-0 bg-[radial-gradient(#e2e8f0_1px,transparent_1px)] dark:bg-[radial-gradient(#334155_1px,transparent_1px)] [background-size:24px_24px] opacity-40 dark:opacity-20 pointer-events-none print:hidden"></div>
 
-                {/* Live USD Widget */}
                 {isAuthorized && currentUser?.role === "admin" && (
-                    <div className="fixed top-5 right-6 lg:top-8 lg:right-10 z-[60] print:hidden flex flex-col items-end group animate-in slide-in-from-top-10 fade-in duration-700">
+                    <div className="hidden lg:flex fixed top-5 right-6 lg:top-8 lg:right-10 z-[60] print:hidden flex-col items-end group animate-in slide-in-from-top-10 fade-in duration-700">
                         <div 
                             className="flex items-center gap-2.5 bg-slate-900/80 dark:bg-black/80 backdrop-blur-xl px-4 py-2.5 rounded-2xl border border-emerald-500/20 shadow-xl shadow-emerald-500/10 hover:border-emerald-500/50 hover:bg-slate-900 dark:hover:bg-black transition-all cursor-default"
                             title={usdLastUpdate ? `Última actualización: ${new Date(usdLastUpdate).toLocaleString('es-AR')}` : "Sin datos de fecha"}

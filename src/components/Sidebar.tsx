@@ -20,7 +20,6 @@ import {
     Wallet,
     Shield,
     ShoppingBag,
-    Printer,
     ClipboardList,
     Percent,
     PieChart,
@@ -33,7 +32,9 @@ import {
     UserPlus,
     X,
     Info,
-    ArrowRight
+    ArrowRight,
+    Image,
+    Truck
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import ThemeToggle from "@/components/ThemeToggle";
@@ -45,6 +46,7 @@ const menuSections = [
         items: [
             { href: "/lista-mayorista", label: "Lista Mayorista", icon: Tags },
             { href: "/minorista", label: "Lista Minorista", icon: Store },
+            { href: "/disponibilidad", label: "Disponibilidad", icon: Truck },
             { href: "/bases", label: "Bases de Productos", icon: Layers },
             { href: "/crear-producto", label: "Crear Producto", icon: Plus },
         ]
@@ -83,6 +85,14 @@ const menuSections = [
         ]
     },
     {
+        title: "Herramientas",
+        key: "herramientas",
+        items: [
+            { href: "/studio", label: 'Mockups "Perfumería Fina"', icon: Sparkles },
+            { href: "/studio-difusores", label: 'Mockups "Difusores"', icon: Image },
+        ]
+    },
+    {
         title: "Herramientas (Revendedores)",
         key: "tools",
         items: [
@@ -103,7 +113,8 @@ export default function Sidebar({ onClose }: { onClose?: () => void }) {
     };
 
     const filteredSections = menuSections.map(section => {
-        // Admin does not see the "Tools" section as it's for resellers
+        // Admin does not see the "Tools" (resellers) or "Herramientas" if not admin?
+        // Actually, let's keep it simple: admin sees commercial, inventory, monetization, config, and tools.
         if (currentUser?.role === "admin" && section.key === "tools") {
             return { ...section, items: [] };
         }
@@ -388,41 +399,7 @@ export default function Sidebar({ onClose }: { onClose?: () => void }) {
 
                 {(!currentUser || currentUser.role === "admin") && (
                     <div className="space-y-1.5 mt-6 border-t border-slate-100 dark:border-slate-800/80 pt-6">
-                        <Link
-                            href="/studio"
-                            onClick={() => {
-                                if (addSystemLog) addSystemLog("info", "Abriendo Studio...");
-                                if (onClose) onClose();
-                            }}
-                            className={`group flex items-center gap-3.5 px-4 py-3.5 rounded-2xl font-bold transition-all border ${pathname === "/studio"
-                                ? "bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 border-indigo-100/50 dark:border-indigo-500/20"
-                                : "text-slate-600 dark:text-slate-400 border-transparent hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-slate-100"
-                                }`}
-                        >
-                            <Sparkles className={`w-5 h-5 transition-transform duration-300 ${pathname === "/studio"
-                                ? "text-indigo-500 group-hover:scale-110"
-                                : "text-slate-400 group-hover:text-indigo-500 dark:group-hover:text-indigo-400 group-hover:scale-110"
-                                }`} />
-                            Studio (Mockups)
-                        </Link>
 
-                        <Link
-                            href="/generacion-etiquetas"
-                            onClick={() => {
-                                if (addSystemLog) addSystemLog("info", "Abriendo Etiquetas...");
-                                if (onClose) onClose();
-                            }}
-                            className={`group flex items-center gap-3.5 px-4 py-3.5 rounded-2xl font-bold transition-all border ${pathname === "/generacion-etiquetas"
-                                ? "bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 border-indigo-100/50 dark:border-indigo-500/20"
-                                : "text-slate-600 dark:text-slate-400 border-transparent hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-slate-100"
-                                }`}
-                        >
-                            <Printer className={`w-5 h-5 transition-transform duration-300 ${pathname === "/generacion-etiquetas"
-                                ? "text-indigo-500 group-hover:scale-110"
-                                : "text-slate-400 group-hover:text-indigo-500 dark:group-hover:text-indigo-400 group-hover:scale-110"
-                                }`} />
-                            Generación de Etiquetas
-                        </Link>
 
                         <Link
                             href="/solicitudes-minoristas"

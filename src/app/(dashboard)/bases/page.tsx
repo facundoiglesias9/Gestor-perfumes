@@ -1,16 +1,17 @@
 "use client";
 
-import { Search, Plus, Layers, Trash2, X, Edit2, FlaskConical, Package, Sparkles, ChevronDown, AlertTriangle } from "lucide-react";
+import { Search, Plus, Layers, Trash2, X, Edit2, FlaskConical, Package, Sparkles, ChevronDown, AlertTriangle, Loader2 } from "lucide-react";
 import { useState, useCallback, useMemo } from "react";
 import { useAppContext, Base, BaseComponent } from "@/context/AppContext";
 import ConfirmModal from "@/components/ConfirmModal";
 
 export default function BasesPage() {
-    const { bases, setBases, insumos, esencias, categorias, generateProductsFromBase, clearAllProductos, generos, getNextId } = useAppContext();
+    const { bases, setBases, insumos, esencias, categorias, generateProductsFromBase, removeDuplicateProducts, clearAllProductos, generos, getNextId } = useAppContext();
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [isGeneratingModalOpen, setIsGeneratingModalOpen] = useState<string | null>(null);
     const [generationResult, setGenerationResult] = useState<{ created: number, updated: number } | null>(null);
     const [targetCategory, setTargetCategory] = useState("Perfumería Fina");
+    const [isGenerating, setIsGenerating] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
     const [itemToDelete, setItemToDelete] = useState<string | null>(null);
     const [insumoSearch, setInsumoSearch] = useState("");
@@ -165,6 +166,13 @@ export default function BasesPage() {
                 </div>
 
                 <div className="flex flex-wrap items-center gap-3">
+                    <button
+                        onClick={removeDuplicateProducts}
+                        className="flex items-center gap-2.5 px-7 py-3.5 rounded-2xl bg-white dark:bg-slate-800 text-amber-600 border border-slate-200 dark:border-slate-800 font-bold hover:bg-amber-50 dark:hover:bg-amber-500/10 hover:border-amber-200 transition-all"
+                    >
+                        <Sparkles className="w-5 h-5" />
+                        Limpiar Duplicados
+                    </button>
                     <button
                         onClick={clearAllProductos}
                         className="flex items-center gap-2.5 px-7 py-3.5 rounded-2xl bg-white dark:bg-slate-800 text-rose-600 border border-slate-200 dark:border-slate-800 font-bold hover:bg-rose-50 dark:hover:bg-rose-500/10 hover:border-rose-200 transition-all"
@@ -603,7 +611,11 @@ export default function BasesPage() {
                                 </h3>
                                 <p className="text-slate-500 font-bold mt-1">Se crearán productos para todas las esencias válidas.</p>
                             </div>
-                            <button onClick={() => setIsGeneratingModalOpen(null)} className="p-2.5 bg-slate-100 dark:bg-white/5 rounded-full">
+                            <button 
+                                onClick={() => !isGenerating && setIsGeneratingModalOpen(null)} 
+                                disabled={isGenerating}
+                                className={`p-2.5 bg-slate-100 dark:bg-white/5 rounded-full ${isGenerating ? 'opacity-50 cursor-not-allowed' : ''}`}
+                            >
                                 <X className="w-5 h-5" />
                             </button>
                         </div>
@@ -627,16 +639,31 @@ export default function BasesPage() {
                             </div>
                             <button
                                 onClick={async () => {
-                                    if (!isGeneratingModalOpen) return;
-                                    const activeBase = bases.find(b => b.id === isGeneratingModalOpen);
-                                    let cat = activeBase?.category || targetCategory || "Perfumería Fina";
-                                    const result = await generateProductsFromBase(isGeneratingModalOpen, cat);
-                                    setIsGeneratingModalOpen(null);
-                                    if (result) setGenerationResult(result);
+                                    if (!isGeneratingModalOpen || isGenerating) return;
+                                    setIsGenerating(true);
+                                    try {
+                                        const activeBase = bases.find(b => b.id === isGeneratingModalOpen);
+                                        let cat = activeBase?.category || targetCategory || "Perfumería Fina";
+                                        const result = await generateProductsFromBase(isGeneratingModalOpen, cat);
+                                        setIsGeneratingModalOpen(null);
+                                        if (result) setGenerationResult(result);
+                                    } finally {
+                                        setIsGenerating(false);
+                                    }
                                 }}
-                                className="w-full py-4 bg-indigo-600 text-white font-black rounded-2xl text-lg hover:bg-indigo-700 shadow-xl shadow-indigo-600/30 active:scale-95 transition-all"
+                                disabled={isGenerating}
+                                className={`w-full py-4 bg-indigo-600 text-white font-black rounded-2xl text-lg shadow-xl shadow-indigo-600/30 transition-all flex items-center justify-center gap-2 ${
+                                    isGenerating ? 'opacity-70 cursor-wait' : 'hover:bg-indigo-700 active:scale-95'
+                                }`}
                             >
-                                Iniciar Generación Masiva
+                                {isGenerating ? (
+                                    <>
+                                        <Loader2 className="w-5 h-5 animate-spin" />
+                                        Procesando...
+                                    </>
+                                ) : (
+                                    "Iniciar Generación Masiva"
+                                )}
                             </button>
                         </div>
                     </div>

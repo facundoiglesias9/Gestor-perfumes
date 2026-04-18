@@ -25,6 +25,7 @@ export type Esencia = {
 };
 export type Insumo = { id: string; name: string; category: string; provider: string; cost: number; qty: number; stock: number; unit: string };
 export type InventarioItem = { id: string; name: string; type: string; category: string; qty: number; lastUpdate: string; unit: string; gender?: string };
+export type AvailabilityStatus = "disponible" | "demora" | "no-disponible";
 export type Transaccion = { id: string; type: "Ingreso" | "Egreso"; amount: number; description: string; date: string };
 
 export type BaseComponent = { id: string; name: string; qty: number; type: "Insumo" | "Esencia" };
@@ -43,6 +44,8 @@ export type Producto = {
     gender: string;
     lastUpdate?: string;
     imageUrl?: string;
+    availabilityStatus?: AvailabilityStatus;
+    deliveryDays?: number;
 };
 
 export type UserRole = "admin" | "minorista" | "mayorista";
@@ -148,6 +151,8 @@ function dbToProducto(row: any): Producto {
         gender: row.gender ?? "Unisex",
         lastUpdate: row.last_update ?? undefined,
         imageUrl: row.image_url ?? undefined,
+        availabilityStatus: row.availability_status ?? "disponible",
+        deliveryDays: row.delivery_days ?? 0,
     };
 }
 
@@ -1078,6 +1083,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             gender: updated.gender,
             last_update: updated.lastUpdate,
             image_url: updated.imageUrl,
+            availability_status: updated.availabilityStatus,
+            delivery_days: updated.deliveryDays
         });
     };
 
@@ -1103,6 +1110,50 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         setProductos(prev => prev.filter(p => p.id !== id));
         await deleteRecord("productos", id);
     };
+
+    const removeDuplicateProducts = async () => {
+        const uniqueProducts = new Map<string, Producto>();
+        const toDelete: string[] = [];
+        
+        // Criterio de unicidad: Nombre + ID Esencia
+        productos.forEach(p => {
+            const pEsc = p.components.find(c => c.type === "Esencia");
+            const essenceId = pEsc ? pEsc.id : "no-esc";
+            const key = `${(p.name || "").trim().toUpperCase()}_${essenceId}`;
+            
+            if (uniqueProducts.has(key)) {
+                // Ya existe, marcar este para borrar
+                // Priorizar quedarnos con el que tenga stock o imagen si uno tiene y el otro no
+                const existing = uniqueProducts.get(key)!;
+                if ((!existing.imageUrl && p.imageUrl) || (existing.stock === 0 && p.stock > 0)) {
+                    toDelete.push(existing.id);
+                    uniqueProducts.set(key, p);
+                } else {
+                    toDelete.push(p.id);
+                }
+            } else {
+                uniqueProducts.set(key, p);
+            }
+        });
+
+        if (toDelete.length === 0) {
+            alert("No se encontraron productos duplicados basados en Nombre y Esencia.");
+            return;
+        }
+
+        if (confirm(`Se encontraron ${toDelete.length} productos duplicados (mismo nombre y esencia). ¿Deseas eliminarlos de la base de datos?\n\nTotal actual: ${productos.length} -> Total final: ${productos.length - toDelete.length}`)) {
+            const newList = Array.from(uniqueProducts.values());
+            setProductos(newList);
+            
+            // Borrar en chunks para no saturar
+            for (let i = 0; i < toDelete.length; i += 50) {
+                const chunk = toDelete.slice(i, i + 50);
+                await deleteRecords("productos", chunk);
+            }
+            
+            alert(`Limpieza completada. Se eliminaron ${toDelete.length} duplicados.`);
+        }
+    }
 
     const addUsuario = async (user: Usuario) => {
         setUsuarios(prev => [user, ...prev]);
@@ -1671,13 +1722,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                         else if (!isNaN(p30) && p30 > 0) unitCost = p30 / 30;
                         else unitCost = e.cost / (e.qty || 1);
                     } else {
-                        unitCost = source.cost / ((source as Insumo).qty || 1);
+                        unitCost = (source.cost || 0) / ((source as Insumo).qty || 1);
                     }
+                    if (isNaN(unitCost)) unitCost = 0;
 
                     return acc + (unitCost * comp.qty);
                 }, 0);
 
-                const roundUpTo1000 = (num: number) => Math.ceil(num / 1000) * 1000;
+                const roundUpTo100 = (num: number) => Math.ceil(num / 100) * 100;
 
                 let cleanName = esc.name
                     .replace(/X\s*KG/gi, "")
@@ -1713,9 +1765,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                     category: targetCategory,
                     baseId: base.id,
                     components: formula,
-                    cost,
-                    price: isEsenciaConsultar ? 0 : roundUpTo1000(cost * margins.mayorista),
-                    priceMinorista: isEsenciaConsultar ? 0 : roundUpTo1000(cost * margins.minorista),
+                    cost: isNaN(cost) ? 0 : cost,
+                    price: (isEsenciaConsultar || isNaN(cost) || cost <= 0) ? 0 : roundUpTo100(cost * margins.mayorista),
+                    priceMinorista: (isEsenciaConsultar || isNaN(cost) || cost <= 0) ? 0 : roundUpTo100(cost * margins.minorista),
                     stock: 0,
                     description: `Generado de base ${base.name}`,
                     gender: (isLimpiaPisos || isEsenciaAmbiente) ? (base.essenceGender || "Unisex") : (esc.gender || "Unisex"),
@@ -1726,89 +1778,92 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             let created = 0;
             let updated = 0;
 
-            setProductos(prev => {
-                const updatedList = [...prev];
-                let nextIdNum = updatedList.reduce((max, p) => {
-                    const num = parseInt(p.id);
-                    return isNaN(num) ? max : Math.max(max, num);
-                }, 0) + 1;
+            const updatedList = [...currentProds];
+            let nextIdNum = updatedList.reduce((max, p) => {
+                const num = parseInt(p.id);
+                return isNaN(num) ? max : Math.max(max, num);
+            }, 0) + 1;
 
-                newProductsGenerated.forEach(np => {
-                    // Buscar esencia en el nuevo producto
-                    const npEsc = np.components.find(c => c.type === "Esencia");
+            newProductsGenerated.forEach(np => {
+                const npEsc = np.components.find(c => c.type === "Esencia");
+                const existingIdx = currentProds.findIndex(p => {
+                    const pEsc = p.components.find(c => c.type === "Esencia");
+                    const sameEssence = pEsc && npEsc && pEsc.id.toString() === npEsc.id.toString();
+                    const sameBase = p.baseId === np.baseId;
+                    const sameName = (p.name || "").trim().toUpperCase() === (np.name || "").trim().toUpperCase();
                     
-                    // Buscar si ya existe un producto con esa misma base e ID de esencia
-                    const existingIdx = currentProds.findIndex(p => {
-                        const pEsc = p.components.find(c => c.type === "Esencia");
-                        return p.baseId === np.baseId && pEsc && npEsc && pEsc.id === npEsc.id;
-                    });
-
-                    if (existingIdx >= 0) {
-                        updated++;
-                        const existing = currentProds[existingIdx];
-                        const merged: Producto = {
-                            ...np,
-                            id: existing.id,
-                            stock: (prev.find(p => p.id === existing.id)?.stock) || 0,
-                            imageUrl: (prev.find(p => p.id === existing.id)?.imageUrl)
-                        };
-                        
-                        const i = updatedList.findIndex(x => x.id === merged.id);
-                        if (i >= 0) updatedList[i] = merged;
-                        else updatedList.push(merged);
-
-                        toUpsert.push({
-                            id: merged.id,
-                            name: merged.name,
-                            category: merged.category,
-                            base_id: merged.baseId,
-                            components: merged.components,
-                            cost: merged.cost,
-                            price: merged.price,
-                            price_minorista: merged.priceMinorista,
-                            stock: merged.stock,
-                            description: merged.description,
-                            gender: merged.gender,
-                            last_update: merged.lastUpdate,
-                            image_url: merged.imageUrl,
-                        });
-                    } else {
-                        created++;
-                        const newId = (nextIdNum++).toString().padStart(3, "0");
-                        const newProd = { ...np, id: newId };
-                        updatedList.push(newProd);
-                        toUpsert.push({
-                            id: newId,
-                            name: newProd.name,
-                            category: newProd.category,
-                            base_id: newProd.baseId,
-                            components: newProd.components,
-                            cost: newProd.cost,
-                            price: newProd.price,
-                            price_minorista: newProd.priceMinorista,
-                            stock: newProd.stock,
-                            description: newProd.description,
-                            gender: newProd.gender,
-                            last_update: newProd.lastUpdate,
-                            image_url: newProd.imageUrl,
-                        });
-                    }
+                    // Si coincide nombre y esencia, ES el mismo producto aunque no tenga baseId guardado
+                    // O si coincide el baseId y la esencia.
+                    return sameEssence && (sameBase || sameName);
                 });
 
-                const CHUNK_SIZE = 50;
-                const uniqueUpsert = Object.values(toUpsert.reduce((acc, obj) => { acc[obj.id] = obj; return acc; }, {}));
-                
-                const processChunks = async () => {
-                    for (let i = 0; i < uniqueUpsert.length; i += CHUNK_SIZE) {
-                        const chunk = uniqueUpsert.slice(i, i + CHUNK_SIZE);
-                        await upsertRecords("productos", chunk);
-                    }
-                };
+                if (existingIdx >= 0) {
+                    updated++;
+                    const existing = currentProds[existingIdx];
+                    const merged: Producto = {
+                        ...np,
+                        id: existing.id,
+                        stock: existing.stock || 0,
+                        imageUrl: existing.imageUrl
+                    };
+                    
+                    const idxInList = updatedList.findIndex(x => x.id === merged.id);
+                    if (idxInList >= 0) updatedList[idxInList] = merged;
+                    else updatedList.push(merged);
 
-                processChunks();
-                resolve({ created, updated });
-                return updatedList;
+                    toUpsert.push({
+                        id: merged.id,
+                        name: merged.name,
+                        category: merged.category,
+                        base_id: merged.baseId,
+                        components: merged.components,
+                        cost: merged.cost,
+                        price: merged.price,
+                        price_minorista: merged.priceMinorista,
+                        stock: merged.stock,
+                        description: merged.description,
+                        gender: merged.gender,
+                        last_update: merged.lastUpdate,
+                        image_url: merged.imageUrl,
+                    });
+                } else {
+                    created++;
+                    const newId = (nextIdNum++).toString().padStart(3, "0");
+                    const newProd = { ...np, id: newId };
+                    updatedList.push(newProd);
+                    toUpsert.push({
+                        id: newId,
+                        name: newProd.name,
+                        category: newProd.category,
+                        base_id: newProd.baseId,
+                        components: newProd.components,
+                        cost: newProd.cost,
+                        price: newProd.price,
+                        price_minorista: newProd.priceMinorista,
+                        stock: newProd.stock,
+                        description: newProd.description,
+                        gender: newProd.gender,
+                        last_update: newProd.lastUpdate,
+                        image_url: newProd.imageUrl,
+                    });
+                }
             });
+
+            setProductos(updatedList);
+
+            const uniqueUpsert = Object.values(toUpsert.reduce((acc, obj) => { acc[obj.id] = obj; return acc; }, {}));
+            const CHUNK_SIZE = 50;
+
+            try {
+                for (let i = 0; i < uniqueUpsert.length; i += CHUNK_SIZE) {
+                    const chunk = uniqueUpsert.slice(i, i + CHUNK_SIZE);
+                    await upsertRecords("productos", chunk);
+                }
+                resolve({ created, updated });
+            } catch (err) {
+                console.error("Error updating DB in generateProductsFromBase:", err);
+                reject(err);
+            }
         });
     };
 
@@ -2152,6 +2207,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         setGeneros,
         mounted,
         generateProductsFromBase,
+        removeDuplicateProducts,
         getNextId: getNextSequenceId,
         categoryMargins,
         setCategoryMargins,

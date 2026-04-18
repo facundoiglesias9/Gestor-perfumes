@@ -47,7 +47,7 @@ const Toast = ({ message, onClose, type = "success" }: { message: string, onClos
 );
 
 export default function PorcentajeGananciaPage() {
-    const { categorias, categoryMargins, setCategoryMargins, productos, setProductos } = useAppContext();
+    const { categorias, categoryMargins, setCategoryMargins, productos, setProductos, esencias, insumos } = useAppContext();
     const [toast, setToast] = useState<{ message: string, type: "success" | "info" | "error" } | null>(null);
     const [updatingParams, setUpdatingParams] = useState<Record<string, { mayoristaX: number, minoristaX: number }>>({});
     const [isProcessing, setIsProcessing] = useState<string | null>(null);
@@ -75,7 +75,33 @@ export default function PorcentajeGananciaPage() {
         }));
     };
 
-    const roundUpTo1000 = (num: number) => Math.ceil(num / 1000) * 1000;
+    const calculateProductCost = (p: Producto) => {
+        return p.components.reduce((acc, comp) => {
+            let sourceItem = comp.type === "Esencia"
+                ? esencias.find(e => e.id === comp.id) || esencias.find(e => e.name.toLowerCase() === comp.name.toLowerCase())
+                : insumos.find(i => i.id === comp.id) || insumos.find(i => i.name.toLowerCase() === comp.name.toLowerCase());
+
+            if (sourceItem) {
+                let unitCost = 0;
+                if (comp.type === "Esencia") {
+                    const esc = sourceItem as any;
+                    const p250 = parseFloat(esc.price250g);
+                    const p100 = parseFloat(esc.price100g);
+                    const p30 = parseFloat(esc.price30g);
+                    if (!isNaN(p250) && p250 > 0) unitCost = p250 / 250;
+                    else if (!isNaN(p100) && p100 > 0) unitCost = p100 / 100;
+                    else if (!isNaN(p30) && p30 > 0) unitCost = p30 / 30;
+                    else unitCost = sourceItem.cost / (sourceItem.qty || 1);
+                } else {
+                    unitCost = sourceItem.cost / (sourceItem.qty || 1);
+                }
+                return acc + (unitCost * comp.qty);
+            }
+            return acc;
+        }, 0);
+    };
+
+    const roundUpTo100 = (num: number) => Math.ceil(num / 100) * 100;
 
     const handleSaveAndMassUpdate = async (catName: string) => {
         setIsProcessing(catName);
@@ -102,11 +128,15 @@ export default function PorcentajeGananciaPage() {
             return;
         }
 
-        const updatedProducts: Producto[] = targetProducts.map(p => ({
-            ...p,
-            price: roundUpTo1000(p.cost * multMayorista),
-            priceMinorista: roundUpTo1000(p.cost * multMinorista),
-        }));
+        const updatedProducts: Producto[] = targetProducts.map(p => {
+            const freshCost = calculateProductCost(p);
+            return {
+                ...p,
+                cost: freshCost,
+                price: roundUpTo100(freshCost * multMayorista),
+                priceMinorista: roundUpTo100(freshCost * multMinorista),
+            }
+        });
 
         // 3. Update React State explicitly
         setProductos(prev => prev.map(p => {
@@ -304,7 +334,7 @@ export default function PorcentajeGananciaPage() {
                                     <Coins className="w-4 h-4 text-slate-400" />
                                 </div>
                                 <p className="text-[11px] font-bold text-slate-500 leading-relaxed italic">
-                                    Los productos se actualizarán de Costo × {(1 + params.mayoristaX/100).toFixed(2)} (May.) y Costo × {(1 + params.minoristaX/100).toFixed(2)} (Min.) con redondeo a $1.000.
+                                    Los productos se actualizarán de Costo × {(1 + params.mayoristaX/100).toFixed(2)} (May.) y Costo × {(1 + params.minoristaX/100).toFixed(2)} (Min.) con redondeo a $100.
                                 </p>
                             </div>
 

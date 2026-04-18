@@ -20,6 +20,8 @@ export default function EditarProductoPage() {
     const [description, setDescription] = useState("");
     const [imageUrl, setImageUrl] = useState("");
     const [uploadingImage, setUploadingImage] = useState(false);
+    const [availabilityStatus, setAvailabilityStatus] = useState<any>("disponible");
+    const [deliveryDays, setDeliveryDays] = useState("0");
 
     // Pricing state
     const [priceMayorista, setPriceMayorista] = useState("");
@@ -52,6 +54,8 @@ export default function EditarProductoPage() {
             setGender(matchedGender ? matchedGender : (existingProduct.gender || ""));
 
             setImageUrl(existingProduct.imageUrl || "");
+            setAvailabilityStatus(existingProduct.availabilityStatus || "disponible");
+            setDeliveryDays(existingProduct.deliveryDays?.toString() || "0");
 
             // Calculate initial margins
             if (existingProduct.cost > 0) {
@@ -72,9 +76,11 @@ export default function EditarProductoPage() {
             let unitCost = 0;
             if (comp.type === "Esencia") {
                 const esc = sourceItem as any;
+                const p250 = parseFloat(esc.price250g);
                 const p100 = parseFloat(esc.price100g);
                 const p30 = parseFloat(esc.price30g);
-                if (!isNaN(p100) && p100 > 0) unitCost = p100 / 100;
+                if (!isNaN(p250) && p250 > 0) unitCost = p250 / 250;
+                else if (!isNaN(p100) && p100 > 0) unitCost = p100 / 100;
                 else if (!isNaN(p30) && p30 > 0) unitCost = p30 / 30;
                 else unitCost = sourceItem.cost / (sourceItem.qty || 1);
             } else {
@@ -128,15 +134,15 @@ export default function EditarProductoPage() {
         setImageUrl("");
     };
 
-    const roundUpTo1000 = (num: number) => {
-        return Math.ceil(num / 1000) * 1000;
+    const roundUpTo100 = (num: number) => {
+        return Math.ceil(num / 100) * 100;
     };
 
     const handleMarginMayoristaChange = (val: string) => {
         setMarginMayor(val);
         const numVal = parseFloat(val) || 0;
         if (marginTypeMayor === "porcentaje") {
-            const p = roundUpTo1000(totalCost * (1 + numVal / 100));
+            const p = roundUpTo100(totalCost * (1 + numVal / 100));
             setPriceMayorista(p.toString());
         } else {
             setPriceMayorista((totalCost + numVal).toFixed(0));
@@ -147,7 +153,7 @@ export default function EditarProductoPage() {
         setMarginMinor(val);
         const numVal = parseFloat(val) || 0;
         if (marginTypeMinor === "porcentaje") {
-            const p = roundUpTo1000(totalCost * (1 + numVal / 100));
+            const p = roundUpTo100(totalCost * (1 + numVal / 100));
             setPriceMinorista(p.toString());
         } else {
             setPriceMinorista((totalCost + numVal).toFixed(0));
@@ -221,10 +227,12 @@ export default function EditarProductoPage() {
             priceMinorista: parseFloat(priceMinorista) || 0,
             gender,
             description,
-            imageUrl
+            imageUrl,
+            availabilityStatus,
+            deliveryDays: parseInt(deliveryDays) || 0
         };
         updateProducto(updatedProduct);
-        router.back();
+        router.push("/lista-mayorista");
     };
 
     if (!existingProduct) return <div className="p-20 text-center font-bold">Cargando producto...</div>;
@@ -233,7 +241,7 @@ export default function EditarProductoPage() {
         <div className="space-y-8 pb-12 animate-in fade-in duration-700">
             <header className="flex flex-col md:flex-row md:justify-between md:items-end gap-6 bg-white dark:bg-slate-900 p-8 md:p-10 rounded-[2.5rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.2)] border border-slate-100 dark:border-slate-800 transition-colors duration-300">
                 <div className="space-y-3">
-                    <Link href="/" className="inline-flex items-center gap-2 text-indigo-500 font-bold text-sm mb-2 hover:gap-3 transition-all">
+                    <Link href="/lista-mayorista" className="inline-flex items-center gap-2 text-indigo-500 font-bold text-sm mb-2 hover:gap-3 transition-all">
                         <ArrowLeft className="w-4 h-4" /> Volver a la lista
                     </Link>
                     <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight text-slate-900 dark:text-slate-50 transition-colors">
@@ -368,7 +376,31 @@ export default function EditarProductoPage() {
                                     type="text"
                                     value={name}
                                     onChange={e => setName(e.target.value)}
-                                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl py-3.5 px-4 text-slate-900 dark:text-slate-100 font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-bold"
+                                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl py-3.5 px-4 text-slate-900 dark:text-slate-100 font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+                                />
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest pl-1">Estado de Disponibilidad</label>
+                                <select
+                                    value={availabilityStatus}
+                                    onChange={(e) => setAvailabilityStatus(e.target.value)}
+                                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl py-3.5 px-4 text-slate-900 dark:text-slate-100 font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+                                >
+                                    <option value="disponible">En Mano / Inmediata</option>
+                                    <option value="demora">Con Demora (X Días)</option>
+                                    <option value="no-disponible">Faltante / Consultar</option>
+                                </select>
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest pl-1">Días de Demora</label>
+                                <input
+                                    type="number"
+                                    disabled={availabilityStatus !== "demora"}
+                                    value={deliveryDays}
+                                    onChange={e => setDeliveryDays(e.target.value)}
+                                    className={`w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl py-3.5 px-4 text-slate-900 dark:text-slate-100 font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all ${availabilityStatus !== "demora" ? "opacity-30 grayscale" : ""}`}
                                 />
                             </div>
                         </div>

@@ -291,7 +291,7 @@ export default function PedidosPage() {
                                                 </span>
                                             </p>
                                             <p className="text-xs font-bold text-slate-500 dark:text-slate-400 mt-1 uppercase tracking-tight">
-                                                {item.category} • {item.bultosToBuy} x {item.bultoQty}{item.unit} (${item.bultoCost.toLocaleString()} c/u)
+                                                {item.category} • {item.bultosToBuy} x {item.bultoQty}{item.unit} (${(item.bultoCost / (item.bultoQty || 1)).toLocaleString("es-AR", { maximumFractionDigits: 2 })} c/u)
                                             </p>
                                         </div>
                                         <div className="flex items-center gap-4 border-t sm:border-0 border-slate-200 dark:border-slate-700 pt-3 sm:pt-0">

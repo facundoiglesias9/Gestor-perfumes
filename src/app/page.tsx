@@ -18,7 +18,10 @@ import {
     Tag,
     Tags,
     User,
-    LayoutDashboard
+    LayoutDashboard,
+    XCircle,
+    Clock,
+    CheckCircle2
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -60,9 +63,14 @@ export default function HomePage() {
     const filteredProductos = useMemo(() => {
         return productos.filter(p => {
             const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase());
-            const matchesCategory = categoryFilter === "Todas" || p.category === categoryFilter;
-            const matchesGender = genderFilter === "Todos" || p.gender === genderFilter;
-            return matchesSearch && matchesCategory && matchesGender;
+            const matchesCategory = categoryFilter === "Todas" || 
+                (p.category || "").trim().toLowerCase() === categoryFilter.trim().toLowerCase();
+            const matchesGender = genderFilter === "Todos" || 
+                (p.gender || "").trim().toLowerCase() === genderFilter.trim().toLowerCase();
+            
+            const matchesStock = p.availabilityStatus !== "no-disponible";
+                
+            return matchesSearch && matchesCategory && matchesGender && matchesStock;
         });
     }, [productos, searchTerm, categoryFilter, genderFilter]);
 
@@ -97,8 +105,24 @@ export default function HomePage() {
 
     const cartTotal = cart.reduce((acc, item) => acc + (item.producto.priceMinorista * item.quantity), 0);
 
+    const deliverySummary = useMemo(() => {
+        if (cart.length === 0) return null;
+        let maxDays = 0;
+        let hasNoStock = false;
+        cart.forEach(item => {
+            if (item.producto.availabilityStatus === "no-disponible") hasNoStock = true;
+            if (item.producto.availabilityStatus === "demora") {
+                const d = Number(item.producto.deliveryDays) || 0;
+                if (d > maxDays) maxDays = d;
+            }
+        });
+        if (hasNoStock) return { text: "Uno o más productos no están disponibles.", type: "error" };
+        if (maxDays > 0) return { text: `Disponible en ${maxDays} días`, type: "warning" };
+        return { text: "Entrega a acordar con el vendedor", type: "success" };
+    }, [cart]);
+
     const handleWhatsAppOrder = () => {
-        const phoneNumber = "5491138902507";
+        const phoneNumber = "5491123529147";
         let message = "¡Hola Scenta! 👋 Quisiera hacer un pedido:\n\n";
 
         cart.forEach(item => {
@@ -138,30 +162,31 @@ export default function HomePage() {
                             </div>
                         </div>
 
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-2 md:gap-4">
                             {/* Auth Buttons */}
-                            <div className="hidden md:flex items-center gap-4 mr-2">
+                            <div className="flex items-center gap-1 md:gap-4">
                                 {currentUser ? (
                                     <Link
                                         href={currentUser.role === 'minorista' ? '/minorista' : '/lista-mayorista'}
-                                        className="flex items-center gap-2 px-4 py-2 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 rounded-xl font-black text-xs uppercase tracking-widest border border-indigo-100 dark:border-indigo-500/20 hover:scale-105 transition-all"
+                                        className="flex items-center gap-2 px-3 md:px-4 py-2 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 rounded-xl font-black text-[10px] md:text-xs uppercase tracking-widest border border-indigo-100 dark:border-indigo-500/20 hover:scale-105 transition-all"
                                     >
                                         <LayoutDashboard className="w-4 h-4" />
-                                        Mi Panel
+                                        <span className="hidden sm:inline">Mi Panel</span>
                                     </Link>
                                 ) : (
                                     <>
                                         <Link
                                             href="/login"
-                                            className="px-4 py-2 text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 font-black text-xs uppercase tracking-widest transition-colors"
+                                            className="px-2 md:px-4 py-2 text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 font-black text-[10px] md:text-xs uppercase tracking-widest transition-colors flex items-center gap-1"
                                         >
-                                            Iniciar Sesión
+                                            <User className="w-4 h-4" />
+                                            <span className="hidden sm:inline">Iniciar Sesión</span>
                                         </Link>
                                         <Link
                                             href="/registrarse"
-                                            className="px-4 py-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-xl font-black text-xs uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-lg"
+                                            className="px-3 md:px-4 py-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-xl font-black text-[10px] md:text-xs uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-lg whitespace-nowrap"
                                         >
-                                            Registrarse
+                                            Registrarme
                                         </Link>
                                     </>
                                 )}
@@ -172,7 +197,7 @@ export default function HomePage() {
 
                             <button
                                 onClick={() => setIsCartOpen(true)}
-                                className="relative p-3 bg-indigo-600 rounded-2xl shadow-xl hover:scale-110 active:scale-90 transition-all group lg:ml-2"
+                                className="relative p-2.5 md:p-3 bg-indigo-600 rounded-2xl shadow-xl hover:scale-110 active:scale-90 transition-all group lg:ml-2"
                             >
                                 <ShoppingBag className="w-5 h-5 text-white" />
                                 {cart.length > 0 && (
@@ -361,8 +386,14 @@ export default function HomePage() {
 
                                         {/* Fast Action (hidden on mobile, visible on group hover) */}
                                         <button
+                                            disabled={p.availabilityStatus === "no-disponible"}
                                             onClick={() => addToCart(p)}
-                                            className="absolute bottom-6 right-6 w-14 h-14 bg-white dark:bg-indigo-600 rounded-2xl flex items-center justify-center text-slate-900 dark:text-white shadow-2xl opacity-0 translate-y-4 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-500 cursor-pointer hover:scale-110 active:scale-90"
+                                            className={`absolute bottom-6 right-6 w-14 h-14 rounded-2xl flex items-center justify-center shadow-2xl transition-all duration-500 ${
+                                                p.availabilityStatus === "no-disponible"
+                                                ? "bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-600 cursor-not-allowed opacity-100 translate-y-0"
+                                                : "bg-white dark:bg-indigo-600 text-slate-900 dark:text-white opacity-0 translate-y-4 group-hover:opacity-100 group-hover:translate-y-0 hover:scale-110 active:scale-90 cursor-pointer"
+                                            }`}
+                                            title={p.availabilityStatus === "no-disponible" ? "Sin stock" : "Agregar al carrito"}
                                         >
                                             <PlusIcon className="w-6 h-6" />
                                         </button>
@@ -388,9 +419,21 @@ export default function HomePage() {
                                                     ${p.priceMinorista.toLocaleString()}
                                                 </span>
                                             </div>
-                                            <p className="text-[10px] font-black text-indigo-500 bg-indigo-50 dark:bg-indigo-500/10 px-3 py-1.5 rounded-lg uppercase">
-                                                En Stock
-                                            </p>
+                                            <div className="flex flex-col items-end">
+                                                {p.availabilityStatus === "demora" ? (
+                                                    <p className="text-[10px] font-black text-violet-500 bg-violet-50 dark:bg-violet-500/10 px-3 py-1.5 rounded-lg uppercase whitespace-nowrap">
+                                                        {p.deliveryDays} Días para entrega
+                                                    </p>
+                                                ) : p.availabilityStatus === "no-disponible" ? (
+                                                    <p className="text-[10px] font-black text-rose-500 bg-rose-50 dark:bg-rose-500/10 px-3 py-1.5 rounded-lg uppercase whitespace-nowrap">
+                                                        Consultar Stock
+                                                    </p>
+                                                ) : (
+                                                    <p className="text-[10px] font-black text-emerald-500 bg-emerald-50 dark:bg-emerald-500/10 px-3 py-1.5 rounded-lg uppercase whitespace-nowrap">
+                                                        Entrega Inmediata
+                                                    </p>
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -457,7 +500,14 @@ export default function HomePage() {
                                                 <div className="flex-1 flex flex-col justify-between py-1">
                                                     <div className="space-y-1">
                                                         <h4 className="font-black text-sm text-slate-900 dark:text-white leading-tight group-hover/item:text-indigo-600 transition-colors uppercase tracking-tight">{item.producto.name}</h4>
-                                                        <p className="text-[10px] font-bold text-slate-400 uppercase">{item.producto.category}</p>
+                                                        <div className="flex items-center gap-2">
+                                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{item.producto.category}</p>
+                                                            {item.producto.availabilityStatus === "demora" && (
+                                                                <span className="px-1.5 py-0.5 bg-violet-50 text-violet-600 dark:bg-violet-500/10 dark:text-violet-400 rounded text-[9px] font-black uppercase tracking-widest">
+                                                                    {item.producto.deliveryDays}d
+                                                                </span>
+                                                            )}
+                                                        </div>
                                                     </div>
                                                     <div className="flex items-center justify-between">
                                                         <div className="flex items-center gap-3 bg-slate-100 dark:bg-slate-800 rounded-xl px-3 py-1.5 border border-slate-200 dark:border-slate-700">
@@ -489,15 +539,39 @@ export default function HomePage() {
                                             </span>
                                         </div>
                                     </div>
-                                    <button
-                                        disabled={cart.length === 0}
-                                        onClick={handleWhatsAppOrder}
-                                        className="w-full bg-[#25D366] hover:bg-[#20ba5a] text-white py-6 rounded-[2rem] font-black text-xl flex items-center justify-center gap-4 shadow-2xl shadow-[#25D366]/20 transition-all active:scale-95 disabled:opacity-50 disabled:grayscale disabled:active:scale-100 cursor-pointer group/wa"
-                                    >
-                                        <MessageCircle className="w-8 h-8 fill-current group-hover/wa:rotate-12 transition-transform" />
-                                        Hacer mi pedido ahora
-                                    </button>
-                                    <p className="text-[10px] text-center text-slate-400 font-black uppercase tracking-widest opacity-60">Pedido vía WhatsApp • Seguro y rápido</p>
+
+                                    {/* Delivery Summary & Action */}
+                                    <div className="p-8 space-y-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50">
+                                        {deliverySummary && (
+                                            <div className={`p-4 rounded-2xl border flex items-center gap-3 transition-all ${
+                                                deliverySummary.type === "error" ? "bg-rose-50 border-rose-200 text-rose-700" :
+                                                deliverySummary.type === "warning" ? "bg-violet-50 border-violet-200 text-violet-700" :
+                                                "bg-blue-50 border-blue-200 text-blue-700"
+                                            }`}>
+                                                {deliverySummary.type === "error" ? <XCircle className="w-5 h-5 flex-shrink-0" /> :
+                                                 deliverySummary.type === "warning" ? <Clock className="w-5 h-5 flex-shrink-0 text-violet-600" /> :
+                                                 <CheckCircle2 className="w-5 h-5 flex-shrink-0" />}
+                                                <div>
+                                                    <p className="font-extrabold text-[11px] leading-tight uppercase tracking-tight">{deliverySummary.text}</p>
+                                                    <p className="text-[9px] opacity-70 font-bold uppercase tracking-widest mt-0.5">Logística de Entrega</p>
+                                                </div>
+                                            </div>
+                                        )}
+                                        
+                                        <button
+                                            onClick={handleWhatsAppOrder}
+                                            disabled={deliverySummary?.type === "error"}
+                                            className={`w-full py-6 rounded-[2rem] font-black text-xs uppercase tracking-[0.2em] flex items-center justify-center gap-3 transition-all shadow-xl ${
+                                                deliverySummary?.type === "error"
+                                                ? "bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed"
+                                                : "bg-indigo-600 text-white shadow-indigo-500/25 hover:scale-[1.02] active:scale-95 hover:bg-indigo-700"
+                                            }`}
+                                        >
+                                            <MessageCircle className="w-5 h-5" />
+                                            Confirmar por WhatsApp
+                                        </button>
+                                        <p className="text-[10px] text-center text-slate-400 font-black uppercase tracking-widest opacity-60">Pedido vía WhatsApp • Seguro y rápido</p>
+                                    </div>
                                 </div>
                             </motion.div>
                         </motion.div>

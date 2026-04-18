@@ -22,7 +22,9 @@ import {
     Loader2,
     Copy,
     Check,
-    MessageCircle
+    MessageCircle,
+    XCircle,
+    Clock
 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import Image from "next/image";
@@ -33,6 +35,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { exportToExcel, exportToPDF } from "@/lib/export-utils";
 import { formatNumber } from "@/lib/format-utils";
 import { FileSpreadsheet, FileText } from "lucide-react";
+import ExportModal from "@/components/ExportModal";
 
 const extractBrand = (name: string) => {
     if (name.includes('(') && name.includes(')')) {
@@ -89,16 +92,19 @@ export default function ListaMinoristaPage() {
     const [genderFilter, setGenderFilter] = useState("Todos");
     const [sizeFilter, setSizeFilter] = useState("Todos");
     const [sortBy, setSortBy] = useState<"price-asc" | "price-desc" | "id-asc" | "id-desc" | "none">("none");
+    const [showOutOfStock, setShowOutOfStock] = useState(false);
     const [isCartOpen, setIsCartOpen] = useState(false);
     const [customerName, setCustomerName] = useState("");
     const [orderSuccess, setOrderSuccess] = useState(false);
     const [currentPage, setCurrentPage] = useState(1);
+    const [showConsult, setShowConsult] = useState(false);
     const [isRestored, setIsRestored] = useState(false);
     const [paymentMethod, setPaymentMethod] = useState<'qr' | 'transferencia' | 'efectivo'>('qr');
     const [paymentLink, setPaymentLink] = useState<string>("");
     const [isGeneratingQR, setIsGeneratingQR] = useState(false);
     const [copiedField, setCopiedField] = useState<string | null>(null);
     const [showUserDropdown, setShowUserDropdown] = useState(false);
+    const [exportFormat, setExportFormat] = useState<"excel" | "pdf" | null>(null);
     const itemsPerPage = 10;
 
     const handleCopy = (text: string, field: string) => {
@@ -113,13 +119,15 @@ export default function ListaMinoristaPage() {
         try {
             const saved = sessionStorage.getItem('minorista_filters');
             if (saved) {
-                const { search: s, categoryFilter: c, genderFilter: g, sizeFilter: sz, sortBy: sb, currentPage: p } = JSON.parse(saved);
+                const { search: s, categoryFilter: c, genderFilter: g, sizeFilter: sz, sortBy: sb, currentPage: p, showOutOfStock: so, showConsult: sc } = JSON.parse(saved);
                 if (s !== undefined) setSearch(s);
                 if (c !== undefined) setCategoryFilter(c);
                 if (g !== undefined) setGenderFilter(g);
                 if (sz !== undefined) setSizeFilter(sz);
                 if (sb !== undefined) setSortBy(sb);
                 if (p !== undefined) setCurrentPage(p);
+                if (so !== undefined) setShowOutOfStock(so);
+                if (sc !== undefined) setShowConsult(sc);
             }
         } catch { }
         setIsRestored(true);
@@ -128,9 +136,9 @@ export default function ListaMinoristaPage() {
     // Save filters + page to sessionStorage whenever they change
     useEffect(() => {
         if (isRestored) {
-            sessionStorage.setItem('minorista_filters', JSON.stringify({ search, categoryFilter, genderFilter, sizeFilter, sortBy, currentPage }));
+            sessionStorage.setItem('minorista_filters', JSON.stringify({ search, categoryFilter, genderFilter, sizeFilter, sortBy, currentPage, showOutOfStock, showConsult }));
         }
-    }, [search, categoryFilter, genderFilter, sortBy, currentPage, isRestored]);
+    }, [search, categoryFilter, genderFilter, sortBy, currentPage, isRestored, showOutOfStock, showConsult]);
 
     const filteredAndSortedProductos = useMemo(() => {
         let result = [...productos];
@@ -145,10 +153,10 @@ export default function ListaMinoristaPage() {
 
         if (categoryFilter !== "Todas") {
             const lowCatFilter = categoryFilter.trim().toLowerCase();
-            result = result.filter(p => 
-                p.category?.trim().toLowerCase().includes(lowCatFilter) ||
-                lowCatFilter.includes(p.category?.trim().toLowerCase())
-            );
+            result = result.filter(p => {
+                const pCat = (p.category || "").trim().toLowerCase();
+                return pCat.includes(lowCatFilter) || lowCatFilter.includes(pCat);
+            });
         }
 
         if (genderFilter !== "Todos") {
@@ -156,10 +164,18 @@ export default function ListaMinoristaPage() {
             result = result.filter(p => p.gender?.toLowerCase() === lowGenderFilter);
         }
 
+        if (!showOutOfStock) {
+            result = result.filter(p => !p.availabilityStatus || p.availabilityStatus !== "no-disponible");
+        }
+
+        if (!showConsult) {
+            result = result.filter(p => !(isNaN(Number(p.priceMinorista)) || Number(p.priceMinorista || 0) <= 0));
+        }
+
         if (sortBy === "price-asc") {
-            result.sort((a, b) => a.priceMinorista - b.priceMinorista);
+            result.sort((a, b) => (Number(a.priceMinorista) || 0) - (Number(b.priceMinorista) || 0));
         } else if (sortBy === "price-desc") {
-            result.sort((a, b) => b.priceMinorista - a.priceMinorista);
+            result.sort((a, b) => (Number(b.priceMinorista) || 0) - (Number(a.priceMinorista) || 0));
         }
 
         if (sortBy === "id-asc") {
@@ -169,7 +185,7 @@ export default function ListaMinoristaPage() {
         }
 
         return result;
-    }, [productos, search, categoryFilter, genderFilter, sortBy]);
+    }, [productos, search, categoryFilter, genderFilter, sortBy, showOutOfStock, showConsult]);
 
     const totalPages = Math.ceil(filteredAndSortedProductos.length / itemsPerPage);
     const paginatedProductos = useMemo(() => {
@@ -179,10 +195,27 @@ export default function ListaMinoristaPage() {
 
     const cartFiltered = useMemo(() => cart.filter(item => item.priceType === "minorista"), [cart]);
 
-    const cartTotal = cartFiltered.reduce((acc, item) => {
+    const deliverySummary = useMemo(() => {
+        if (cartFiltered.length === 0) return null;
+        let maxDays = 0;
+        let hasNoStock = false;
+        cartFiltered.forEach(item => {
+            const p = productos.find(prod => prod.id === item.producto.id) || item.producto;
+            if (p.availabilityStatus === "no-disponible") hasNoStock = true;
+            if (p.availabilityStatus === "demora") {
+                const d = Number(p.deliveryDays) || 0;
+                if (d > maxDays) maxDays = d;
+            }
+        });
+        if (hasNoStock) return { text: "Uno o más productos no tienen stock disponible.", type: "error" };
+        if (maxDays > 0) return { text: `Disponible para entrega en ${maxDays} días`, type: "warning" };
+        return { text: "Entrega a acordar con el vendedor", type: "success" };
+    }, [cartFiltered, productos]);
+
+    const cartTotal = useMemo(() => cartFiltered.reduce((acc, item) => {
         const price = item.customPrice !== undefined ? item.customPrice : item.producto.priceMinorista;
         return acc + (price * item.quantity);
-    }, 0);
+    }, 0), [cartFiltered]);
 
     // Generate MP Link when QR is selected
     useEffect(() => {
@@ -237,25 +270,26 @@ export default function ListaMinoristaPage() {
         }, 2000);
     };
 
-    const handleExportExcel = () => {
-        const data = filteredAndSortedProductos.map(p => ({
-            "Producto": p.name,
-            "Categoría": p.category,
-            "Género": p.gender,
-            "Precio Minorista": `$${p.priceMinorista.toLocaleString("es-AR")}`
-        }));
-        exportToExcel(data, "Lista_Precios_Minorista_Scenta", "Scenta - Lista de Precios Minorista");
-    };
-
-    const handleExportPDF = () => {
-        const headers = ["Producto", "Categoría", "Género", "Precio"];
-        const rows = filteredAndSortedProductos.map(p => [
-            p.name,
-            p.category,
-            p.gender,
-            `$${p.priceMinorista.toLocaleString("es-AR")}`
-        ]);
-        exportToPDF("Lista de Precios Minorista - Scenta", headers, rows, "Lista_Precios_Minorista_Scenta");
+    const handlePerformExport = (data: Producto[], format: "excel" | "pdf") => {
+        if (format === "excel") {
+            const excelData = data.map(p => ({
+                "Producto": p.name,
+                "Categoría": p.category,
+                "Género": p.gender,
+                "Precio Minorista": `$${p.priceMinorista.toLocaleString("es-AR")}`
+            }));
+            exportToExcel(excelData, "Lista_Precios_Minorista_Scenta", "Scenta - Lista de Precios Minorista");
+        } else {
+            const headers = ["Producto", "Categoría", "Género", "Precio"];
+            const rows = data.map(p => [
+                p.name,
+                p.category,
+                p.gender,
+                `$${p.priceMinorista.toLocaleString("es-AR")}`
+            ]);
+            exportToPDF("Lista de Precios Minorista - Scenta", headers, rows, "Lista_Precios_Minorista_Scenta");
+        }
+        setExportFormat(null);
     };
 
 
@@ -298,7 +332,7 @@ export default function ListaMinoristaPage() {
 
                     <div className="flex gap-2">
                         <button
-                            onClick={handleExportExcel}
+                            onClick={() => setExportFormat("excel")}
                             className="p-3.5 rounded-2xl bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-500/20 hover:scale-105 active:scale-95 transition-all shadow-sm flex items-center gap-2 font-bold text-sm"
                             title="Exportar a Excel"
                         >
@@ -306,7 +340,7 @@ export default function ListaMinoristaPage() {
                             <span>Excel</span>
                         </button>
                         <button
-                            onClick={handleExportPDF}
+                            onClick={() => setExportFormat("pdf")}
                             className="p-3.5 rounded-2xl bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-100 dark:border-rose-500/20 hover:scale-105 active:scale-95 transition-all shadow-sm flex items-center gap-2 font-bold text-sm"
                             title="Exportar a PDF"
                         >
@@ -374,6 +408,34 @@ export default function ListaMinoristaPage() {
                             <option value="price-desc">Precio: Mayor a Menor</option>
                         </select>
                         <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                    </div>
+
+                    <div 
+                        onClick={() => { setShowOutOfStock(!showOutOfStock); setCurrentPage(1); }}
+                        className="flex items-center gap-3 bg-white dark:bg-slate-900 px-6 py-4 rounded-2xl border border-slate-200 dark:border-slate-800 cursor-pointer hover:border-indigo-400 dark:hover:border-indigo-500 transition-all shadow-sm group"
+                    >
+                        <div className={`w-5 h-5 rounded-md border-2 transition-all flex items-center justify-center ${
+                            showOutOfStock 
+                            ? 'bg-indigo-600 border-indigo-600 shadow-lg shadow-indigo-600/20' 
+                            : 'border-slate-300 dark:border-slate-700 group-hover:border-indigo-400'
+                        }`}>
+                            {showOutOfStock && <div className="w-1.5 h-1.5 bg-white rounded-full animate-in zoom-in-50 duration-300" />}
+                        </div>
+                        <span className="text-xs font-black text-slate-600 dark:text-slate-400 uppercase tracking-widest whitespace-nowrap">Mostrar Sin Stock</span>
+                    </div>
+
+                    <div 
+                        onClick={() => { setShowConsult(!showConsult); setCurrentPage(1); }}
+                        className="flex items-center gap-3 bg-white dark:bg-slate-900 px-6 py-4 rounded-2xl border border-slate-200 dark:border-slate-800 cursor-pointer hover:border-emerald-400 dark:hover:border-emerald-500 transition-all shadow-sm group"
+                    >
+                        <div className={`w-5 h-5 rounded-md border-2 transition-all flex items-center justify-center ${
+                            showConsult 
+                            ? 'bg-emerald-600 border-emerald-600 shadow-lg shadow-emerald-600/20' 
+                            : 'border-slate-300 dark:border-slate-700 group-hover:border-emerald-400'
+                        }`}>
+                            {showConsult && <div className="w-1.5 h-1.5 bg-white rounded-full animate-in zoom-in-50 duration-300" />}
+                        </div>
+                        <span className="text-xs font-black text-slate-600 dark:text-slate-400 uppercase tracking-widest whitespace-nowrap">Mostrar Consultar</span>
                     </div>
                 </div>
             </div>
@@ -486,10 +548,19 @@ export default function ListaMinoristaPage() {
                                     <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 text-[10px] font-black uppercase tracking-widest ring-1 ring-slate-200 dark:ring-slate-700 shadow-sm transition-colors group-hover:bg-emerald-50 dark:group-hover:bg-emerald-500/10 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 group-hover:ring-emerald-200 dark:group-hover:ring-emerald-800">
                                         Cód. {prod.id}
                                     </span>
+                                    {prod.availabilityStatus === "demora" ? (
+                                        <span className="ml-2 inline-flex items-center px-2.5 py-1 rounded-lg bg-violet-50 dark:bg-violet-500/10 text-violet-600 dark:text-violet-400 text-[10px] font-black uppercase tracking-widest ring-1 ring-violet-200 dark:ring-violet-800 shadow-sm">
+                                            {prod.deliveryDays} Días
+                                        </span>
+                                    ) : prod.availabilityStatus === "no-disponible" && (
+                                        <span className="ml-2 inline-flex items-center px-2.5 py-1 rounded-lg bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400 text-[10px] font-black uppercase tracking-widest ring-1 ring-rose-200 dark:ring-rose-800 shadow-sm">
+                                            Sin Stock
+                                        </span>
+                                    )}
                                 </div>
 
                                 <div className="flex items-end justify-between w-full mt-auto text-left">
-                                    {!isAdmin && prod.priceMinorista === 0 ? (
+                                    {(isNaN(Number(prod.priceMinorista)) || Number(prod.priceMinorista || 0) <= 0) ? (
                                         <div className="flex flex-col gap-1">
                                             <p className="text-xl font-black text-emerald-600 dark:text-emerald-400 tracking-tight uppercase">
                                                 Consultar
@@ -512,7 +583,7 @@ export default function ListaMinoristaPage() {
                                                         </>
                                                     );
                                                 }
-                                            if (prod.priceMinorista === 0) {
+                                            if (isNaN(Number(prod.priceMinorista)) || Number(prod.priceMinorista || 0) <= 0) {
                                                 return (
                                                     <p className="text-xl font-black text-emerald-600 dark:text-emerald-400 tracking-tight uppercase">
                                                         Consultar
@@ -529,21 +600,26 @@ export default function ListaMinoristaPage() {
                                         </div>
                                     )}
 
-                                    {!isAdmin && prod.priceMinorista === 0 ? (
+                                    {(isNaN(Number(prod.priceMinorista)) || Number(prod.priceMinorista || 0) <= 0) ? (
                                         <a
-                                            href={`https://wa.me/5491122558866?text=Hola!%20Quiero%20consultar%20por%20el%20producto:%20${encodeURIComponent(prod.name)}%20(Cód.%20${prod.id})`}
+                                            href={`https://wa.me/5491123529147?text=Hola!%20Quiero%20consultar%20por%20el%20producto:%20${encodeURIComponent(prod.name)}%20(Cód.%20${prod.id})`}
                                             target="_blank"
                                             rel="noopener noreferrer"
-                                            className="p-4 bg-emerald-500 text-white rounded-2xl hover:bg-emerald-600 shadow-[0_4px_20px_rgba(16,185,129,0.2)] hover:shadow-[0_8px_25px_rgba(16,185,129,0.4)] hover:-translate-y-1 active:translate-y-0 active:scale-95 transition-all"
+                                            className="p-4 bg-emerald-500 text-white rounded-2xl hover:bg-emerald-600 shadow-[0_4px_20px_rgba(16,185,129,0.2)] hover:shadow-[0_8px_25px_rgba(16,185,129,0.3)] hover:-translate-y-1 active:translate-y-0 active:scale-95 transition-all"
                                             title="Consultar por WhatsApp"
                                         >
                                             <MessageCircle className="w-6 h-6" strokeWidth={2.5} />
                                         </a>
                                     ) : (
                                         <button
+                                            disabled={prod.availabilityStatus === "no-disponible"}
                                             onClick={() => addToCart(prod, "minorista")}
-                                            className="p-4 bg-slate-900 dark:bg-emerald-600 text-white rounded-2xl hover:bg-emerald-600 dark:hover:bg-emerald-500 shadow-[0_4px_20px_rgb(0,0,0,0.1)] hover:shadow-[0_8px_25px_rgba(16,185,129,0.3)] hover:-translate-y-1 active:translate-y-0 active:scale-95 transition-all"
-                                            title="Agregar al carrito"
+                                            className={`p-4 rounded-2xl transition-all ${
+                                                prod.availabilityStatus === "no-disponible"
+                                                ? "bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-600 cursor-not-allowed shadow-none"
+                                                : "bg-slate-900 dark:bg-emerald-600 text-white hover:bg-emerald-600 dark:hover:bg-emerald-500 shadow-[0_4px_20px_rgb(0,0,0,0.1)] hover:shadow-[0_8px_25px_rgba(16,185,129,0.3)] hover:-translate-y-1 active:translate-y-0 active:scale-95 text-white"
+                                            }`}
+                                            title={prod.availabilityStatus === "no-disponible" ? "Sin stock disponible" : "Agregar al carrito"}
                                         >
                                             <ShoppingCart className="w-6 h-6" strokeWidth={2.5} />
                                         </button>
@@ -647,25 +723,36 @@ export default function ListaMinoristaPage() {
                                 ) : (
                                     <div className="space-y-6">
                                         {cartFiltered.map((item, idx) => {
-                                            const basePrice = item.producto.priceMinorista;
+                                            const p = productos.find(prod => prod.id === item.producto.id) || item.producto;
+                                            const basePrice = p.priceMinorista;
                                             const price = item.customPrice !== undefined ? item.customPrice : basePrice;
 
                                             return (
                                                 <div key={idx} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800 animate-in slide-in-from-bottom-2">
                                                     <div className="w-16 h-16 bg-slate-100 dark:bg-slate-800/50 rounded-xl overflow-hidden shrink-0">
-                                                        {item.producto.imageUrl && (
-                                                            <img src={item.producto.imageUrl} className="w-full h-full object-contain p-1" alt={item.producto.name} />
+                                                        {p.imageUrl && (
+                                                            <img src={p.imageUrl} className="w-full h-full object-contain p-1" alt={p.name} />
                                                         )}
                                                     </div>
                                                     <div className="flex-1 w-full text-center sm:text-left">
-                                                        <p className="font-black text-slate-900 dark:text-slate-100">{item.producto.name}</p>
+                                                        <p className="font-black text-slate-900 dark:text-slate-100">{p.name}</p>
                                                         <div className="flex items-center justify-center sm:justify-start gap-2 mt-1 mb-1.5">
-                                                            <span className={`px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-widest ${item.producto.gender === 'Femenino' ? 'bg-pink-100 text-pink-700 dark:bg-pink-500/20 dark:text-pink-400' : item.producto.gender === 'Masculino' ? 'bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400' : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400'}`}>
-                                                                {item.producto.gender}
+                                                            <span className={`px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-widest ${p.gender === 'Femenino' ? 'bg-pink-100 text-pink-700 dark:bg-pink-500/20 dark:text-pink-400' : p.gender === 'Masculino' ? 'bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400' : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400'}`}>
+                                                                {p.gender}
                                                             </span>
                                                             <span className="px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 rounded text-[9px] font-bold uppercase tracking-widest">
-                                                                {item.producto.category}
+                                                                {p.category}
                                                             </span>
+                                                            {p.availabilityStatus === "demora" && (
+                                                                <span className="px-1.5 py-0.5 bg-violet-100 text-violet-700 dark:bg-violet-500/20 dark:text-violet-400 rounded text-[9px] font-bold uppercase tracking-widest">
+                                                                    {p.deliveryDays} Días
+                                                                </span>
+                                                            )}
+                                                            {p.availabilityStatus === "no-disponible" && (
+                                                                <span className="px-1.5 py-0.5 bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-400 rounded text-[9px] font-bold uppercase tracking-widest">
+                                                                    Sin Stock
+                                                                </span>
+                                                            )}
                                                         </div>
                                                         {isAdmin ? (
                                                             <div className="flex items-center gap-2 mt-1 justify-center sm:justify-start">
@@ -706,8 +793,31 @@ export default function ListaMinoristaPage() {
                                             );
                                         })}
 
-                                        <form onSubmit={handleCheckout} className="mt-10 pt-10 border-t border-slate-100 dark:border-slate-800 space-y-6">
-                                            <div className="space-y-2">
+                                        <form onSubmit={handleCheckout} className="mt-10 pt-10 border-t border-slate-100 dark:border-slate-800 space-y-10">
+                                            {/* Delivery Status Summary (Prominent at top) */}
+                                            {deliverySummary && (
+                                                <div className={`p-6 rounded-[2rem] border-2 flex items-center gap-4 transition-all shadow-lg animate-in fade-in slide-in-from-top-4 duration-500 ${
+                                                    deliverySummary.type === "error" ? "bg-rose-50 border-rose-200 text-rose-700" :
+                                                    deliverySummary.type === "warning" ? "bg-violet-50 border-violet-200 text-violet-700 ring-4 ring-violet-500/10" :
+                                                    "bg-emerald-50 border-emerald-200 text-emerald-700 shadow-emerald-500/5"
+                                                }`}>
+                                                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0 ${
+                                                        deliverySummary.type === "error" ? "bg-rose-500 text-white" :
+                                                        deliverySummary.type === "warning" ? "bg-violet-600 text-white shadow-lg shadow-violet-600/30" :
+                                                        "bg-emerald-600 text-white"
+                                                    }`}>
+                                                        {deliverySummary.type === "error" ? <XCircle className="w-6 h-6" /> :
+                                                         deliverySummary.type === "warning" ? <Clock className="w-6 h-6" /> :
+                                                         <CheckCircle2 className="w-6 h-6" />}
+                                                    </div>
+                                                    <div>
+                                                        <p className="font-black text-lg leading-tight tracking-tight uppercase tracking-tight">{deliverySummary.text}</p>
+                                                        <p className="text-[10px] font-bold uppercase tracking-[0.2em] opacity-70 mt-1">Información Logística Oficial</p>
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            <div className="space-y-4">
                                                 <label className="text-xs font-black text-slate-400 uppercase tracking-widest pl-1">Nombre del Cliente / Referencia</label>
                                                 <div className="relative">
                                                     <input
@@ -869,22 +979,28 @@ export default function ListaMinoristaPage() {
                                                 </div>
                                             )}
 
-                                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 bg-slate-900 dark:bg-white rounded-3xl text-white dark:text-slate-900">
-                                                <div className="text-center sm:text-left">
-                                                    <p className="text-[10px] font-black uppercase tracking-widest opacity-60">
-                                                        Total a Pagar {paymentMethod === 'qr' && <span className="text-blue-500 ml-1">(+10% MP)</span>}
-                                                    </p>
-                                                    <p className="text-3xl font-black">
-                                                        ${(paymentMethod === 'qr' ? cartTotal * 1.10 : cartTotal).toLocaleString(undefined, { maximumFractionDigits: 0 })}
-                                                    </p>
+                                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 bg-slate-900 dark:bg-white rounded-[2.5rem] text-white dark:text-slate-900">
+                                                    <div className="text-center sm:text-left flex-1">
+
+                                                        <div className="flex justify-between items-center pr-4">
+                                                            <div>
+                                                                <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-60">Total a Pagar {paymentMethod === 'qr' && <span className="text-blue-500 ml-1">(+10% MP)</span>}</p>
+                                                                <p className="text-4xl font-black">${(paymentMethod === 'qr' ? cartTotal * 1.10 : cartTotal).toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
+                                                            </div>
+                                                            <button
+                                                                type="submit"
+                                                                disabled={deliverySummary?.type === "error"}
+                                                                className={`px-8 py-4 rounded-2xl font-black transition-all shadow-xl ${
+                                                                    deliverySummary?.type === "error"
+                                                                    ? "bg-slate-700 text-slate-500 cursor-not-allowed"
+                                                                    : "bg-emerald-500 text-white hover:bg-emerald-600"
+                                                                }`}
+                                                            >
+                                                                Confirmar Pedido
+                                                            </button>
+                                                        </div>
+                                                    </div>
                                                 </div>
-                                                <button
-                                                    type="submit"
-                                                    className="px-8 py-4 bg-emerald-600 text-white rounded-2xl font-black hover:bg-emerald-700 transition-all shadow-xl"
-                                                >
-                                                    Finalizar Solicitud
-                                                </button>
-                                            </div>
                                         </form>
                                     </div>
                                 )}
@@ -893,6 +1009,21 @@ export default function ListaMinoristaPage() {
                     </div>
                 )
             }
-        </div >
+            {/* Export Modal */}
+            <ExportModal
+                isOpen={!!exportFormat}
+                onClose={() => setExportFormat(null)}
+                onExport={handlePerformExport}
+                productos={productos}
+                categorias={categorias}
+                generos={generos}
+                type={exportFormat || "excel"}
+                initialFilters={{
+                    category: categoryFilter,
+                    gender: genderFilter,
+                    showOutOfStock: showOutOfStock
+                }}
+            />
+        </div>
     );
 }
