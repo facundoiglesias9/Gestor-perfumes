@@ -5,21 +5,22 @@ import sql from './db';
 
 export async function fetchTable(tableName: string, options: any = {}) {
   try {
-    const { orderBy, orderDir = 'asc', filter } = options;
+    const { orderBy, orderDir = 'asc', filter, columns = '*' } = options;
     
     let query;
+    const selectClause = Array.isArray(columns) ? sql(columns) : sql.unsafe(columns);
+    
     if (filter) {
         const keys = Object.keys(filter);
         if (keys.length > 0) {
-            // Join filters with AND instead of using the default comma separation
             const conditions = Object.keys(filter).map(key => sql`${sql(key)} = ${filter[key]}`);
             const whereClause = conditions.reduce((acc, curr) => sql`${acc} AND ${curr}`);
-            query = sql`SELECT * FROM ${sql(tableName)} WHERE ${whereClause}`;
+            query = sql`SELECT ${selectClause} FROM ${sql(tableName)} WHERE ${whereClause}`;
         } else {
-            query = sql`SELECT * FROM ${sql(tableName)}`;
+            query = sql`SELECT ${selectClause} FROM ${sql(tableName)}`;
         }
     } else {
-        query = sql`SELECT * FROM ${sql(tableName)}`;
+        query = sql`SELECT ${selectClause} FROM ${sql(tableName)}`;
     }
 
     if (orderBy) {

@@ -772,7 +772,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                 // 2. Parallel fetch essential vs admin data (Xata Refetch)
                 const essentialRequests = [
                     fetchTable("categorias", { orderBy: "name" }),
-                    fetchTable("productos"),
+                    fetchTable("productos", { columns: ["id", "name", "category", "base_id", "components", "cost", "price", "price_minorista", "stock", "description", "gender", "last_update", "availability_status", "delivery_days"] }),
                     fetchTable("promociones"),
                     fetchTable("config"),
                 ];
@@ -864,6 +864,22 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                 setCategorias(catRes.data);
                 setProductos(sanitizedProducts);
                 setPromotions(promoData.data);
+
+                // LAZY LOAD IMAGES: Fetch images in the background if the first fetch was partial
+                setTimeout(async () => {
+                    const { data: imgData, error: imgError } = await fetchTable("productos", { columns: ["id", "image_url"] });
+                    if (!imgError && imgData) {
+                        setProductos(prev => {
+                            const newProds = prev.map(p => {
+                                const row = imgData.find((r: any) => r.id === p.id);
+                                return row && row.image_url ? { ...p, imageUrl: row.image_url } : p;
+                            });
+                            // Store the COMPLETE data in localStorage once images are arrived
+                            localStorage.setItem("productos", JSON.stringify(newProds));
+                            return newProds;
+                        });
+                    }
+                }, 500);
 
                 // Admin-only data
                 if (isAdmin) {
