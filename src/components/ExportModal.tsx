@@ -54,9 +54,32 @@ export default function ExportModal({
 
     const filteredData = useMemo(() => {
         return productos.filter(p => {
-            const matchesCat = selectedCategories.includes(p.category || "");
-            const matchesGender = selectedGenders.includes(p.gender || "");
+            const productCat = (p.category || "").trim().toUpperCase();
+            const productGender = (p.gender || "UNISEX").trim().toUpperCase();
+            
+            // Normalize selected arrays for safe comparison
+            const selectedCatsUpper = selectedCategories.map(c => c.trim().toUpperCase());
+            const selectedGendersUpper = selectedGenders.map(g => g.trim().toUpperCase());
+
+            const matchesCat = selectedCatsUpper.includes(productCat);
+            
+            // Intelligence: If it's an ambient category, it usually only has "Unisex" or no gender.
+            // We should allow it if the category is selected, even if the gender filter is active for perfumes.
+            const isAmbient = productCat.includes("DIFUSOR") || 
+                             productCat.includes("AUTO") || 
+                             productCat.includes("LIMPIA") || 
+                             productCat.includes("AMBIENTE");
+
+            let matchesGender = selectedGendersUpper.includes(productGender);
+            
+            // If it's ambient and "Unisex", we include it if the user has at least one gender selected (logic: they want products)
+            // or if the category is specifically selected.
+            if (isAmbient && productGender === "UNISEX" && selectedGendersUpper.length > 0) {
+                matchesGender = true;
+            }
+
             const matchesStock = includeOutOfStock ? true : p.availabilityStatus !== "no-disponible";
+            
             return matchesCat && matchesGender && matchesStock;
         });
     }, [productos, selectedCategories, selectedGenders, includeOutOfStock]);
