@@ -51,7 +51,9 @@ export default function StudioPage() {
             logoSize: 180,
             logoOffsetX: 0,
             logoOffsetY: 0,
+            titleOffsetX: 0,
             titleOffsetY: 10,
+            brandOffsetX: 0,
             brandOffsetY: 10,
             badgeOffsetY: 0,
             shadowIntensity: 0.35,
@@ -120,8 +122,8 @@ export default function StudioPage() {
     }, []);
 
     const viewScale = useMemo(() => {
-        const scaleX = (containerSize.width - 40) / 1000;
-        const scaleY = (containerSize.height - 40) / 1000;
+        const scaleX = (containerSize.width - 40) / 800;
+        const scaleY = (containerSize.height - 40) / 800;
         return Math.min(scaleX, scaleY, 0.95);
     }, [containerSize]);
 
@@ -287,7 +289,7 @@ export default function StudioPage() {
         ctx.font = `900 ${labelConfig.fontSizeTitle}px Inter, sans-serif`;
         const drawYTitle = currentY + labelConfig.titleOffsetY;
         tInfo.lines.forEach((l, i) => {
-            ctx.fillText(l, centerX, drawYTitle + (i * labelConfig.fontSizeTitle * 0.85));
+            ctx.fillText(l, centerX + labelConfig.titleOffsetX, drawYTitle + (i * labelConfig.fontSizeTitle * 0.85));
         });
 
         // Dibujar Marca
@@ -297,7 +299,7 @@ export default function StudioPage() {
             ctx.font = `bold ${labelConfig.fontSizeBrand}px Inter, sans-serif`;
             const drawYBrand = drawYTitle + tInfo.height + 15 + labelConfig.brandOffsetY;
             bInfo.lines.forEach((l, i) => {
-                ctx.fillText(l, centerX, drawYBrand + (i * labelConfig.fontSizeBrand * 1.2));
+                ctx.fillText(l, centerX + labelConfig.brandOffsetX, drawYBrand + (i * labelConfig.fontSizeBrand * 1.2));
             });
             ctx.restore();
         }
@@ -401,19 +403,21 @@ export default function StudioPage() {
                     <h2 className="font-black text-center uppercase whitespace-normal break-words leading-[0.85] tracking-tighter" style={{
                         color: labelConfig.textColor, 
                         fontSize: `${labelConfig.fontSizeTitle}px`,
-                        transform: `translateY(${labelConfig.titleOffsetY}px)`,
-                        width: '100%'
+                        transform: `translate(calc(-50% + ${labelConfig.titleOffsetX}px), ${labelConfig.titleOffsetY}px)`,
+                        width: '100%',
+                        left: '50%',
+                        position: 'absolute'
                     }}>
                         {labelConfig.customTitle || details.title}
                     </h2>
 
                     {/* Marca */}
                     {(labelConfig.customBrand || details.brand) && (
-                        <p className="font-black uppercase tracking-[0.2em] text-center opacity-70 leading-tight" style={{
+                        <p className="font-black uppercase tracking-[0.2em] text-center opacity-70 leading-tight absolute w-full left-1/2" style={{
                             color: labelConfig.textColor, 
                             fontSize: `${labelConfig.fontSizeBrand}px`,
-                            transform: `translateY(${labelConfig.brandOffsetY}px)`,
-                            marginTop: '15px'
+                            transform: `translate(calc(-50% + ${labelConfig.brandOffsetX}px), ${labelConfig.brandOffsetY}px)`,
+                            top: `calc(45% + ${labelConfig.fontSizeTitle}px + 20px)`
                         }}>
                             {labelConfig.customBrand || details.brand}
                         </p>
@@ -601,13 +605,19 @@ export default function StudioPage() {
                                         {[
                                             { label: 'Label Ancho', field: 'labelWidth', min: 100, max: 800, unit: 'px' },
                                             { label: 'Label Alto', field: 'labelHeight', min: 100, max: 800, unit: 'px' },
-                                            { label: 'Margen V.', field: 'topOffset', min: 0, max: 100, unit: '%' },
+                                            { label: 'Margen V (Top)', field: 'topOffset', min: 0, max: 100, unit: '%' },
+                                            { label: 'Margen H (Left)', field: 'leftOffset', min: 0, max: 100, unit: '%' },
                                             { label: 'Sombra', field: 'shadowIntensity', min: 0, max: 1, step: 0.01, unit: '' },
                                             { label: 'Tamaño Logo', field: 'logoSize', min: 20, max: 500, unit: 'px' },
-                                            { label: 'Font Title', field: 'fontSizeTitle', min: 10, max: 150, unit: 'px' },
+                                            { label: 'Logo X', field: 'logoOffsetX', min: -200, max: 200, unit: 'px' },
                                             { label: 'Logo Y', field: 'logoOffsetY', min: -200, max: 200, unit: 'px' },
+                                            { label: 'Font Title', field: 'fontSizeTitle', min: 10, max: 150, unit: 'px' },
+                                            { label: 'Title X', field: 'titleOffsetX', min: -200, max: 200, unit: 'px' },
                                             { label: 'Title Y', field: 'titleOffsetY', min: -200, max: 200, unit: 'px' },
+                                            { label: 'Font Brand', field: 'fontSizeBrand', min: 5, max: 100, unit: 'px' },
+                                            { label: 'Brand X', field: 'brandOffsetX', min: -200, max: 200, unit: 'px' },
                                             { label: 'Brand Y', field: 'brandOffsetY', min: -200, max: 200, unit: 'px' },
+                                            { label: 'Badge Y', field: 'badgeOffsetY', min: -100, max: 100, unit: 'px' },
                                         ].map(s => (
                                             <div key={s.field}>
                                                 <div className="flex justify-between text-[9px] font-black uppercase tracking-widest mb-3">
@@ -629,8 +639,8 @@ export default function StudioPage() {
                                 <div 
                                     className="relative bg-white shadow-2xl origin-center shrink-0" 
                                     style={{ 
-                                        width: '1000px', 
-                                        height: '1000px', 
+                                        width: '800px', 
+                                        height: '800px', 
                                         transform: `scale(${viewScale})` 
                                     }}
                                 >
