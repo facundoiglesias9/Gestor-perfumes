@@ -165,8 +165,8 @@ export default function StudioPage() {
 
     const handleCapture = async (prod: Producto): Promise<HTMLCanvasElement> => {
         const canvas = document.createElement('canvas');
-        canvas.width = 1000;
-        canvas.height = 1000;
+        canvas.width = 800; // Resolution optimization
+        canvas.height = 800;
         const ctx = canvas.getContext('2d');
         if (!ctx) throw new Error("Canvas context failed");
 
@@ -213,11 +213,11 @@ export default function StudioPage() {
         imgBotella.crossOrigin = "anonymous";
         imgBotella.src = backgroundImage || "";
         await new Promise((res) => { imgBotella.onload = res; imgBotella.onerror = res; });
-        drawImageContain(ctx, imgBotella, 0, 0, 1000, 1000);
+        drawImageContain(ctx, imgBotella, 0, 0, 800, 800);
 
         // 3. Configuración de la Etiqueta
-        const totalTop = (1000 * labelConfig.topOffset) / 100;
-        const totalLeft = (1000 * labelConfig.leftOffset) / 100;
+        const totalTop = (800 * labelConfig.topOffset) / 100;
+        const totalLeft = (800 * labelConfig.leftOffset) / 100;
         const labelX = totalLeft - (labelConfig.labelWidth / 2);
         const labelY = totalTop - (labelConfig.labelHeight / 2);
 
@@ -316,10 +316,11 @@ export default function StudioPage() {
         setIsApplying(true);
         try {
             const canvas = await handleCapture(prod);
-            const blob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, 'image/png'));
+            // Optimization: Use JPEG with 0.65 quality instead of PNG
+            const blob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.65));
             if (!blob) throw new Error("Blob error");
             const formData = new FormData();
-            formData.append('file', blob, `mockup-${prod.id}.png`);
+            formData.append('file', blob, `mockup-${prod.id}.jpg`);
             const uploadRes = await fetch('/api/upload', { method: 'POST', body: formData });
             const { url } = await uploadRes.json();
             await updateProducto({ ...prod, imageUrl: url });
@@ -358,8 +359,8 @@ export default function StudioPage() {
         if (!selectedProducto) return;
         const canvas = await handleCapture(selectedProducto);
         const link = document.createElement('a');
-        link.download = `mockup-${selectedProducto.name}.png`;
-        link.href = canvas.toDataURL("image/png");
+        link.download = `mockup-${selectedProducto.name}.jpg`;
+        link.href = canvas.toDataURL("image/jpeg", 0.7);
         link.click();
     };
 
