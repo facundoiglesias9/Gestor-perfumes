@@ -1135,14 +1135,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         const uniqueProducts = new Map<string, Producto>();
         const toDelete: string[] = [];
         
-        // Criterio de unicidad agresivo: Nombre Limpio + Esencia (ID o Nombre)
+        // Criterio de unicidad SUPER agresivo: Nombre Limpio + Género + Esencia (Solo Nombre)
         productos.forEach(p => {
             const pEsc = p.components.find(c => c.type === "Esencia");
-            // Usamos tanto el ID como el nombre de la esencia para el match
-            const essenceKey = pEsc ? (pEsc.id || pEsc.name).trim().toUpperCase() : "no-esc";
-            // Limpiamos el nombre de cualquier espacio fantasma
+            // Ignoramos el ID y usamos el nombre de la esencia para el match definitivo
+            const essenceName = pEsc ? pEsc.name.trim().toUpperCase() : "no-esc";
             const cleanName = (p.name || "").trim().replace(/\s+/g, ' ').toUpperCase();
-            const key = `${cleanName}_${p.gender}_${essenceKey}`;
+            const cleanGender = (p.gender || "UNISEX").trim().toUpperCase();
+            
+            const key = `${cleanName}_${cleanGender}_${essenceName}`;
             
             if (uniqueProducts.has(key)) {
                 const existing = uniqueProducts.get(key)!;
@@ -1815,12 +1816,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                 const npEsc = np.components.find(c => c.type === "Esencia");
                 const existingIdx = currentProds.findIndex(p => {
                     const pEsc = p.components.find(c => c.type === "Esencia");
-                    const sameEssence = pEsc && npEsc && pEsc.id.toString() === npEsc.id.toString();
+                    const sameEssence = pEsc && npEsc && (pEsc.id.toString() === npEsc.id.toString() || pEsc.name.trim().toUpperCase() === npEsc.name.trim().toUpperCase());
                     const sameBase = p.baseId === np.baseId;
                     const sameName = (p.name || "").trim().toUpperCase() === (np.name || "").trim().toUpperCase();
                     
-                    // Si coincide nombre y esencia, ES el mismo producto aunque no tenga baseId guardado
-                    // O si coincide el baseId y la esencia.
                     return sameEssence && (sameBase || sameName);
                 });
 

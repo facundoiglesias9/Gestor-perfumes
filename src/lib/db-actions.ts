@@ -40,12 +40,12 @@ export async function fetchTable(tableName: string, options: any = {}) {
 export async function upsertRecord(tableName: string, record: any) {
   try {
     const columns = Object.keys(record);
-    const updateColumns = columns.filter(c => c !== 'id');
+    const conflictCol = tableName === 'config' ? 'key' : 'id';
+    const updateColumns = columns.filter(c => c !== conflictCol);
     
-    // Manual construction of the update set to be safe and compatible
     const result = await sql`
       INSERT INTO ${sql(tableName)} ${sql(record)}
-      ON CONFLICT (id) DO UPDATE SET
+      ON CONFLICT (${sql(conflictCol)}) DO UPDATE SET
         ${sql(record, ...updateColumns)}
       RETURNING *
     `;
@@ -58,7 +58,8 @@ export async function upsertRecord(tableName: string, record: any) {
 
 export async function deleteRecord(tableName: string, id: string | number) {
   try {
-    await sql`DELETE FROM ${sql(tableName)} WHERE id = ${id}`;
+    const conflictCol = tableName === 'config' ? 'key' : 'id';
+    await sql`DELETE FROM ${sql(tableName)} WHERE ${sql(conflictCol)} = ${id}`;
     return { error: null };
   } catch (err: any) {
     console.error(`DB Error (deleteRecord ${tableName}):`, err);
@@ -79,8 +80,10 @@ export async function clearTable(tableName: string) {
 export async function upsertRecords(tableName: string, records: any[]) {
   if (!records || records.length === 0) return { error: null };
   try {
+    const conflictCol = tableName === 'config' ? 'key' : 'id';
     const columns = Object.keys(records[0]);
-    const updateColumns = columns.filter(c => c !== 'id');
+    const updateColumns = columns.filter(c => c !== conflictCol);
+    // Use quotes and handle potential keywords by mapping
     const setClause = updateColumns.map(col => `"${col}" = EXCLUDED."${col}"`).join(', ');
 
     const results = [];
@@ -88,7 +91,7 @@ export async function upsertRecords(tableName: string, records: any[]) {
       const chunk = records.slice(i, i + 50);
       const res = await sql`
         INSERT INTO ${sql(tableName)} ${sql(chunk)}
-        ON CONFLICT (id) DO UPDATE SET
+        ON CONFLICT (${sql(conflictCol)}) DO UPDATE SET
           ${sql.unsafe(setClause)}
         RETURNING *
       `;
