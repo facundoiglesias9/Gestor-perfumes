@@ -770,6 +770,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                 } catch (e) { }
 
                 // 2. Parallel fetch essential vs admin data (Xata Refetch)
+                const startTime = performance.now();
+                console.log("🚀 Iniciando sincronización de datos...");
+
                 const essentialRequests = [
                     fetchTable("categorias", { orderBy: "name" }),
                     fetchTable("productos", { columns: ["id", "name", "category", "base_id", "components", "cost", "price", "price_minorista", "stock", "description", "gender", "last_update", "availability_status", "delivery_days"] }),
@@ -790,6 +793,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                 ] : [];
 
                 const results = await Promise.all([...essentialRequests, ...adminRequests]);
+                const endTime = performance.now();
+                console.log(`✅ Sincronización completada en ${((endTime - startTime) / 1000).toFixed(2)}s`);
 
                 const [catResult, prodResult, promoResult, configResult] = results;
                 const [
