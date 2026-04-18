@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { useAppContext } from "@/context/AppContext";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend, Cell } from "recharts";
-import { TrendingUp, Package, Users, Filter, Crown, Frown, DollarSign, Sparkles, Settings2, Trash2, RefreshCcw } from "lucide-react";
+import { TrendingUp, Package, Users, Filter, Crown, Frown, DollarSign, Sparkles, Settings, Trash, RefreshCw } from "lucide-react";
 
 export default function DashboardPage() {
     const { orders, transacciones, removeDuplicateProducts } = useAppContext();
@@ -339,7 +339,7 @@ export default function DashboardPage() {
             <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[2.5rem] p-8 md:p-10 shadow-xl">
                 <div className="flex items-center gap-3 mb-8">
                     <div className="p-3 bg-rose-100 dark:bg-rose-500/20 rounded-xl text-rose-600 dark:text-rose-400">
-                        <Settings2 className="w-6 h-6" />
+                        <Settings className="w-6 h-6" />
                     </div>
                     <div>
                         <h2 className="text-2xl font-black text-slate-900 dark:text-slate-50">Mantenimiento de Base de Datos</h2>
@@ -353,7 +353,7 @@ export default function DashboardPage() {
                         className="p-6 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800 rounded-3xl flex items-center gap-4 hover:border-rose-500 transition-all group group"
                     >
                         <div className="w-12 h-12 bg-white dark:bg-slate-900 rounded-2xl flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform">
-                            <Trash2 className="w-6 h-6 text-rose-500" />
+                            <Trash className="w-6 h-6 text-rose-500" />
                         </div>
                         <div className="text-left">
                             <p className="text-[10px] font-black uppercase tracking-widest text-rose-500 mb-1">Limpiar Catálogo</p>
@@ -371,7 +371,7 @@ export default function DashboardPage() {
                         className="p-6 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800 rounded-3xl flex items-center gap-4 hover:border-indigo-500 transition-all group"
                     >
                         <div className="w-12 h-12 bg-white dark:bg-slate-900 rounded-2xl flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform">
-                            <RefreshCcw className="w-6 h-6 text-indigo-500" />
+                            <RefreshCw className="w-6 h-6 text-indigo-500" />
                         </div>
                         <div className="text-left">
                             <p className="text-[10px] font-black uppercase tracking-widest text-indigo-500 mb-1">Sincronización</p>

@@ -296,6 +296,7 @@ interface AppContextProps {
     aprobarSolicitudMinorista: (requestId: number, userId: string) => Promise<void>;
     rechazarSolicitudMinorista: (requestId: number, motivo: string, fechaReintento: string) => Promise<void>;
     solicitudPropia: any | null;
+    removeDuplicateProducts: () => Promise<void>;
 }
 
 const AppContext = createContext<AppContextProps | undefined>(undefined);
@@ -1163,27 +1164,21 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         if (confirm(`Se encontraron ${toDelete.length} productos duplicados (mismo nombre y esencia). ¿Deseas eliminarlos de la base de datos definitivamente?\n\nTotal actual: ${productos.length} -> Total final: ${productos.length - toDelete.length}`)) {
             const newList = productos.filter(p => !toDelete.includes(p.id));
             setProductos(newList);
-            // Delete from DB one by one (or batch if tool is available)
-            Promise.all(toDelete.map(id => deleteRecord("productos", id)))
-                .then(() => {
-                    addSystemLog("info", `Limpieza exitosa: ${toDelete.length} duplicados eliminados.`);
-                    alert(`¡Limpieza completada! ${toDelete.length} productos eliminados.`);
-                })
-                .catch(err => {
-                    console.error("Error al limpiar duplicados:", err);
-                    alert("Ocurrió un error al borrar de la base de datos.");
-                });
-        }
             
-            // Borrar en chunks para no saturar
-            for (let i = 0; i < toDelete.length; i += 50) {
-                const chunk = toDelete.slice(i, i + 50);
-                await deleteRecords("productos", chunk);
+            try {
+                // Borrar en chunks para no saturar
+                for (let i = 0; i < toDelete.length; i += 50) {
+                    const chunk = toDelete.slice(i, i + 50);
+                    await deleteRecords("productos", chunk);
+                }
+                addSystemLog("info", `Limpieza exitosa: ${toDelete.length} duplicados eliminados.`);
+                alert(`¡Limpieza completada! ${toDelete.length} productos eliminados.`);
+            } catch (err) {
+                console.error("Error al limpiar duplicados:", err);
+                alert("Ocurrió un error al borrar de la base de datos.");
             }
-            
-            alert(`Limpieza completada. Se eliminaron ${toDelete.length} duplicados.`);
         }
-    }
+    };
 
     const addUsuario = async (user: Usuario) => {
         setUsuarios(prev => [user, ...prev]);
