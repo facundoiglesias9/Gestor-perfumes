@@ -122,8 +122,8 @@ export default function StudioPage() {
     }, []);
 
     const viewScale = useMemo(() => {
-        const scaleX = (containerSize.width - 40) / 800;
-        const scaleY = (containerSize.height - 40) / 800;
+        const scaleX = (containerSize.width - 40) / 1000;
+        const scaleY = (containerSize.height - 40) / 1000;
         return Math.min(scaleX, scaleY, 0.95);
     }, [containerSize]);
 
@@ -167,8 +167,8 @@ export default function StudioPage() {
 
     const handleCapture = async (prod: Producto): Promise<HTMLCanvasElement> => {
         const canvas = document.createElement('canvas');
-        canvas.width = 800; // Resolution optimization
-        canvas.height = 800;
+        canvas.width = 1000;
+        canvas.height = 1000;
         const ctx = canvas.getContext('2d');
         if (!ctx) throw new Error("Canvas context failed");
 
@@ -215,11 +215,11 @@ export default function StudioPage() {
         imgBotella.crossOrigin = "anonymous";
         imgBotella.src = backgroundImage || "";
         await new Promise((res) => { imgBotella.onload = res; imgBotella.onerror = res; });
-        drawImageContain(ctx, imgBotella, 0, 0, 800, 800);
+        drawImageContain(ctx, imgBotella, 0, 0, 1000, 1000);
 
         // 3. Configuración de la Etiqueta
-        const totalTop = (800 * labelConfig.topOffset) / 100;
-        const totalLeft = (800 * labelConfig.leftOffset) / 100;
+        const totalTop = (1000 * labelConfig.topOffset) / 100;
+        const totalLeft = (1000 * labelConfig.leftOffset) / 100;
         const labelX = totalLeft - (labelConfig.labelWidth / 2);
         const labelY = totalTop - (labelConfig.labelHeight / 2);
 
@@ -633,14 +633,13 @@ export default function StudioPage() {
                         </div>
                     </div>
 
-                    {/* Preview Viewport */}
                     <div className="xl:col-span-8 flex flex-col gap-8">
                         <div ref={containerRef} className="bg-white dark:bg-slate-900 border-4 border-dashed border-slate-100 dark:border-slate-800 rounded-[3rem] min-h-[850px] flex items-center justify-center relative shadow-sm overflow-hidden group">
                                 <div 
                                     className="relative bg-white shadow-2xl origin-center shrink-0" 
                                     style={{ 
-                                        width: '800px', 
-                                        height: '800px', 
+                                        width: '1000px', 
+                                        height: '1000px', 
                                         transform: `scale(${viewScale})` 
                                     }}
                                 >
