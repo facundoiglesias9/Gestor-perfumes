@@ -3,7 +3,7 @@
 
 import sql from './db';
 
-export async function fetchTable(tableName: string, options: any = {}) {
+export async function fetchTable(tableName: string, options: any = {}, retries = 1): Promise<any> {
   try {
     const { orderBy, orderDir = 'asc', filter, columns = '*' } = options;
     
@@ -32,8 +32,14 @@ export async function fetchTable(tableName: string, options: any = {}) {
     const data = await query;
     return { data, error: null };
   } catch (err: any) {
+    const errorMsg = err.message || String(err);
+    if (errorMsg.toLowerCase().includes("hibernated") && retries > 0) {
+        console.warn(`Database hibernated. Retrying fetchTable(${tableName}) in 2s...`);
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        return fetchTable(tableName, options, retries - 1);
+    }
     console.error(`DB Error (fetchTable ${tableName}):`, err);
-    return { data: null, error: err.message };
+    return { data: null, error: errorMsg };
   }
 }
 

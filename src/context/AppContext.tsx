@@ -92,13 +92,19 @@ export type AppNotification = {
 };
 
 // ─── Mapping helpers ────────────────────────────────────────────
+const cleanString = (str: any): any => {
+    if (typeof str !== 'string') return str;
+    // Reemplazar el caracter de "error de encoding" por un apóstrofe, que es lo más común ("VICTORIAS" -> "VICTORIA'S")
+    return str.replace(/\uFFFD/g, "'");
+};
+
 function dbToEsencia(row: any): Esencia {
     return {
         id: row.id,
-        name: row.name,
-        category: row.category ?? "Perfumería Fina",
-        gender: row.gender ?? "Femenino",
-        provider: row.provider ?? "Van Rossum",
+        name: cleanString(row.name),
+        category: cleanString(row.category) ?? "Perfumería Fina",
+        gender: cleanString(row.gender) ?? "Femenino",
+        provider: cleanString(row.provider) ?? "Van Rossum",
         cost: row.cost ?? 0,
         qty: row.qty ?? 0,
         price30g: row.price30g === null ? "consultar" : (isNaN(parseFloat(row.price30g)) ? "consultar" : parseFloat(row.price30g)),
@@ -128,7 +134,7 @@ function dbToInsumo(row: any): Insumo {
 function dbToBase(row: any): Base {
     return {
         id: row.id,
-        name: row.name,
+        name: cleanString(row.name),
         components: row.components ?? [],
         essenceGender: row.essence_gender ?? undefined,
         essenceGrams: row.essence_grams ?? undefined,
@@ -139,16 +145,16 @@ function dbToBase(row: any): Base {
 function dbToProducto(row: any): Producto {
     return {
         id: row.id,
-        name: row.name,
-        category: row.category,
+        name: cleanString(row.name),
+        category: cleanString(row.category),
         baseId: row.base_id ?? "",
         components: row.components ?? [],
         cost: row.cost ?? 0,
         price: row.price ?? 0,
         priceMinorista: row.price_minorista ?? 0,
         stock: row.stock ?? 0,
-        description: row.description ?? "",
-        gender: row.gender ?? "Unisex",
+        description: cleanString(row.description) ?? "",
+        gender: cleanString(row.gender) ?? "Unisex",
         lastUpdate: row.last_update ?? undefined,
         imageUrl: row.image_url ?? undefined,
         availabilityStatus: row.availability_status ?? "disponible",
@@ -758,7 +764,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
                     const localProd = localStorage.getItem("productos");
                     if (localProd) {
-                        setProductos(JSON.parse(localProd));
+                        const parsed = JSON.parse(localProd).map((p: any) => ({
+                            ...p,
+                            name: cleanString(p.name),
+                            category: cleanString(p.category),
+                            description: cleanString(p.description),
+                            gender: cleanString(p.gender)
+                        }));
+                        setProductos(parsed);
                         localProductsLoaded = true;
                         // Only release UI once we have user context too, or if no user is coming
                         if (resolvedUser || !localStorage.getItem("mockUser")) {
@@ -836,6 +849,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                     }
 
                     if (result?.error) {
+                        const errorStr = String(result.error);
+                        if (errorStr.includes("hibernated")) {
+                            toast.error("¡Base de datos hibernando!", {
+                                description: "Xata ha suspendido tu base de datos por inactividad. Ingresá al panel de Xata para reactivarla.",
+                                duration: 15000,
+                            });
+                        }
                         console.error(`Error fetching ${lsKey} from Database:`, result.error);
                         addSystemLog("error", `Fallo en Base de Datos (${lsKey})`, {
                             message: result.error?.message || "Error desconocido",
@@ -863,6 +883,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                 const sanitizedProducts = rawProdsRes.data.map((p, index) => ({
                     ...p,
                     id: p.id || (index + 1).toString().padStart(3, "0"),
+                    name: cleanString(p.name),
+                    category: cleanString(p.category),
+                    description: cleanString(p.description),
+                    gender: cleanString(p.gender),
                     priceMinorista: p.priceMinorista ?? (p.price * 1.5)
                 }));
 

@@ -276,7 +276,7 @@ export default function ListaMinoristaPage() {
                 "Producto": p.name,
                 "Categoría": p.category,
                 "Género": p.gender,
-                "Precio Minorista": `$${p.priceMinorista.toLocaleString("es-AR")}`
+                "Precio Minorista": (isNaN(Number(p.priceMinorista)) || Number(p.priceMinorista) <= 0) ? "Consultar" : `$${Intl.NumberFormat("es-AR").format(Number(p.priceMinorista))}`
             }));
             exportToExcel(excelData, "Lista_Precios_Minorista_Scenta", "Scenta - Lista de Precios Minorista");
         } else {
@@ -285,7 +285,7 @@ export default function ListaMinoristaPage() {
                 p.name,
                 p.category,
                 p.gender,
-                `$${p.priceMinorista.toLocaleString("es-AR")}`
+                (isNaN(Number(p.priceMinorista)) || Number(p.priceMinorista) <= 0) ? "Consultar" : `$${Intl.NumberFormat("es-AR").format(Number(p.priceMinorista))}`
             ]);
             exportToPDF("Lista de Precios Minorista - Scenta", headers, rows, "Lista_Precios_Minorista_Scenta");
         }

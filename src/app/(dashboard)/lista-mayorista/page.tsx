@@ -267,7 +267,7 @@ export default function ListaMayoristaPage() {
                 "Producto": p.name,
                 "Categoría": p.category,
                 "Género": p.gender,
-                "Precio Mayorista": `$${p.price.toLocaleString("es-AR")}`
+                "Precio Mayorista": (isNaN(Number(p.price)) || Number(p.price) <= 0) ? "Consultar" : `$${Intl.NumberFormat("es-AR").format(Number(p.price))}`
             }));
             exportToExcel(excelData, "Lista_Precios_Mayorista_Scenta", "Scenta - Lista de Precios Mayorista");
         } else {
@@ -276,7 +276,7 @@ export default function ListaMayoristaPage() {
                 p.name,
                 p.category,
                 p.gender,
-                `$${p.price.toLocaleString("es-AR")}`
+                (isNaN(Number(p.price)) || Number(p.price) <= 0) ? "Consultar" : `$${Intl.NumberFormat("es-AR").format(Number(p.price))}`
             ]);
             exportToPDF("Lista de Precios Mayorista - Scenta", headers, rows, "Lista_Precios_Mayorista_Scenta");
         }

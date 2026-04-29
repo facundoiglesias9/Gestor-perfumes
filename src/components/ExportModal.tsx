@@ -33,24 +33,59 @@ export default function ExportModal({
     const [selectedGenders, setSelectedGenders] = useState<string[]>([]);
     const [includeOutOfStock, setIncludeOutOfStock] = useState(false);
 
+    const availableCategories = useMemo(() => {
+        const catMap = new Map<string, string>();
+        
+        const addCat = (c: string) => {
+            const trimmed = c.trim();
+            if (!trimmed) return;
+            const lower = trimmed.toLowerCase();
+            // Conservar la versión que tenga mayúsculas si ya existe una todo en minúsculas
+            if (!catMap.has(lower) || (trimmed !== lower && catMap.get(lower) === lower)) {
+                catMap.set(lower, trimmed);
+            }
+        };
+
+        productos.forEach(p => {
+            if (p.category) addCat(p.category);
+        });
+        categorias.forEach(c => addCat(c.name));
+        
+        return Array.from(catMap.values()).sort();
+    }, [productos, categorias]);
+
+    const availableGenders = useMemo(() => {
+        return generos.filter(g => {
+            // Siempre mantener los estándares
+            if (["Femenino", "Masculino", "Unisex", "Ambiente"].includes(g)) return true;
+            
+            // Filtrar si es redundante con alguna categoría (ej: "Limpia pisos" vs "Limpia pisos 5L", "Auto" vs "Auto")
+            const gLower = g.toLowerCase();
+            const isRedundant = availableCategories.some(c => 
+                c.toLowerCase().includes(gLower) || gLower.includes(c.toLowerCase())
+            );
+            return !isRedundant;
+        });
+    }, [generos, availableCategories]);
+
     // Initialize with current page filters
     useEffect(() => {
         if (isOpen) {
             if (initialFilters.category && initialFilters.category !== "Todas") {
                 setSelectedCategories([initialFilters.category]);
             } else {
-                setSelectedCategories(categorias.map(c => c.name));
+                setSelectedCategories(availableCategories);
             }
 
             if (initialFilters.gender && initialFilters.gender !== "Todos") {
                 setSelectedGenders([initialFilters.gender]);
             } else {
-                setSelectedGenders(generos);
+                setSelectedGenders(availableGenders);
             }
 
             setIncludeOutOfStock(initialFilters.showOutOfStock || false);
         }
-    }, [isOpen, initialFilters, categorias, generos]);
+    }, [isOpen, initialFilters, availableCategories, availableGenders]);
 
     const filteredData = useMemo(() => {
         return productos.filter(p => {
@@ -72,10 +107,19 @@ export default function ExportModal({
 
             let matchesGender = selectedGendersUpper.includes(productGender);
             
-            // If it's ambient and "Unisex", we include it if the user has at least one gender selected (logic: they want products)
-            // or if the category is specifically selected.
-            if (isAmbient && productGender === "UNISEX" && selectedGendersUpper.length > 0) {
-                matchesGender = true;
+            if (isAmbient) {
+                // Si seleccionó la categoría explícitamente, ignoramos el género (que suele estar mal cargado como 'Auto' o 'Muestrario')
+                if (matchesCat) {
+                    matchesGender = true;
+                }
+                // Si seleccionó el filtro general de "AMBIENTE", incluimos todos los ambientales
+                else if (selectedGendersUpper.includes("AMBIENTE")) {
+                    matchesGender = true;
+                }
+                // Si el producto es Unisex y hay *algún* género seleccionado, lo dejamos pasar por defecto
+                else if (productGender === "UNISEX" && selectedGendersUpper.length > 0) {
+                    matchesGender = true;
+                }
             }
 
             const matchesStock = includeOutOfStock ? true : p.availabilityStatus !== "no-disponible";
@@ -98,9 +142,9 @@ export default function ExportModal({
         );
     };
 
-    const selectAllCats = () => setSelectedCategories(categorias.map(c => c.name));
+    const selectAllCats = () => setSelectedCategories(availableCategories);
     const deselectAllCats = () => setSelectedCategories([]);
-    const selectAllGenders = () => setSelectedGenders(generos);
+    const selectAllGenders = () => setSelectedGenders(availableGenders);
     const deselectAllGenders = () => setSelectedGenders([]);
 
     return (
@@ -134,24 +178,24 @@ export default function ExportModal({
                             </div>
                         </div>
                         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                            {categorias.map(cat => (
+                            {availableCategories.map(cat => (
                                 <button
-                                    key={cat.id}
-                                    onClick={() => toggleCategory(cat.name)}
+                                    key={cat}
+                                    onClick={() => toggleCategory(cat)}
                                     className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border text-left transition-all ${
-                                        selectedCategories.includes(cat.name)
+                                        selectedCategories.includes(cat)
                                         ? 'bg-indigo-50 dark:bg-indigo-500/10 border-indigo-200 dark:border-indigo-500/30 text-indigo-700 dark:text-indigo-300 font-bold'
                                         : 'border-slate-100 dark:border-white/5 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5'
                                     }`}
                                 >
                                     <div className={`w-4 h-4 rounded flex items-center justify-center border ${
-                                        selectedCategories.includes(cat.name)
+                                        selectedCategories.includes(cat)
                                         ? 'bg-indigo-500 border-indigo-500'
                                         : 'border-slate-300 dark:border-slate-700'
                                     }`}>
-                                        {selectedCategories.includes(cat.name) && <Check className="w-3 h-3 text-white" />}
+                                        {selectedCategories.includes(cat) && <Check className="w-3 h-3 text-white" />}
                                     </div>
-                                    <span className="text-[11px] truncate">{cat.name}</span>
+                                    <span className="text-[11px] truncate">{cat}</span>
                                 </button>
                             ))}
                         </div>
@@ -170,7 +214,7 @@ export default function ExportModal({
                             </div>
                         </div>
                         <div className="flex flex-wrap gap-2">
-                            {generos.map(gen => (
+                            {availableGenders.map(gen => (
                                 <button
                                     key={gen}
                                     onClick={() => toggleGender(gen)}
