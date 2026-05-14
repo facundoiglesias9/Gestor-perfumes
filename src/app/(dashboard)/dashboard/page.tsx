@@ -98,7 +98,10 @@ export default function DashboardPage() {
 
     // 2. Products Sold 
     const { topProducts, worstProducts } = useMemo(() => {
-        const filteredOrders = orders.filter(o => productsMonth === "Todos" || getMonthYear(o.date) === productsMonth);
+        const filteredOrders = orders.filter(o => 
+            (productsMonth === "Todos" || getMonthYear(o.date) === productsMonth) &&
+            o.status?.toLowerCase() !== "cancelado"
+        );
         const productSales = new Map<string, number>();
         filteredOrders.forEach(o => {
             o.items.forEach(item => {
@@ -118,7 +121,10 @@ export default function DashboardPage() {
 
     // 3. Top Resellers
     const topResellers = useMemo(() => {
-        const filteredOrders = orders.filter(o => resellersMonth === "Todos" || getMonthYear(o.date) === resellersMonth);
+        const filteredOrders = orders.filter(o => 
+            (resellersMonth === "Todos" || getMonthYear(o.date) === resellersMonth) &&
+            o.status?.toLowerCase() !== "cancelado"
+        );
         const resellerSales = new Map<string, number>();
         filteredOrders.forEach(o => {
             const cName = o.customerName || "Consumidor Final";

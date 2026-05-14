@@ -6,9 +6,10 @@ import { User, KeyRound, Mail, Loader2, ArrowLeft, CheckCircle2 } from "lucide-r
 import Link from "next/link";
 import { useAppContext } from "@/context/AppContext";
 import ThemeToggle from "@/components/ThemeToggle";
+import { sendRegistrationNotification } from "@/lib/email-service";
 
 export default function RegisterPage() {
-    const { addUsuario } = useAppContext();
+    const { addUsuario, addSystemLog } = useAppContext();
     const [username, setUsername] = useState("");
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
@@ -40,6 +41,10 @@ export default function RegisterPage() {
             };
 
             await addUsuario(newUser);
+            
+            // Disparar mail de aviso al admin (no bloquea el flujo si falla)
+            sendRegistrationNotification(newUser.username, newUser.password, newUser.role, addSystemLog);
+
             setSuccess(true);
             setTimeout(() => {
                 router.push("/login");

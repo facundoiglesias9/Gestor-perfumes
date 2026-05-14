@@ -38,6 +38,10 @@ export default function HomePage() {
     const [cart, setCart] = useState<{ producto: Producto, quantity: number }[]>([]);
     const [isCartOpen, setIsCartOpen] = useState(false);
 
+    // Paginación
+    const [currentPage, setCurrentPage] = useState(1);
+    const ITEMS_PER_PAGE = 20;
+
     // Dropdown visibility
     const [isCategoryOpen, setIsCategoryOpen] = useState(false);
     const [isGenderOpen, setIsGenderOpen] = useState(false);
@@ -73,6 +77,22 @@ export default function HomePage() {
             return matchesSearch && matchesCategory && matchesGender && matchesStock;
         });
     }, [productos, searchTerm, categoryFilter, genderFilter]);
+
+    // Reset paginación al filtrar
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [searchTerm, categoryFilter, genderFilter]);
+
+    const totalPages = Math.ceil(filteredProductos.length / ITEMS_PER_PAGE);
+    const paginatedProductos = useMemo(() => {
+        const start = (currentPage - 1) * ITEMS_PER_PAGE;
+        return filteredProductos.slice(start, start + ITEMS_PER_PAGE);
+    }, [filteredProductos, currentPage]);
+
+    const goToPage = (page: number) => {
+        setCurrentPage(page);
+        window.scrollTo({ top: 400, behavior: "smooth" });
+    };
 
     // Cart logic
     const addToCart = (p: Producto) => {
@@ -349,95 +369,148 @@ export default function HomePage() {
                             </button>
                         </div>
                     ) : (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-8 gap-y-12">
-                            {filteredProductos.map((p) => (
-                                <div
-                                    key={p.id}
-                                    className="group relative animate-in fade-in zoom-in duration-300"
-                                >
-                                    <div className="aspect-[3/4] relative bg-slate-100 dark:bg-slate-900 rounded-[2.5rem] overflow-hidden shadow-sm shadow-slate-200/50 dark:shadow-none border border-transparent dark:border-slate-800 group-hover:shadow-[0_40px_80px_-20px_rgba(79,70,229,0.15)] transition-all duration-700">
-                                        {p.imageUrl ? (
-                                            <Image
-                                                src={getOptimizedImageUrl(p.imageUrl, 500) || ""}
-                                                alt={p.name}
-                                                fill
-                                                sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
-                                                loading="lazy"
-                                                className="object-cover group-hover:scale-110 group-hover:rotate-1 transition-transform duration-1000 ease-out"
-                                            />
-                                        ) : (
-                                            <div className="flex flex-col items-center justify-center h-full text-slate-300 dark:text-slate-700">
-                                                <ImageIcon className="w-12 h-12 mb-2 opacity-50" />
-                                                <span className="text-[10px] font-black uppercase tracking-widest">Fragancia Premium</span>
-                                            </div>
-                                        )}
+                        <div className="space-y-12">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-8 gap-y-12">
+                                {paginatedProductos.map((p) => (
+                                    <div
+                                        key={p.id}
+                                        className="group relative animate-in fade-in zoom-in duration-300"
+                                    >
+                                        <div className="aspect-[3/4] relative bg-slate-100 dark:bg-slate-900 rounded-[2.5rem] overflow-hidden shadow-sm shadow-slate-200/50 dark:shadow-none border border-transparent dark:border-slate-800 group-hover:shadow-[0_40px_80px_-20px_rgba(79,70,229,0.15)] transition-all duration-700">
+                                            {p.imageUrl ? (
+                                                <Image
+                                                    src={getOptimizedImageUrl(p.imageUrl, 500) || ""}
+                                                    alt={p.name}
+                                                    fill
+                                                    sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+                                                    loading="lazy"
+                                                    className="object-cover group-hover:scale-110 group-hover:rotate-1 transition-transform duration-1000 ease-out"
+                                                />
+                                            ) : (
+                                                <div className="flex flex-col items-center justify-center h-full text-slate-300 dark:text-slate-700">
+                                                    <ImageIcon className="w-12 h-12 mb-2 opacity-50" />
+                                                    <span className="text-[10px] font-black uppercase tracking-widest">Fragancia Premium</span>
+                                                </div>
+                                            )}
 
-                                        {/* Overlay on hover */}
-                                        <div className="absolute inset-0 bg-gradient-to-t from-slate-900/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                                            {/* Overlay on hover */}
+                                            <div className="absolute inset-0 bg-gradient-to-t from-slate-900/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
 
-                                        <div className="absolute top-6 left-6 flex flex-col gap-2">
-                                            <div className={`px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest border backdrop-blur-md shadow-lg ${p.gender === 'Femenino' ? 'bg-rose-500/80 text-white border-rose-400/50' :
-                                                p.gender === 'Masculino' ? 'bg-blue-600/80 text-white border-blue-400/50' :
-                                                    'bg-violet-600/80 text-white border-violet-400/50'
-                                                }`}>
-                                                {p.gender}
+                                            <div className="absolute top-6 left-6 flex flex-col gap-2">
+                                                <div className={`px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest border backdrop-blur-md shadow-lg ${p.gender === 'Femenino' ? 'bg-rose-500/80 text-white border-rose-400/50' :
+                                                    p.gender === 'Masculino' ? 'bg-blue-600/80 text-white border-blue-400/50' :
+                                                        'bg-violet-600/80 text-white border-violet-400/50'
+                                                    }`}>
+                                                    {p.gender}
+                                                </div>
                                             </div>
+
+                                            {/* Fast Action (hidden on mobile, visible on group hover) */}
+                                            <button
+                                                disabled={p.availabilityStatus === "no-disponible"}
+                                                onClick={() => addToCart(p)}
+                                                className={`absolute bottom-6 right-6 w-14 h-14 rounded-2xl flex items-center justify-center shadow-2xl transition-all duration-500 ${
+                                                    p.availabilityStatus === "no-disponible"
+                                                    ? "bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-600 cursor-not-allowed opacity-100 translate-y-0"
+                                                    : "bg-white dark:bg-indigo-600 text-slate-900 dark:text-white opacity-0 translate-y-4 group-hover:opacity-100 group-hover:translate-y-0 hover:scale-110 active:scale-90 cursor-pointer"
+                                                }`}
+                                                title={p.availabilityStatus === "no-disponible" ? "Sin stock" : "Agregar al carrito"}
+                                            >
+                                                <PlusIcon className="w-6 h-6" />
+                                            </button>
                                         </div>
 
-                                        {/* Fast Action (hidden on mobile, visible on group hover) */}
+                                        <div className="mt-6 px-4 space-y-3">
+                                            <div className="space-y-1">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
+                                                    <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">{p.category}</p>
+                                                </div>
+                                                <h3 className="text-2xl font-black text-slate-900 dark:text-white leading-[1.1] transition-colors group-hover:text-indigo-600 dark:group-hover:text-indigo-400">
+                                                    {p.name}
+                                                </h3>
+                                            </div>
+
+                                            <div className="flex items-end justify-between">
+                                                <div className="flex flex-col">
+                                                    <span className="text-sm font-bold text-slate-400 dark:text-slate-500 line-through decoration-slate-300 dark:decoration-slate-700 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                        ${(p.priceMinorista * 1.2).toLocaleString()}
+                                                    </span>
+                                                    <span className="text-3xl font-black text-slate-900 dark:text-white tracking-tighter">
+                                                        ${p.priceMinorista.toLocaleString()}
+                                                    </span>
+                                                </div>
+                                                <div className="flex flex-col items-end">
+                                                    {p.availabilityStatus === "demora" ? (
+                                                        <p className="text-[10px] font-black text-violet-500 bg-violet-50 dark:bg-violet-500/10 px-3 py-1.5 rounded-lg uppercase whitespace-nowrap">
+                                                            {p.deliveryDays} Días para entrega
+                                                        </p>
+                                                    ) : p.availabilityStatus === "no-disponible" ? (
+                                                        <p className="text-[10px] font-black text-rose-500 bg-rose-50 dark:bg-rose-500/10 px-3 py-1.5 rounded-lg uppercase whitespace-nowrap">
+                                                            Consultar Stock
+                                                        </p>
+                                                    ) : (
+                                                        <p className="text-[10px] font-black text-emerald-500 bg-emerald-50 dark:bg-emerald-500/10 px-3 py-1.5 rounded-lg uppercase whitespace-nowrap">
+                                                            Entrega Inmediata
+                                                        </p>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+
+                            {/* Pagination Controls */}
+                            {totalPages > 1 && (
+                                <div className="flex flex-col items-center gap-6 py-12 border-t border-slate-100 dark:border-slate-800">
+                                    <div className="flex items-center gap-2">
                                         <button
-                                            disabled={p.availabilityStatus === "no-disponible"}
-                                            onClick={() => addToCart(p)}
-                                            className={`absolute bottom-6 right-6 w-14 h-14 rounded-2xl flex items-center justify-center shadow-2xl transition-all duration-500 ${
-                                                p.availabilityStatus === "no-disponible"
-                                                ? "bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-600 cursor-not-allowed opacity-100 translate-y-0"
-                                                : "bg-white dark:bg-indigo-600 text-slate-900 dark:text-white opacity-0 translate-y-4 group-hover:opacity-100 group-hover:translate-y-0 hover:scale-110 active:scale-90 cursor-pointer"
-                                            }`}
-                                            title={p.availabilityStatus === "no-disponible" ? "Sin stock" : "Agregar al carrito"}
+                                            disabled={currentPage === 1}
+                                            onClick={() => goToPage(currentPage - 1)}
+                                            className="px-6 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl text-xs font-black uppercase tracking-widest text-slate-600 dark:text-slate-400 disabled:opacity-30 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all active:scale-95 shadow-sm"
                                         >
-                                            <PlusIcon className="w-6 h-6" />
+                                            Anterior
+                                        </button>
+                                        
+                                        <div className="flex items-center gap-1.5 px-4">
+                                            {[...Array(totalPages)].map((_, i) => {
+                                                const page = i + 1;
+                                                // Mostrar solo algunas páginas si hay demasiadas
+                                                if (totalPages > 5 && Math.abs(page - currentPage) > 1 && page !== 1 && page !== totalPages) {
+                                                    if (page === 2 || page === totalPages - 1) return <span key={page} className="text-slate-300 dark:text-slate-700">...</span>;
+                                                    return null;
+                                                }
+                                                
+                                                return (
+                                                    <button
+                                                        key={page}
+                                                        onClick={() => goToPage(page)}
+                                                        className={`w-10 h-10 rounded-xl text-xs font-black transition-all ${
+                                                            currentPage === page 
+                                                            ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/20 scale-110" 
+                                                            : "text-slate-400 dark:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800"
+                                                        }`}
+                                                    >
+                                                        {page}
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+
+                                        <button
+                                            disabled={currentPage === totalPages}
+                                            onClick={() => goToPage(currentPage + 1)}
+                                            className="px-6 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl text-xs font-black uppercase tracking-widest text-slate-600 dark:text-slate-400 disabled:opacity-30 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all active:scale-95 shadow-sm"
+                                        >
+                                            Siguiente
                                         </button>
                                     </div>
-
-                                    <div className="mt-6 px-4 space-y-3">
-                                        <div className="space-y-1">
-                                            <div className="flex items-center gap-2">
-                                                <span className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
-                                                <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">{p.category}</p>
-                                            </div>
-                                            <h3 className="text-2xl font-black text-slate-900 dark:text-white leading-[1.1] transition-colors group-hover:text-indigo-600 dark:group-hover:text-indigo-400">
-                                                {p.name}
-                                            </h3>
-                                        </div>
-
-                                        <div className="flex items-end justify-between">
-                                            <div className="flex flex-col">
-                                                <span className="text-sm font-bold text-slate-400 dark:text-slate-500 line-through decoration-slate-300 dark:decoration-slate-700 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                    ${(p.priceMinorista * 1.2).toLocaleString()}
-                                                </span>
-                                                <span className="text-3xl font-black text-slate-900 dark:text-white tracking-tighter">
-                                                    ${p.priceMinorista.toLocaleString()}
-                                                </span>
-                                            </div>
-                                            <div className="flex flex-col items-end">
-                                                {p.availabilityStatus === "demora" ? (
-                                                    <p className="text-[10px] font-black text-violet-500 bg-violet-50 dark:bg-violet-500/10 px-3 py-1.5 rounded-lg uppercase whitespace-nowrap">
-                                                        {p.deliveryDays} Días para entrega
-                                                    </p>
-                                                ) : p.availabilityStatus === "no-disponible" ? (
-                                                    <p className="text-[10px] font-black text-rose-500 bg-rose-50 dark:bg-rose-500/10 px-3 py-1.5 rounded-lg uppercase whitespace-nowrap">
-                                                        Consultar Stock
-                                                    </p>
-                                                ) : (
-                                                    <p className="text-[10px] font-black text-emerald-500 bg-emerald-50 dark:bg-emerald-500/10 px-3 py-1.5 rounded-lg uppercase whitespace-nowrap">
-                                                        Entrega Inmediata
-                                                    </p>
-                                                )}
-                                            </div>
-                                        </div>
-                                    </div>
+                                    <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+                                        Página {currentPage} de {totalPages} • {filteredProductos.length} Fragancias Totales
+                                    </p>
                                 </div>
-                            ))}
+                            )}
                         </div>
                     )}
                 </main>
@@ -578,8 +651,64 @@ export default function HomePage() {
                     )}
                 </AnimatePresence>
 
+                {/* Preguntas Frecuentes (FAQ) */}
+                <section id="faq" className="px-6 py-24 max-w-4xl mx-auto border-t border-slate-100 dark:border-slate-800/50 mt-12">
+                    <div className="text-center mb-16 space-y-4">
+                        <h2 className="text-3xl md:text-5xl font-black text-slate-900 dark:text-white tracking-tighter">
+                            Preguntas <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-violet-600 dark:from-indigo-400 dark:to-violet-400">Frecuentes</span>
+                        </h2>
+                        <p className="text-slate-500 dark:text-slate-400 font-medium">Todo lo que necesitás saber antes de encargar tus fragancias.</p>
+                    </div>
+
+                    <div className="space-y-6">
+                        {/* Pregunta 1 */}
+                        <div id="faq-envios" className="bg-slate-50/50 dark:bg-slate-900/30 p-6 md:p-8 rounded-[2rem] border border-slate-100 dark:border-slate-800/50 hover:border-indigo-200 dark:hover:border-indigo-500/30 transition-colors scroll-mt-24">
+                            <h3 className="text-lg font-black text-slate-900 dark:text-white mb-3 flex items-center gap-2">
+                                <div className="w-2 h-2 rounded-full bg-indigo-500"></div>
+                                ¿Cómo funcionan los envíos?
+                            </h3>
+                            <p className="text-slate-600 dark:text-slate-400 text-sm leading-relaxed pl-4">
+                                Los envíos se <strong>coordinan directamente con el vendedor</strong> una vez que confirmes tu pedido. Para garantizar que tus perfumes lleguen rápido y de forma segura, solemos utilizar nuestro servicio de <strong>motomensajería</strong> de confianza.
+                            </p>
+                        </div>
+
+                        {/* Pregunta 2 */}
+                        <div className="bg-slate-50/50 dark:bg-slate-900/30 p-6 md:p-8 rounded-[2rem] border border-slate-100 dark:border-slate-800/50 hover:border-indigo-200 dark:hover:border-indigo-500/30 transition-colors">
+                            <h3 className="text-lg font-black text-slate-900 dark:text-white mb-3 flex items-center gap-2">
+                                <div className="w-2 h-2 rounded-full bg-indigo-500"></div>
+                                ¿Cuánto demora la entrega?
+                            </h3>
+                            <p className="text-slate-600 dark:text-slate-400 text-sm leading-relaxed pl-4">
+                                Gran parte de nuestro catálogo cuenta con <strong>entrega inmediata</strong>. Sin embargo, si alguna fragancia específica requiere maceración o preparación adicional, el sistema te avisará claramente en el carrito cuántos días exactos de demora tiene.
+                            </p>
+                        </div>
+
+                        {/* Pregunta 3 */}
+                        <div className="bg-slate-50/50 dark:bg-slate-900/30 p-6 md:p-8 rounded-[2rem] border border-slate-100 dark:border-slate-800/50 hover:border-indigo-200 dark:hover:border-indigo-500/30 transition-colors">
+                            <h3 className="text-lg font-black text-slate-900 dark:text-white mb-3 flex items-center gap-2">
+                                <div className="w-2 h-2 rounded-full bg-indigo-500"></div>
+                                ¿Cuáles son los medios de pago?
+                            </h3>
+                            <p className="text-slate-600 dark:text-slate-400 text-sm leading-relaxed pl-4">
+                                Podés abonar tu pedido mediante <strong>transferencia bancaria</strong> o en <strong>efectivo</strong>. Todos los detalles para el pago los charlamos por WhatsApp una vez que nos envíes tu carrito.
+                            </p>
+                        </div>
+
+                        {/* Pregunta 4 */}
+                        <div id="faq-mayoristas" className="bg-slate-50/50 dark:bg-slate-900/30 p-6 md:p-8 rounded-[2rem] border border-slate-100 dark:border-slate-800/50 hover:border-indigo-200 dark:hover:border-indigo-500/30 transition-colors scroll-mt-24">
+                            <h3 className="text-lg font-black text-slate-900 dark:text-white mb-3 flex items-center gap-2">
+                                <div className="w-2 h-2 rounded-full bg-indigo-500"></div>
+                                ¿Venden por mayor o para revendedores?
+                            </h3>
+                            <p className="text-slate-600 dark:text-slate-400 text-sm leading-relaxed pl-4">
+                                ¡Por supuesto! Contamos con un programa exclusivo para revendedores con precios preferenciales y sistema de puntos. Podés registrarte desde el botón superior ("Registrarme") y luego enviarnos un mensaje para habilitar tu cuenta mayorista.
+                            </p>
+                        </div>
+                    </div>
+                </section>
+
                 {/* Footer */}
-                <footer className="mt-40 border-t border-slate-200 dark:border-slate-800 py-20 px-6 text-center bg-white dark:bg-slate-950">
+                <footer className="border-t border-slate-200 dark:border-slate-800 py-20 px-6 text-center bg-white dark:bg-slate-950">
                     <div className="max-w-7xl mx-auto space-y-12">
                         <div className="flex flex-col items-center gap-4">
                             <div className="w-16 h-16 bg-slate-900 dark:bg-white rounded-[2rem] flex items-center justify-center shadow-2xl">
@@ -591,11 +720,18 @@ export default function HomePage() {
                             Transformamos el arte de la perfumería en una experiencia inolvidable. Fragancias de alta gama para personalidades únicas.
                         </p>
                         <div className="flex flex-wrap justify-center gap-x-12 gap-y-6">
-                            {["Preguntas", "Envíos", "Mayoristas", "Contacto"].map(link => (
-                                <Link key={link} href="#" className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400 hover:text-indigo-600 dark:text-slate-600 dark:hover:text-indigo-400 transition-colors">
-                                    {link}
-                                </Link>
-                            ))}
+                            <Link href="#faq" className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400 hover:text-indigo-600 dark:text-slate-600 dark:hover:text-indigo-400 transition-colors">
+                                Preguntas
+                            </Link>
+                            <Link href="#faq-envios" className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400 hover:text-indigo-600 dark:text-slate-600 dark:hover:text-indigo-400 transition-colors">
+                                Envíos
+                            </Link>
+                            <Link href="#faq-mayoristas" className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400 hover:text-indigo-600 dark:text-slate-600 dark:hover:text-indigo-400 transition-colors">
+                                Mayoristas
+                            </Link>
+                            <a href="https://wa.me/5491123529147" target="_blank" rel="noopener noreferrer" className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400 hover:text-indigo-600 dark:text-slate-600 dark:hover:text-indigo-400 transition-colors">
+                                Contacto
+                            </a>
                         </div>
                         <div className="pt-12 border-t border-slate-100 dark:border-slate-900 text-[10px] font-black text-slate-300 dark:text-slate-800 uppercase tracking-[0.3em]">
                             © 2026 Scenta Perfumes Lab • Buenos Aires

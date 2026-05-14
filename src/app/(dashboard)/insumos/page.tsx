@@ -1,9 +1,10 @@
 "use client";
 
-import { Search, Plus, Filter, Layers, Trash2, X, Edit2 } from "lucide-react";
+import { Search, Plus, Filter, Layers, Trash2, X, Edit2, Download } from "lucide-react";
 import { useState } from "react";
 import { useAppContext } from "@/context/AppContext";
 import ConfirmModal from "@/components/ConfirmModal";
+import { exportToExcel } from "@/lib/export-utils";
 
 export default function InsumosPage() {
     const { insumos, setInsumos, categorias, proveedores, bases, setBases, productos, setProductos, getNextId } = useAppContext();
@@ -158,6 +159,17 @@ export default function InsumosPage() {
         }
     };
 
+    const handlePerformExport = () => {
+        const excelData = insumos.map(i => ({
+            "Insumo": i.name,
+            "Categoría": i.category,
+            "Proveedor": i.provider,
+            "Cant. x Bulto": `${i.qty || 'N/A'} ${i.unit || 'un.'}`,
+            "Costo / Bulto": `$${i.cost.toLocaleString('es-AR')}`
+        }));
+        exportToExcel(excelData, "Insumos_Scenta", "Scenta - Lista de Insumos");
+    };
+
     return (
         <div className="space-y-8 pb-12 animate-in fade-in duration-700 relative">
             <header className="flex flex-col md:flex-row md:justify-between md:items-end gap-6 bg-white dark:bg-slate-900 p-8 md:p-10 rounded-[2.5rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.2)] border border-slate-100 dark:border-slate-800 transition-colors duration-300">
@@ -175,6 +187,13 @@ export default function InsumosPage() {
                 </div>
 
                 <div className="flex flex-wrap items-center gap-3">
+                    <button
+                        onClick={handlePerformExport}
+                        className="flex items-center gap-2.5 px-6 py-3.5 rounded-2xl bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 font-bold hover:bg-slate-50 dark:hover:bg-slate-800 shadow-sm border border-slate-200 dark:border-slate-700 active:scale-95 transition-all"
+                    >
+                        <Download className="w-5 h-5" strokeWidth={2.5} />
+                        Exportar Excel
+                    </button>
                     <button
                         onClick={() => setIsAddModalOpen(true)}
                         className="flex items-center gap-2.5 px-7 py-3.5 rounded-2xl bg-indigo-600 text-white font-bold hover:bg-indigo-700 hover:shadow-xl hover:shadow-indigo-600/20 active:scale-95 transition-all"

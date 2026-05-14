@@ -1,14 +1,15 @@
 "use client";
 
-import { Search, Plus, Filter, FlaskConical, Trash2, X, Edit2, RefreshCw, ChevronDown, ChevronLeft, ChevronRight, Droplet, Wind, Check } from "lucide-react";
+import { Search, Plus, Filter, FlaskConical, Trash2, X, Edit2, RefreshCw, ChevronDown, ChevronLeft, ChevronRight, Droplet, Wind, Check, Download } from "lucide-react";
 import { useState, useMemo, useEffect } from "react";
 import { useAppContext } from "@/context/AppContext";
 import ConfirmModal from "@/components/ConfirmModal";
 import AIExtractModal from "@/components/AIExtractModal";
 import { Esencia } from "@/context/AppContext";
+import { exportMultiSheetExcel } from "@/lib/export-utils";
 
 export default function EsenciasPage() {
-    const { esencias, setEsencias, categorias, proveedores, scraperStatus, runScraper, generos, bases, setBases, productos, setProductos, getNextId } = useAppContext();
+    const { esencias, setEsencias, insumos, categorias, proveedores, scraperStatus, runScraper, generos, bases, setBases, productos, setProductos, getNextId } = useAppContext();
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [isAIModalOpen, setIsAIModalOpen] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
@@ -245,6 +246,51 @@ export default function EsenciasPage() {
         }
     };
 
+    const handleExportEsencias = () => {
+        const perfumeriaData = esencias.filter(e => {
+            const isLimpiaPisos = e.gender?.toLowerCase() === "limpia pisos" || e.category?.toLowerCase()?.includes("limpia pisos");
+            const isAmbiente = e.gender?.toLowerCase() === "ambiente" || e.category?.toLowerCase()?.includes("ambiente");
+            return !isLimpiaPisos && !isAmbiente;
+        }).map(e => ({
+            "Nombre": e.name,
+            "Género": e.gender,
+            "Categoría": e.category,
+            "Proveedor": e.provider,
+            "Precio 30g": typeof e.price30g === "number" ? `$${e.price30g.toLocaleString('es-AR')}` : "Consultar",
+            "Precio 100g": typeof e.price100g === "number" ? `$${e.price100g.toLocaleString('es-AR')}` : "Consultar"
+        }));
+
+        const limpiaPisosData = esencias.filter(e => {
+            return e.gender?.toLowerCase() === "limpia pisos" || e.category?.toLowerCase()?.includes("limpia pisos");
+        }).map(e => ({
+            "Nombre": e.name,
+            "Género": e.gender,
+            "Categoría": e.category,
+            "Proveedor": e.provider,
+            "Costo": typeof e.cost === "number" ? `$${e.cost.toLocaleString('es-AR')}` : "-",
+            "Stock (ml)": `${e.qty || 0} ml`
+        }));
+
+        const ambienteData = esencias.filter(e => {
+            return e.gender?.toLowerCase() === "ambiente" || e.category?.toLowerCase()?.includes("ambiente");
+        }).map(e => ({
+            "Nombre": e.name,
+            "Género": e.gender,
+            "Categoría": e.category,
+            "Proveedor": e.provider,
+            "Precio 100g": typeof e.price100g === "number" ? `$${e.price100g.toLocaleString('es-AR')} ${e.price100gUsd ? `(u$s ${e.price100gUsd})` : ''}` : "Consultar",
+            "Precio 250g": typeof e.price250g === "number" ? `$${e.price250g.toLocaleString('es-AR')} ${e.price250gUsd ? `(u$s ${e.price250gUsd})` : ''}` : "Consultar"
+        }));
+
+        const sheets = [
+            { sheetName: "Perfumería Fina", title: "Scenta - Esencias: Perfumería Fina", data: perfumeriaData },
+            { sheetName: "Limpia Pisos", title: "Scenta - Esencias: Limpia Pisos", data: limpiaPisosData },
+            { sheetName: "Ambiente", title: "Scenta - Esencias: Ambiente", data: ambienteData }
+        ];
+
+        exportMultiSheetExcel(sheets, "Esencias_Scenta");
+    };
+
     const filteredEsencias = useMemo(() => {
         return esencias.filter(e => {
             const isLimpiaPisos = e.gender?.toLowerCase() === "limpia pisos" || e.category?.toLowerCase()?.includes("limpia pisos");
@@ -316,6 +362,13 @@ export default function EsenciasPage() {
                 </div>
 
                 <div className="flex flex-wrap items-center gap-3">
+                    <button
+                        onClick={handleExportEsencias}
+                        className="flex items-center gap-2.5 px-6 py-3.5 rounded-2xl bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 font-bold hover:bg-slate-50 dark:hover:bg-slate-800 shadow-sm border border-slate-200 dark:border-slate-700 active:scale-95 transition-all"
+                    >
+                        <Download className="w-5 h-5" strokeWidth={2.5} />
+                        Exportar Excel
+                    </button>
                     <button
                         onClick={runScraper}
                         disabled={scraperStatus.status === "loading"}

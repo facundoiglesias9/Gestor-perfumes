@@ -3,6 +3,8 @@
 import React, { createContext, useContext, useEffect, useState, useRef, useMemo } from "react";
 import { toast } from "sonner";
 import { fetchTable, upsertRecord, upsertRecords, deleteRecord, deleteRecords, clearTable } from "@/lib/db-actions";
+import { sendOrderNotification } from "@/lib/email-service";
+
 
 export type Categoria = { id: string; name: string; count: number };
 export type Proveedor = { id: string; name: string; contact: string };
@@ -1458,6 +1460,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             addSystemLog("error", "Error crítico al guardar pedido", { orderId: newId, error });
         } else {
             addSystemLog("info", `Pedido ${newId} guardado correctamente en Xata`);
+            
+            // Notificar por EmailJS
+            sendOrderNotification(newOrder, insumos, esencias, addSystemLog);
+
             if (channelRef.current) {
                 channelRef.current.send({
                     type: 'broadcast',
