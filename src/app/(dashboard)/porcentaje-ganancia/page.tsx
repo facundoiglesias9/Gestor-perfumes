@@ -180,38 +180,35 @@ export default function PorcentajeGananciaPage() {
     return (
         <div className="space-y-10 pb-20 animate-in fade-in slide-in-from-bottom-4 duration-1000">
             {/* Elegant Header Section */}
-            <header className="relative overflow-hidden bg-slate-900 dark:bg-slate-950 p-10 md:p-14 rounded-[3rem] shadow-2xl border border-slate-800 transition-all duration-300">
-                <div className="absolute top-0 right-0 w-1/3 h-full bg-gradient-to-l from-indigo-500/10 to-transparent blur-3xl rounded-full translate-x-1/2 opacity-50 pointer-events-none"></div>
-                <div className="absolute bottom-0 left-0 w-1/4 h-1/2 bg-gradient-to-tr from-emerald-500/10 to-transparent blur-3xl rounded-full -translate-x-1/2 opacity-50 pointer-events-none"></div>
-                
-                <div className="relative z-10 space-y-6">
-                    <div className="inline-flex items-center gap-2.5 px-4 py-2 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md text-indigo-400 text-xs font-black tracking-widest uppercase shadow-inner">
+            <header className="relative overflow-hidden bg-white dark:bg-[#242723] p-10 md:p-14 rounded-[3rem] shadow-sm border border-[#E6DFD5] dark:border-[#353B33] transition-all duration-300 text-center flex flex-col items-center justify-center">
+                <div className="relative z-10 space-y-6 flex flex-col items-center">
+                    <div className="inline-flex items-center gap-2.5 px-4 py-2 rounded-2xl bg-[#7D9878]/10 text-[#7D9878] dark:text-[#A3B69B] text-xs font-black tracking-widest uppercase border border-[#7D9878]/20">
                         <TrendingUp className="w-4 h-4" />
                         Finanzas & Estrategia
                     </div>
-                    <div className="space-y-3">
-                        <h1 className="text-4xl md:text-6xl font-black tracking-tighter text-white leading-[1.1]">
-                            Márgenes de <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-purple-400 to-emerald-400">Rentabilidad</span>
+                    <div className="space-y-3 flex flex-col items-center">
+                        <h1 className="text-4xl md:text-6xl font-black tracking-tighter text-[#2C2C2C] dark:text-[#F4EFEA] leading-[1.1] font-brand text-center">
+                            Márgenes de <span className="text-[#7D9878] dark:text-[#A3B69B]">Rentabilidad</span>
                         </h1>
-                        <p className="text-slate-400 text-lg md:text-xl max-w-2xl leading-relaxed font-semibold">
+                        <p className="text-[#2C2C2C]/70 dark:text-[#F4EFEA]/70 text-lg md:text-xl max-w-2xl leading-relaxed font-semibold text-center">
                             Controlá la rentabilidad de tu negocio ajustando los porcentajes de ganancia por categoría.
                             <span className="hidden md:inline"> El sistema recalcula y redondea automáticamente a múltiplos de $1.000 para mantener una lista de precios limpia y profesional.</span>
                         </p>
                     </div>
                     
-                    <div className="flex flex-wrap gap-4 pt-4">
-                        <div className="flex items-center gap-3 px-5 py-3 bg-white/5 border border-white/5 rounded-2xl backdrop-blur-sm">
-                            <Layers className="w-5 h-5 text-indigo-400" />
-                            <div>
-                                <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Categorías</p>
-                                <p className="text-white font-black">{categorias.length}</p>
+                    <div className="flex flex-wrap justify-center gap-4 pt-4">
+                        <div className="flex items-center gap-3 px-5 py-3 bg-[#F9F6F0] dark:bg-[#1B1D1A] border border-[#E6DFD5] dark:border-[#353B33] rounded-2xl">
+                            <Layers className="w-5 h-5 text-[#7D9878] dark:text-[#A3B69B]" />
+                            <div className="text-left">
+                                <p className="text-[10px] font-black uppercase tracking-widest text-[#2C2C2C]/50 dark:text-[#F4EFEA]/50">Categorías</p>
+                                <p className="text-[#2C2C2C] dark:text-[#F4EFEA] font-black">{categorias.length}</p>
                             </div>
                         </div>
-                        <div className="flex items-center gap-3 px-5 py-3 bg-white/5 border border-white/5 rounded-2xl backdrop-blur-sm">
-                            <Tags className="w-5 h-5 text-emerald-400" />
-                            <div>
-                                <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Productos Totales</p>
-                                <p className="text-white font-black">{productos.length}</p>
+                        <div className="flex items-center gap-3 px-5 py-3 bg-[#F9F6F0] dark:bg-[#1B1D1A] border border-[#E6DFD5] dark:border-[#353B33] rounded-2xl">
+                            <Tags className="w-5 h-5 text-[#7D9878] dark:text-[#A3B69B]" />
+                            <div className="text-left">
+                                <p className="text-[10px] font-black uppercase tracking-widest text-[#2C2C2C]/50 dark:text-[#F4EFEA]/50">Productos Totales</p>
+                                <p className="text-[#2C2C2C] dark:text-[#F4EFEA] font-black">{productos.length}</p>
                             </div>
                         </div>
                     </div>
@@ -231,23 +228,23 @@ export default function PorcentajeGananciaPage() {
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: idx * 0.1 }}
-                            className="relative group flex flex-col bg-white dark:bg-slate-900/50 dark:backdrop-blur-xl border border-slate-200 dark:border-slate-800 rounded-[2.5rem] p-8 shadow-sm hover:shadow-2xl hover:border-indigo-500/30 transition-all duration-500"
+                            className="relative group flex flex-col bg-white dark:bg-[#242723] border border-[#E6DFD5] dark:border-[#353B33] rounded-[2.5rem] p-8 shadow-sm hover:shadow-2xl hover:border-[#7D9878]/50 transition-all duration-500"
                         >
                             {/* Decorative Sparkle */}
-                            <div className="absolute top-6 right-8 text-slate-200 dark:text-slate-800 opacity-0 group-hover:opacity-100 transition-opacity duration-700">
+                            <div className="absolute top-6 right-8 text-[#7D9878]/30 opacity-0 group-hover:opacity-100 transition-opacity duration-700">
                                 <Sparkles className="w-6 h-6 animate-pulse" />
                             </div>
 
                             {/* Card Header */}
                             <div className="flex items-center justify-between mb-8">
                                 <div className="flex items-center gap-4">
-                                    <div className="p-4 bg-gradient-to-br from-indigo-500 to-purple-600 text-white rounded-[1.25rem] shadow-lg shadow-indigo-500/20 group-hover:scale-110 group-hover:rotate-3 transition-all duration-500">
+                                    <div className="p-4 bg-[#7D9878] text-white rounded-[1.25rem] shadow-lg shadow-[#7D9878]/20 group-hover:scale-110 transition-all duration-500">
                                         <Tags className="w-6 h-6" />
                                     </div>
                                     <div>
-                                        <h3 className="text-2xl font-black text-slate-900 dark:text-white capitalize tracking-tight group-hover:translate-x-1 transition-transform">{cat.name}</h3>
-                                        <p className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                                        <h3 className="text-2xl font-black text-[#2C2C2C] dark:text-[#F4EFEA] capitalize tracking-tight group-hover:translate-x-1 transition-transform font-brand">{cat.name}</h3>
+                                        <p className="text-xs font-bold text-[#2C2C2C]/50 dark:text-[#F4EFEA]/50 uppercase tracking-widest flex items-center gap-2 mt-0.5">
+                                            <span className="w-1.5 h-1.5 rounded-full bg-[#7D9878] animate-pulse"></span>
                                             {prodCount} productos activos
                                         </p>
                                     </div>
@@ -259,12 +256,12 @@ export default function PorcentajeGananciaPage() {
                                 {/* Mayorista Control */}
                                 <div className="space-y-4">
                                     <div className="flex justify-between items-end">
-                                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 pl-1">
+                                        <label className="text-[10px] font-black uppercase tracking-widest text-[#2C2C2C]/60 dark:text-[#F4EFEA]/60 pl-1">
                                             Margen Mayorista (%)
                                         </label>
-                                        <div className="flex items-center gap-2 bg-indigo-50 dark:bg-indigo-500/10 px-3 py-1 rounded-xl">
-                                            <Percent className="w-3 h-3 text-indigo-500" />
-                                            <span className="text-sm font-black text-indigo-600 dark:text-indigo-400">{params.mayoristaX}%</span>
+                                        <div className="flex items-center gap-2 bg-[#7D9878]/15 px-3 py-1 rounded-xl">
+                                            <Percent className="w-3 h-3 text-[#7D9878]" />
+                                            <span className="text-sm font-black text-[#7D9878] dark:text-[#A3B69B]">{params.mayoristaX}%</span>
                                         </div>
                                     </div>
                                     <div className="space-y-4">
@@ -274,36 +271,36 @@ export default function PorcentajeGananciaPage() {
                                             max="300"
                                             value={params.mayoristaX}
                                             onChange={(e) => handleUpdateMargin(cat.name, "mayoristaX", parseInt(e.target.value))}
-                                            className="w-full h-2 bg-slate-100 dark:bg-slate-800 rounded-lg appearance-none cursor-pointer accent-indigo-500"
+                                            className="w-full h-2 bg-[#F9F6F0] dark:bg-[#1B1D1A] rounded-lg appearance-none cursor-pointer accent-[#7D9878]"
                                         />
                                         <div className="relative">
                                             <input
                                                 type="number"
                                                 value={params.mayoristaX}
                                                 onChange={(e) => handleUpdateMargin(cat.name, "mayoristaX", parseFloat(e.target.value) || 0)}
-                                                className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 font-black text-lg transition-all"
+                                                className="w-full px-5 py-4 bg-[#F9F6F0] dark:bg-[#1B1D1A] border border-[#E6DFD5] dark:border-[#353B33] text-[#2C2C2C] dark:text-[#F4EFEA] rounded-2xl focus:outline-none focus:border-[#7D9878] font-black text-lg transition-all"
                                             />
-                                            <div className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-300 font-bold">%</div>
+                                            <div className="absolute right-5 top-1/2 -translate-y-1/2 text-[#2C2C2C]/40 dark:text-[#F4EFEA]/40 font-bold">%</div>
                                         </div>
                                     </div>
                                 </div>
 
                                 {/* Link Divider */}
                                 <div className="flex items-center gap-4 py-2 opacity-30">
-                                    <div className="flex-1 h-px bg-slate-300 dark:bg-slate-700"></div>
-                                    <ArrowRightLeft className="w-4 h-4 text-slate-400" />
-                                    <div className="flex-1 h-px bg-slate-300 dark:bg-slate-700"></div>
+                                    <div className="flex-1 h-px bg-[#E6DFD5] dark:bg-[#353B33]"></div>
+                                    <ArrowRightLeft className="w-4 h-4 text-[#2C2C2C]/40 dark:text-[#F4EFEA]/40" />
+                                    <div className="flex-1 h-px bg-[#E6DFD5] dark:bg-[#353B33]"></div>
                                 </div>
 
                                 {/* Minorista Control */}
                                 <div className="space-y-4">
                                     <div className="flex justify-between items-end">
-                                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 pl-1">
+                                        <label className="text-[10px] font-black uppercase tracking-widest text-[#2C2C2C]/60 dark:text-[#F4EFEA]/60 pl-1">
                                             Margen Minorista (%)
                                         </label>
-                                        <div className="flex items-center gap-2 bg-emerald-50 dark:bg-emerald-500/10 px-3 py-1 rounded-xl">
-                                            <TrendingUp className="w-3 h-3 text-emerald-500" />
-                                            <span className="text-sm font-black text-emerald-600 dark:text-emerald-400">{params.minoristaX}%</span>
+                                        <div className="flex items-center gap-2 bg-[#A3B69B]/15 px-3 py-1 rounded-xl">
+                                            <TrendingUp className="w-3 h-3 text-[#A3B69B]" />
+                                            <span className="text-sm font-black text-[#7D9878] dark:text-[#A3B69B]">{params.minoristaX}%</span>
                                         </div>
                                     </div>
                                     <div className="space-y-4">
@@ -313,27 +310,27 @@ export default function PorcentajeGananciaPage() {
                                             max="500"
                                             value={params.minoristaX}
                                             onChange={(e) => handleUpdateMargin(cat.name, "minoristaX", parseInt(e.target.value))}
-                                            className="w-full h-2 bg-slate-100 dark:bg-slate-800 rounded-lg appearance-none cursor-pointer accent-emerald-500"
+                                            className="w-full h-2 bg-[#F9F6F0] dark:bg-[#1B1D1A] rounded-lg appearance-none cursor-pointer accent-[#A3B69B]"
                                         />
                                         <div className="relative">
                                             <input
                                                 type="number"
                                                 value={params.minoristaX}
                                                 onChange={(e) => handleUpdateMargin(cat.name, "minoristaX", parseFloat(e.target.value) || 0)}
-                                                className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl focus:outline-none focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 font-black text-lg transition-all"
+                                                className="w-full px-5 py-4 bg-[#F9F6F0] dark:bg-[#1B1D1A] border border-[#E6DFD5] dark:border-[#353B33] text-[#2C2C2C] dark:text-[#F4EFEA] rounded-2xl focus:outline-none focus:border-[#7D9878] font-black text-lg transition-all"
                                             />
-                                            <div className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-300 font-bold">%</div>
+                                            <div className="absolute right-5 top-1/2 -translate-y-1/2 text-[#2C2C2C]/40 dark:text-[#F4EFEA]/40 font-bold">%</div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
 
                             {/* Summary Note */}
-                            <div className="mt-8 p-4 bg-slate-50 dark:bg-slate-950 rounded-2xl border border-slate-100 dark:border-slate-800/50 flex items-start gap-4">
-                                <div className="p-2 bg-white dark:bg-slate-900 rounded-xl">
-                                    <Coins className="w-4 h-4 text-slate-400" />
+                            <div className="mt-8 p-4 bg-[#F9F6F0] dark:bg-[#1B1D1A] rounded-2xl border border-[#E6DFD5] dark:border-[#353B33] flex items-start gap-4">
+                                <div className="p-2 bg-white dark:bg-[#242723] rounded-xl border border-[#E6DFD5] dark:border-[#353B33]">
+                                    <Coins className="w-4 h-4 text-[#7D9878]" />
                                 </div>
-                                <p className="text-[11px] font-bold text-slate-500 leading-relaxed italic">
+                                <p className="text-[11px] font-bold text-[#2C2C2C]/60 dark:text-[#F4EFEA]/60 leading-relaxed italic">
                                     Los productos se actualizarán de Costo × {(1 + params.mayoristaX/100).toFixed(2)} (May.) y Costo × {(1 + params.minoristaX/100).toFixed(2)} (Min.) con redondeo a $100.
                                 </p>
                             </div>
@@ -342,23 +339,21 @@ export default function PorcentajeGananciaPage() {
                             <button
                                 disabled={!!isProcessing && !isSaving}
                                 onClick={() => handleSaveAndMassUpdate(cat.name)}
-                                className={`mt-8 w-full group/btn relative overflow-hidden flex items-center justify-center gap-3 py-5 rounded-[1.5rem] font-black tracking-tight transition-all active:scale-95 shadow-xl ${
+                                className={`mt-8 w-full relative overflow-hidden flex items-center justify-center gap-3 py-5 rounded-[1.5rem] font-black tracking-tight transition-all active:scale-95 shadow-xl font-brand ${
                                     isSaving 
-                                        ? "bg-slate-100 dark:bg-slate-800 text-slate-400 cursor-not-allowed"
-                                        : "bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:shadow-indigo-500/20"
+                                        ? "bg-[#F9F6F0] dark:bg-[#1B1D1A] text-[#2C2C2C]/40 cursor-not-allowed border border-[#E6DFD5] dark:border-[#353B33]"
+                                        : "bg-[#7D9878] text-white hover:bg-[#6b8566]"
                                 }`}
                             >
-                                <div className="absolute inset-0 bg-gradient-to-r from-indigo-500 to-purple-600 opacity-0 group-hover/btn:opacity-100 transition-opacity duration-500"></div>
-                                
-                                <div className="relative z-10 flex items-center gap-3 group-hover/btn:text-white transition-colors">
+                                <div className="relative z-10 flex items-center gap-3">
                                     {isSaving ? (
                                         <>
-                                            <Loader2 className="w-5 h-5 animate-spin" />
+                                            <Loader2 className="w-5 h-5 animate-spin text-[#7D9878]" />
                                             <span>Actualizando...</span>
                                         </>
                                     ) : (
                                         <>
-                                            <Save className="w-5 h-5 transition-transform group-hover/btn:scale-110" />
+                                            <Save className="w-5 h-5" />
                                             <span>Actualizar {prodCount} Productos</span>
                                         </>
                                     )}
@@ -369,10 +364,10 @@ export default function PorcentajeGananciaPage() {
                 })}
 
                 {categorias.length === 0 && (
-                    <div className="col-span-full py-24 text-center border-3 border-dashed border-slate-200 dark:border-slate-800 rounded-[3rem] bg-white dark:bg-transparent">
-                        <AlertTriangle className="w-12 h-12 text-slate-200 dark:text-slate-800 mx-auto mb-6" />
-                        <h3 className="text-xl font-black text-slate-400 mb-2">Sin categorías configuradas</h3>
-                        <p className="text-slate-400 font-bold max-w-xs mx-auto">Agregá categorías en el panel correspondiente para configurar sus márgenes aquí.</p>
+                    <div className="col-span-full py-24 text-center border-2 border-dashed border-[#E6DFD5] dark:border-[#353B33] rounded-[3rem] bg-[#F9F6F0] dark:bg-[#1B1D1A]">
+                        <AlertTriangle className="w-12 h-12 text-[#C9866F] mx-auto mb-6" />
+                        <h3 className="text-xl font-black text-[#2C2C2C] dark:text-[#F4EFEA] mb-2 font-brand">Sin categorías configuradas</h3>
+                        <p className="text-[#2C2C2C]/60 dark:text-[#F4EFEA]/60 font-bold max-w-xs mx-auto">Agregá categorías en el panel correspondiente para configurar sus márgenes aquí.</p>
                     </div>
                 )}
             </div>

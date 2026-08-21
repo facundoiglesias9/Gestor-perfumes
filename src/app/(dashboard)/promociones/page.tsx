@@ -111,8 +111,8 @@ export default function PromocionesPage() {
                                         key={p.id}
                                         onClick={() => setSelectedProductId(p.id)}
                                         className={`flex items-center justify-between p-3 rounded-xl border transition-all ${selectedProductId === p.id
-                                            ? "bg-indigo-50 dark:bg-indigo-500/10 border-indigo-200 dark:border-indigo-500/40 text-indigo-700 dark:text-indigo-400 shadow-sm"
-                                            : "bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-700"
+                                            ? "bg-[#7D9878]/15 border-[#7D9878] text-[#7D9878] dark:text-[#A3B69B] shadow-sm"
+                                            : "bg-white dark:bg-[#1B1D1A] border-[#E6DFD5] dark:border-[#353B33] text-[#2C2C2C] dark:text-[#F4EFEA] hover:border-[#7D9878]"
                                             }`}
                                     >
                                         <div className="flex flex-wrap items-center gap-2">
@@ -120,10 +120,10 @@ export default function PromocionesPage() {
                                                 <Package className="w-4 h-4 opacity-50" />
                                                 <span className="text-sm font-bold">{p.name}</span>
                                             </div>
-                                            <span className={`px-2 py-0.5 rounded-md text-[9px] uppercase font-black tracking-widest ${p.gender === 'Femenino' ? 'bg-pink-100 text-pink-700 dark:bg-pink-500/20 dark:text-pink-400' :
-                                                p.gender === 'Masculino' ? 'bg-sky-100 text-sky-700 dark:bg-sky-500/20 dark:text-sky-400' :
-                                                    p.gender === 'Unisex' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400' :
-                                                        'bg-slate-200 text-slate-600 dark:bg-slate-800 dark:text-slate-300'
+                                            <span className={`px-2 py-0.5 rounded-md text-[9px] uppercase font-black tracking-widest ${p.gender === 'Femenino' ? 'bg-[#C9866F]/10 text-[#C9866F]' :
+                                                p.gender === 'Masculino' ? 'bg-[#7D9878]/10 text-[#7D9878]' :
+                                                    p.gender === 'Unisex' ? 'bg-[#A3B69B]/10 text-[#A3B69B]' :
+                                                        'bg-[#F9F6F0] text-[#2C2C2C]/60 dark:bg-[#1B1D1A] dark:text-[#F4EFEA]/60'
                                                 }`}>
                                                 {p.gender}
                                             </span>
@@ -136,7 +136,7 @@ export default function PromocionesPage() {
 
                         {/* Discount Input */}
                         <div className="space-y-2">
-                            <label className="text-xs font-black text-slate-400 uppercase tracking-widest pl-1">Porcentaje de Descuento (%)</label>
+                            <label className="text-xs font-black text-[#2C2C2C] dark:text-[#F4EFEA] uppercase tracking-widest pl-1">Porcentaje de Descuento (%)</label>
                             <div className="flex items-center gap-4">
                                 <input
                                     type="range"
@@ -144,9 +144,9 @@ export default function PromocionesPage() {
                                     max="50"
                                     value={discount}
                                     onChange={(e) => setDiscount(parseInt(e.target.value))}
-                                    className="flex-1 accent-indigo-500"
+                                    className="flex-1 accent-[#7D9878]"
                                 />
-                                <div className="w-20 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-xl py-2 text-center font-black text-lg">
+                                <div className="w-20 bg-[#1B1D1A] text-white rounded-xl py-2 text-center font-black text-lg border border-[#353B33]">
                                     {discount}%
                                 </div>
                             </div>
@@ -154,16 +154,16 @@ export default function PromocionesPage() {
 
                         {/* Duration Input */}
                         <div className="space-y-2">
-                            <label className="text-xs font-black text-slate-400 uppercase tracking-widest pl-1">Duración (Días)</label>
+                            <label className="text-xs font-black text-[#2C2C2C] dark:text-[#F4EFEA] uppercase tracking-widest pl-1">Duración (Días)</label>
                             <div className="relative">
-                                <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                                <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#2C2C2C]/40 dark:text-[#F4EFEA]/40" />
                                 <input
                                     type="number"
                                     min="1"
                                     placeholder="Dejar vacío para oferta indefinida"
                                     value={durationDays}
                                     onChange={(e) => setDurationDays(e.target.value ? parseInt(e.target.value) : "")}
-                                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800 rounded-2xl py-3 pl-11 pr-4 text-sm font-bold focus:ring-2 focus:ring-indigo-500/20 outline-none transition-all"
+                                    className="w-full bg-[#F9F6F0] dark:bg-[#1B1D1A] border border-[#E6DFD5] dark:border-[#353B33] text-[#2C2C2C] dark:text-[#F4EFEA] placeholder:text-[#2C2C2C]/50 dark:placeholder:text-[#F4EFEA]/50 rounded-2xl py-3 pl-11 pr-4 text-sm font-bold focus:border-[#7D9878] outline-none transition-all"
                                 />
                             </div>
                         </div>
@@ -171,7 +171,7 @@ export default function PromocionesPage() {
                         <button
                             onClick={handleSave}
                             disabled={isSaving || !selectedProductId}
-                            className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white rounded-2xl py-4 font-black flex items-center justify-center gap-3 shadow-xl shadow-indigo-600/20 transition-all active:scale-[0.98]"
+                            className="w-full bg-[#7D9878] hover:bg-[#6b8566] disabled:opacity-50 text-white rounded-2xl py-4 font-black flex items-center justify-center gap-3 shadow-xl hover:shadow-[#7D9878]/20 transition-all active:scale-[0.98] font-brand"
                         >
                             <Save className="w-5 h-5" />
                             {isSaving ? "Guardando..." : "Agregar Promoción"}
@@ -180,9 +180,9 @@ export default function PromocionesPage() {
                 </div>
 
                 {/* List of Active Promos Card */}
-                <div className="bg-slate-50 dark:bg-slate-950/50 border border-slate-200 dark:border-slate-800 rounded-[2.5rem] p-8 md:p-10 shadow-sm space-y-8 flex flex-col h-full">
-                    <h2 className="text-2xl font-black text-slate-900 dark:text-white flex items-center gap-3 relative z-10 shrink-0">
-                        <Percent className="w-6 h-6 text-violet-500" />
+                <div className="bg-[#F9F6F0] dark:bg-[#1B1D1A] border border-[#E6DFD5] dark:border-[#353B33] rounded-[2.5rem] p-8 md:p-10 shadow-sm space-y-8 flex flex-col h-full">
+                    <h2 className="text-2xl font-black text-[#2C2C2C] dark:text-[#F4EFEA] flex items-center gap-3 relative z-10 shrink-0 font-brand">
+                        <Percent className="w-6 h-6 text-[#7D9878]" />
                         Promociones Creadas
                     </h2>
 

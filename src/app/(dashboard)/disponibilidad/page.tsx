@@ -13,8 +13,10 @@ import {
     Package,
     Truck,
     ChevronLeft,
-    ChevronRight
+    ChevronRight,
+    Sparkles
 } from "lucide-react";
+import PaginationControls from "@/components/PaginationControls";
 import { upsertRecords } from "@/lib/db-actions";
 import { toast } from "sonner";
 
@@ -26,14 +28,14 @@ const ProductRow = memo(({ prod, isSelected, localChange, onSelect, onStatusChan
     };
 
     return (
-        <tr className={`group hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors ${isSelected ? 'bg-indigo-50/50 dark:bg-indigo-500/5' : ''}`}>
+        <tr className={`group hover:bg-[#7D9878]/5 transition-colors ${isSelected ? 'bg-[#7D9878]/10' : ''}`}>
             <td className="px-8 py-6 text-center">
                 <div 
                     onClick={() => onSelect(prod.id)}
                     className={`w-5 h-5 mx-auto rounded-md border-2 transition-all cursor-pointer flex items-center justify-center ${
                         isSelected 
-                        ? 'bg-indigo-600 border-indigo-600' 
-                        : 'border-slate-300 dark:border-slate-700 hover:border-indigo-400'
+                        ? 'bg-[#7D9878] border-[#7D9878]' 
+                        : 'border-[#E6DFD5] dark:border-[#353B33] hover:border-[#7D9878]'
                     }`}
                 >
                     {isSelected && <div className="w-1.5 h-1.5 bg-white rounded-full animate-in zoom-in-50 duration-300" />}
@@ -41,28 +43,28 @@ const ProductRow = memo(({ prod, isSelected, localChange, onSelect, onStatusChan
             </td>
             <td className="px-8 py-6">
                 <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-slate-100 dark:bg-slate-800 rounded-xl flex items-center justify-center shrink-0">
+                    <div className="w-12 h-12 bg-[#F9F6F0] dark:bg-[#1B1D1A] rounded-xl flex items-center justify-center shrink-0 border border-[#E6DFD5] dark:border-[#353B33]">
                         {prod.imageUrl ? (
                             <img src={prod.imageUrl} alt={prod.name} className="w-full h-full object-cover rounded-xl" />
                         ) : (
-                            <Package className="w-6 h-6 text-slate-400" />
+                            <Package className="w-6 h-6 text-[#2C2C2C]/40 dark:text-[#F4EFEA]/40" />
                         )}
                     </div>
                     <div>
-                        <p className="text-[10px] font-black text-indigo-500 uppercase tracking-widest mb-0.5">{prod.category}</p>
-                        <p className="font-extrabold text-slate-900 dark:text-slate-50">{prod.name}</p>
-                        <p className="text-[10px] font-bold text-slate-400">ID: {prod.id}</p>
+                        <p className="text-[10px] font-black text-[#7D9878] dark:text-[#A3B69B] uppercase tracking-widest mb-0.5">{prod.category}</p>
+                        <p className="font-extrabold text-[#2C2C2C] dark:text-[#F4EFEA]">{prod.name}</p>
+                        <p className="text-[10px] font-bold text-[#2C2C2C]/40 dark:text-[#F4EFEA]/40">ID: {prod.id}</p>
                     </div>
                 </div>
             </td>
             <td className="px-8 py-6 text-center">
-                <div className="inline-flex items-center p-1 bg-slate-100 dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 gap-1">
+                <div className="inline-flex items-center p-1 bg-[#F9F6F0] dark:bg-[#1B1D1A] rounded-xl border border-[#E6DFD5] dark:border-[#353B33] gap-1">
                     <button
                         onClick={() => onStatusChange(prod.id, "disponible")}
                         className={`px-3 py-2 rounded-lg flex items-center gap-1.5 font-black text-[9px] uppercase tracking-widest transition-all ${
                             state.status === "disponible" 
-                            ? "bg-emerald-500 text-white shadow-md shadow-emerald-500/20" 
-                            : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                            ? "bg-[#7D9878] text-white shadow-md shadow-[#7D9878]/20" 
+                            : "text-[#2C2C2C]/40 hover:text-[#2C2C2C] dark:hover:text-[#F4EFEA]"
                         }`}
                     >
                         <CheckCircle2 className="w-3 h-3" />
@@ -72,8 +74,8 @@ const ProductRow = memo(({ prod, isSelected, localChange, onSelect, onStatusChan
                         onClick={() => onStatusChange(prod.id, "demora")}
                         className={`px-3 py-2 rounded-lg flex items-center gap-1.5 font-black text-[9px] uppercase tracking-widest transition-all ${
                             state.status === "demora" 
-                            ? "bg-violet-600 text-white shadow-md shadow-violet-600/20" 
-                            : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                            ? "bg-[#C9866F] text-white shadow-md shadow-[#C9866F]/20" 
+                            : "text-[#2C2C2C]/40 hover:text-[#2C2C2C] dark:hover:text-[#F4EFEA]"
                         }`}
                     >
                         <Clock className="w-3 h-3" />
@@ -239,34 +241,32 @@ export default function DisponibilidadPage() {
     if (isLoading) {
         return (
             <div className="flex items-center justify-center p-20">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#7D9878]"></div>
             </div>
         );
     }
 
     return (
         <div className="space-y-8 pb-20">
-            <header className="flex flex-col md:flex-row md:items-end justify-between gap-6 bg-white dark:bg-slate-900 p-8 md:p-10 rounded-[2.5rem] shadow-sm border border-slate-100 dark:border-slate-800">
-                <div className="space-y-3">
-                    <div className="flex items-center gap-3">
-                        <div className="p-2 bg-indigo-100 dark:bg-indigo-500/20 rounded-xl text-indigo-600 dark:text-indigo-400">
-                            <Truck className="w-5 h-5" />
-                        </div>
-                        <p className="text-[10px] font-black text-indigo-600 uppercase tracking-[0.2em]">Logística & Stock</p>
+            <header className="relative text-center p-8 md:p-10 bg-white dark:bg-[#242723] rounded-[2.5rem] border border-[#E6DFD5] dark:border-[#353B33] shadow-sm flex flex-col items-center justify-center">
+                <div className="space-y-3 flex flex-col items-center">
+                    <div className="inline-flex items-center gap-3 bg-[#7D9878]/10 px-4 py-1.5 rounded-full border border-[#7D9878]/20">
+                        <Truck className="w-4 h-4 text-[#7D9878] dark:text-[#A3B69B]" />
+                        <p className="text-[10px] font-black text-[#7D9878] dark:text-[#A3B69B] uppercase tracking-[0.2em]">Logística & Stock</p>
                     </div>
-                    <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight text-slate-900 dark:text-slate-50">
-                        Disponibilidad <span className="text-indigo-500">de Entrega</span>
+                    <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight text-[#2C2C2C] dark:text-[#F4EFEA] font-brand text-center">
+                        Disponibilidad <span className="text-[#7D9878] dark:text-[#A3B69B]">de Entrega</span>
                     </h1>
                 </div>
 
-                <div className="flex flex-wrap gap-3">
+                <div className="mt-6 md:mt-0 md:absolute md:right-10 md:top-1/2 md:-translate-y-1/2">
                     <button
                         onClick={handleSaveAll}
                         disabled={isSaving || Object.keys(localChanges).length === 0}
                         className={`flex items-center gap-2 px-6 py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all shadow-lg ${
                             Object.keys(localChanges).length > 0 
-                            ? "bg-indigo-600 text-white hover:scale-105 active:scale-95 shadow-indigo-500/25" 
-                            : "bg-slate-100 dark:bg-slate-800 text-slate-400 cursor-not-allowed"
+                            ? "bg-[#7D9878] text-white hover:bg-[#6b8566] hover:scale-105 active:scale-95 shadow-[#7D9878]/25" 
+                            : "bg-[#F9F6F0] dark:bg-[#1B1D1A] text-[#2C2C2C]/40 dark:text-[#F4EFEA]/40 border border-[#E6DFD5] dark:border-[#353B33] cursor-not-allowed"
                         }`}
                     >
                         {isSaving ? <Clock className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
@@ -277,21 +277,21 @@ export default function DisponibilidadPage() {
 
             <div className="flex flex-col md:flex-row gap-4">
                 <div className="relative flex-1 group">
-                    <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                    <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-[#2C2C2C]/60 dark:text-[#F4EFEA]/60" />
                     <input
                         type="text"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                         placeholder="Buscar por nombre o ID..."
-                        className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl py-4 pl-14 pr-6 text-slate-900 dark:text-slate-50 focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 font-bold"
+                        className="w-full bg-[#F9F6F0] dark:bg-[#1B1D1A] border border-[#E6DFD5] dark:border-[#353B33] rounded-2xl py-4 pl-14 pr-6 text-[#2C2C2C] dark:text-[#F4EFEA] placeholder:text-[#2C2C2C]/50 dark:placeholder:text-[#F4EFEA]/60 focus:outline-none focus:border-[#7D9878] transition-all font-semibold"
                     />
                 </div>
                 <div className="relative min-w-[200px]">
-                    <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                    <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#2C2C2C]/40 dark:text-[#F4EFEA]/40 pointer-events-none" />
                     <select
                         value={categoryFilter}
                         onChange={(e) => setCategoryFilter(e.target.value)}
-                        className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl py-4 pl-6 pr-10 text-slate-700 dark:text-slate-300 font-bold appearance-none cursor-pointer focus:outline-none"
+                        className="w-full bg-white dark:bg-[#242723] border border-[#E6DFD5] dark:border-[#353B33] rounded-2xl py-4 pl-6 pr-10 text-[#2C2C2C] dark:text-[#F4EFEA] font-bold appearance-none cursor-pointer focus:outline-none"
                     >
                         <option value="Todas">Todas las Categorías</option>
                         {categorias.map(cat => (
@@ -301,30 +301,30 @@ export default function DisponibilidadPage() {
                 </div>
             </div>
 
-            <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm">
+            <div className="bg-white dark:bg-[#242723] rounded-[2.5rem] border border-[#E6DFD5] dark:border-[#353B33] overflow-hidden shadow-sm">
                 <div className="overflow-x-auto">
                     <table className="w-full text-left border-collapse">
                         <thead>
-                            <tr className="bg-slate-50/50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800">
-                                <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center w-12">
+                            <tr className="bg-[#F9F6F0] dark:bg-[#1B1D1A] border-b border-[#E6DFD5] dark:border-[#353B33]">
+                                <th className="px-8 py-5 text-[10px] font-black text-[#2C2C2C]/50 dark:text-[#F4EFEA]/50 uppercase tracking-widest text-center w-12">
                                     <div 
                                         onClick={toggleSelectAll}
                                         className={`w-5 h-5 mx-auto rounded-md border-2 transition-all cursor-pointer flex items-center justify-center ${
                                             selectedIds.length > 0 && selectedIds.length === filteredProductos.length 
-                                            ? 'bg-indigo-600 border-indigo-600' 
-                                            : 'border-slate-300 dark:border-slate-700 hover:border-indigo-400'
+                                            ? 'bg-[#7D9878] border-[#7D9878]' 
+                                            : 'border-[#E6DFD5] dark:border-[#353B33] hover:border-[#7D9878]'
                                         }`}
                                     >
                                         {(selectedIds.length > 0 && selectedIds.length === filteredProductos.length) && <div className="w-1.5 h-1.5 bg-white rounded-full" />}
-                                        {(selectedIds.length > 0 && selectedIds.length < filteredProductos.length) && <div className="w-2 h-0.5 bg-slate-400 rounded-full" />}
+                                        {(selectedIds.length > 0 && selectedIds.length < filteredProductos.length) && <div className="w-2 h-0.5 bg-white rounded-full" />}
                                     </div>
                                 </th>
-                                <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest font-black">Producto</th>
-                                <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Estado</th>
-                                <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Demora (Días)</th>
+                                <th className="px-8 py-5 text-[10px] font-black text-[#2C2C2C]/60 dark:text-[#F4EFEA]/60 uppercase tracking-widest">Producto</th>
+                                <th className="px-8 py-5 text-[10px] font-black text-[#2C2C2C]/60 dark:text-[#F4EFEA]/60 uppercase tracking-widest text-center">Estado</th>
+                                <th className="px-8 py-5 text-[10px] font-black text-[#2C2C2C]/60 dark:text-[#F4EFEA]/60 uppercase tracking-widest text-center">Demora (Días)</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-100 dark:divide-slate-800/50">
+                        <tbody className="divide-y divide-[#E6DFD5] dark:divide-[#353B33]">
                             {paginatedProductos.map(prod => (
                                 <ProductRow 
                                     key={prod.id}
@@ -341,8 +341,8 @@ export default function DisponibilidadPage() {
                 </div>
                 {filteredProductos.length === 0 && (
                     <div className="p-20 text-center space-y-3">
-                        <Package className="w-12 h-12 text-slate-200 mx-auto" />
-                        <p className="text-slate-400 font-bold uppercase tracking-widest text-xs">No se encontraron productos</p>
+                        <Package className="w-12 h-12 text-[#7D9878] mx-auto" />
+                        <p className="text-[#2C2C2C]/50 dark:text-[#F4EFEA]/50 font-bold uppercase tracking-widest text-xs">No se encontraron productos</p>
                     </div>
                 )}
             </div>
@@ -350,9 +350,9 @@ export default function DisponibilidadPage() {
             {/* Floating Batch Action Bar */}
             {selectedIds.length > 0 && (
                 <div className="fixed bottom-10 left-1/2 -translate-x-1/2 z-50 animate-in slide-in-from-bottom-10 duration-500">
-                    <div className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white px-8 py-6 rounded-[2.5rem] shadow-[0_20px_50px_-10px_rgba(0,0,0,0.5)] border border-slate-200 dark:border-slate-800 flex flex-col md:flex-row items-center gap-8">
-                        <div className="flex items-center gap-4 border-r border-slate-200 dark:border-slate-800 pr-8">
-                            <div className="w-10 h-10 bg-indigo-500 rounded-full flex items-center justify-center font-black text-white">
+                    <div className="bg-white dark:bg-[#242723] text-[#2C2C2C] dark:text-[#F4EFEA] px-8 py-6 rounded-[2.5rem] shadow-2xl border border-[#E6DFD5] dark:border-[#353B33] flex flex-col md:flex-row items-center gap-8">
+                        <div className="flex items-center gap-4 border-r border-[#E6DFD5] dark:border-[#353B33] pr-8">
+                            <div className="w-10 h-10 bg-[#7D9878] rounded-full flex items-center justify-center font-black text-white">
                                 {selectedIds.length}
                             </div>
                             <div>
@@ -364,32 +364,32 @@ export default function DisponibilidadPage() {
                         <div className="flex items-center gap-3">
                             <button 
                                 onClick={() => handleBatchUpdate("disponible")}
-                                className="px-4 py-2 bg-emerald-500 text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-lg shadow-emerald-500/20"
+                                className="px-4 py-2 bg-[#7D9878] text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-lg shadow-[#7D9878]/20"
                             >
                                 Marcar En Mano
                             </button>
                             <button 
                                 onClick={() => handleBatchUpdate("demora")}
-                                className="px-4 py-2 bg-violet-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-lg shadow-violet-600/30"
+                                className="px-4 py-2 bg-[#A3B69B] text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-lg shadow-[#A3B69B]/30"
                             >
                                 Marcar con Demora
                             </button>
                             <button 
                                 onClick={() => handleBatchUpdate("no-disponible")}
-                                className="px-4 py-2 bg-rose-500 text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-lg shadow-rose-500/20"
+                                className="px-4 py-2 bg-[#C9866F] text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-lg shadow-[#C9866F]/20"
                             >
                                 Marcar Faltante
                             </button>
                         </div>
 
-                        <div className="flex items-center gap-4 pl-4 border-l border-slate-200 dark:border-slate-800">
+                        <div className="flex items-center gap-4 pl-4 border-l border-[#E6DFD5] dark:border-[#353B33]">
                             <div className="flex items-center gap-2">
-                                <span className="text-[10px] font-black text-slate-400 uppercase">Días:</span>
+                                <span className="text-[10px] font-black text-[#2C2C2C]/50 dark:text-[#F4EFEA]/50 uppercase">Días:</span>
                                 <input 
                                     type="number"
                                     min="0"
                                     placeholder="0"
-                                    className="w-16 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg py-2 px-3 text-xs font-black focus:ring-2 focus:ring-indigo-500 transition-all text-center"
+                                    className="w-16 bg-[#F9F6F0] dark:bg-[#1B1D1A] border border-[#E6DFD5] dark:border-[#353B33] rounded-lg py-2 px-3 text-xs font-black focus:ring-2 focus:ring-[#7D9878] transition-all text-center"
                                     onBlur={(e) => handleBatchUpdate(null, parseInt((e.target as HTMLInputElement).value) || 0)}
                                     onKeyDown={(e) => {
                                         if (e.key === 'Enter') {
@@ -402,7 +402,7 @@ export default function DisponibilidadPage() {
                             <button
                                 onClick={handleSaveAll}
                                 disabled={isSaving}
-                                className="flex items-center gap-2 px-6 py-2 bg-indigo-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-lg shadow-indigo-600/30 ml-2"
+                                className="flex items-center gap-2 px-6 py-2 bg-[#7D9878] text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-lg shadow-[#7D9878]/30 ml-2"
                             >
                                 {isSaving ? <Clock className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                                 Guardar Todo
@@ -410,7 +410,7 @@ export default function DisponibilidadPage() {
 
                             <button 
                                 onClick={() => setSelectedIds([])}
-                                className="text-slate-400 hover:text-indigo-600 transition-colors ml-4"
+                                className="text-[#2C2C2C]/40 hover:text-[#7D9878] transition-colors ml-4"
                             >
                                 <XCircle className="w-5 h-5" />
                             </button>
@@ -420,26 +420,11 @@ export default function DisponibilidadPage() {
             )}
 
             {/* Pagination UI */}
-            <div className="flex items-center justify-center gap-4 py-10">
-                <button
-                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                    disabled={currentPage === 1}
-                    className="p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl disabled:opacity-30 disabled:cursor-not-allowed hover:border-indigo-500 transition-colors"
-                >
-                    <ChevronLeft className="w-5 h-5" />
-                </button>
-                <div className="flex items-center gap-2">
-                    <span className="text-sm font-black text-slate-900 dark:text-white">Página {currentPage}</span>
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">de {totalPages}</span>
-                </div>
-                <button
-                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                    disabled={currentPage === totalPages}
-                    className="p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl disabled:opacity-30 disabled:cursor-not-allowed hover:border-indigo-500 transition-colors"
-                >
-                    <ChevronRight className="w-5 h-5" />
-                </button>
-            </div>
+            <PaginationControls
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={(p) => setCurrentPage(p)}
+            />
         </div>
     );
 }

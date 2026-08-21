@@ -279,9 +279,10 @@ interface AppContextProps {
     promotions: Promotion[];
     addPromotion: (promo: Promotion) => Promise<void>;
     deletePromotion: (id: string) => Promise<void>;
-    paymentInfo: { alias: string; cbu: string; banco: string; mpAccessToken: string };
-    setPaymentInfo: (info: { alias: string; cbu: string; banco: string; mpAccessToken: string }) => void;
+    paymentInfo: { alias: string; cbu: string; banco: string };
+    setPaymentInfo: (info: { alias: string; cbu: string; banco: string }) => void;
     clearAllProductos: () => Promise<void>;
+    clearAllInventario: () => Promise<void>;
     usdRate: number;
     usdLastUpdate: string;
     syncUsdRate: () => Promise<{ rate: number, date: string } | null>;
@@ -360,23 +361,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const [cart, setCart] = useState<CartItem[]>([]);
     const [orders, setOrders] = useState<Order[]>([]);
     const [scraperStatus, setScraperStatus] = useState<ScraperStatus>({ lastRun: "-", status: "idle" });
-    const [currentUser, setCurrentUser] = useState<Usuario | null>(() => {
-        if (typeof window !== "undefined") {
-            const mock = localStorage.getItem("mockUser");
-            if (mock) {
-                try { return JSON.parse(mock); } catch (e) { return null; }
-            }
-        }
-        return null;
+    const [currentUser, setCurrentUser] = useState<Usuario | null>({
+        id: "admin-facu",
+        username: "facundo",
+        role: "admin",
+        status: "Activo"
     });
-    const [generos, setGeneros] = useState<string[]>(["Femenino", "Masculino", "Unisex"]);
+    const [generos, setGeneros] = useState<string[]>(["Femenino", "Masculino", "Unisex", "Ambiente"]);
     const [categoryMargins, setCategoryMargins] = useState<Record<string, { mayorista: number; minorista: number }>>({});
     const [promotions, setPromotions] = useState<Promotion[]>([]);
     const [paymentInfo, setPaymentInfoState] = useState({
         alias: "SCENTA.PERFUMES",
         cbu: "0000003100012345678901",
-        banco: "Galicia",
-        mpAccessToken: "APP_USR-155495615252903-022714-99162d4f5251c6825a4e8a791ba32942-691652994"
+        banco: "Galicia"
     });
 
     const [notifications, setNotifications] = useState<AppNotification[]>([]);
@@ -762,7 +759,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                 let localProductsLoaded = false;
                 try {
                     const localCat = localStorage.getItem("categorias");
-                    if (localCat) setCategorias(JSON.parse(localCat));
+                    if (localCat) {
+                        const parsedCat = JSON.parse(localCat);
+                        const hasOld = parsedCat.some((c: any) => ["Auto", "Difusor", "Perfumería Fina", "Muestrario"].includes(c.name));
+                        if (!hasOld) setCategorias(parsedCat);
+                    }
 
                     const localProd = localStorage.getItem("productos");
                     if (localProd) {
@@ -892,8 +893,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                     priceMinorista: p.priceMinorista ?? (p.price * 1.5)
                 }));
 
-                // Actualizar DB sobre el render optimista
-                setCategorias(catRes.data);
+                const defaultOfficialCategories: Categoria[] = [
+                    { id: "CAT-50ML", name: "Frascos de 50 ML", count: 0 },
+                    { id: "CAT-30ML", name: "Frascos de 30 ML", count: 0 },
+                    { id: "CAT-DIF", name: "Frascos Difusores", count: 0 },
+                    { id: "CAT-AUTO", name: "Frascos de Auto", count: 0 }
+                ];
+                const hasOldCats = catRes.data.some(c => ["Auto", "Difusor", "Perfumería Fina", "Muestrario"].includes(c.name));
+                const finalCategories = (hasOldCats || catRes.data.length === 0) ? defaultOfficialCategories : catRes.data;
+
+                setCategorias(finalCategories);
+                localStorage.setItem("categorias", JSON.stringify(finalCategories));
                 setProductos(sanitizedProducts);
                 localStorage.setItem("productos", JSON.stringify(sanitizedProducts));
                 setPromotions(promoData.data);
@@ -922,9 +932,23 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                     const usersRes = resolve(usersResult, "usuarios", dbToUsuario, []);
                     const ordersRes = resolve(ordersResult, "orders", dbToOrder, []);
 
+                    const defaultOfficialInsumos: Insumo[] = [
+                        { id: "INS-ALCOHOL", name: "Alcohol / Vehículo Base", category: "Solventes", provider: "Genérico", cost: 0, qty: 1000, stock: 1000, unit: "g" },
+                        { id: "INS-FRASCO-50ML", name: "Frasco de 50 ML", category: "Frascos", provider: "Genérico", cost: 0, qty: 1, stock: 100, unit: "un." },
+                        { id: "INS-FRASCO-30ML", name: "Frasco de 30 ML", category: "Frascos", provider: "Genérico", cost: 0, qty: 1, stock: 100, unit: "un." },
+                        { id: "INS-FRASCO-DIF", name: "Frasco Difusor", category: "Frascos", provider: "Genérico", cost: 0, qty: 1, stock: 100, unit: "un." },
+                        { id: "INS-FRASCO-AUTO", name: "Frasco de Auto", category: "Frascos", provider: "Genérico", cost: 0, qty: 1, stock: 100, unit: "un." },
+                        { id: "INS-VARILLAS", name: "Varitas para difusor", category: "Accesorios", provider: "Genérico", cost: 0, qty: 1, stock: 100, unit: "un." },
+                        { id: "INS-BOLSA-50ML", name: "Bolsa de tul para 50 ML", category: "Empaque", provider: "Genérico", cost: 0, qty: 1, stock: 100, unit: "un." },
+                        { id: "INS-BOLSA-30ML", name: "Bolsa de tul para 30 ML", category: "Empaque", provider: "Genérico", cost: 0, qty: 1, stock: 100, unit: "un." },
+                        { id: "INS-BOLSA-DIF", name: "Bolsa de tul para Difusor", category: "Empaque", provider: "Genérico", cost: 0, qty: 1, stock: 100, unit: "un." },
+                        { id: "INS-BOLSA-AUTO", name: "Bolsa de tul para Auto", category: "Empaque", provider: "Genérico", cost: 0, qty: 1, stock: 100, unit: "un." }
+                    ];
+                    const finalInsumos = (insRes.data && insRes.data.length > 0) ? insRes.data : defaultOfficialInsumos;
+
                     setProveedores(provRes.data);
                     setEsencias(escRes.data);
-                    setInsumos(insRes.data);
+                    setInsumos(finalInsumos);
                     setInventario(invRes.data);
                     setTransacciones(transRes.data);
                     setBases(basesRes.data);
@@ -959,8 +983,24 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                 if (storedCart) setCart(JSON.parse(storedCart));
                 const storedPerms = localStorage.getItem("globalPermissions");
                 if (storedPerms) setGlobalPermissions(JSON.parse(storedPerms));
+                const officialGeneros = ["Femenino", "Masculino", "Unisex", "Ambiente"];
                 const storedGeneros = localStorage.getItem("generos");
-                if (storedGeneros) setGeneros(JSON.parse(storedGeneros));
+                if (storedGeneros) {
+                    try {
+                        const parsedG = JSON.parse(storedGeneros);
+                        const hasOldG = parsedG.some((g: string) => ["Limpia pisos", "Auto", "Muestrario"].includes(g));
+                        if (hasOldG) {
+                            setGeneros(officialGeneros);
+                            localStorage.setItem("generos", JSON.stringify(officialGeneros));
+                        } else {
+                            setGeneros(parsedG);
+                        }
+                    } catch (e) {
+                        setGeneros(officialGeneros);
+                    }
+                } else {
+                    setGeneros(officialGeneros);
+                }
                 const storedMargins = localStorage.getItem("categoryMargins");
                 if (storedMargins) setCategoryMargins(JSON.parse(storedMargins));
                 const storedPaymentInfo = localStorage.getItem("paymentInfo");
@@ -1149,6 +1189,24 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         } else {
             addSystemLog("info", "Catálogo de productos vaciado por el usuario.");
             alert("Catálogo vaciado con éxito.");
+        }
+    };
+
+    const clearAllInventario = async () => {
+        if (!confirm("¿ESTÁS COMPLETAMENTE SEGURO? Se borrará todo el inventario físico almacenado. Esta acción no se puede deshacer.")) {
+            return;
+        }
+        setInventario([]);
+        localStorage.removeItem("inventario");
+        
+        const { error } = await clearTable("inventario");
+        
+        if (error) {
+            addSystemLog("error", "Error al vaciar inventario", error);
+            toast.error("Error al vaciar la base de datos.");
+        } else {
+            addSystemLog("info", "Inventario físico vaciado por el usuario.");
+            toast.success("Inventario vaciado con éxito.");
         }
     };
 
@@ -1720,7 +1778,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                 // Si es Limpia Pisos, buscamos esencias de Limpia
                 if (isLimpiaPisos) return essenceCat.includes("limpia");
                 
-                // Si es DIFUSOR/AROMATIZANTE/AUTO, buscamos cualquiera de esas en la esencia (lo que pidió el cliente)
+                // Si es DIFUSOR/AROMATIZANTE/AUTO/AMBIENTE, buscamos cualquiera de esas en la esencia
                 if (isEsenciaAmbiente) {
                     return essenceCat.includes("ambiente") || 
                            essenceCat.includes("auto") || 
@@ -1728,8 +1786,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                            essenceCat.includes("aromatizante");
                 }
                 
-                // Si no, comparación exacta (Perfumería Fina por defecto)
-                return essenceCat === baseCategoryStr || (baseCategoryStr === "" && essenceCat === "perfumería fina");
+                // Perfumería Fina (Frascos de 50 ML, 30 ML, etc.): tomamos las esencias de Perfumería Fina (que no sean de ambiente ni limpia)
+                return !essenceCat.includes("ambiente") && 
+                       !essenceCat.includes("auto") && 
+                       !essenceCat.includes("difusor") && 
+                       !essenceCat.includes("aromatizante") && 
+                       !essenceCat.includes("limpia");
             });
 
             // REGLA DE GÉNERO:
@@ -1741,16 +1803,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                 ? validEsencias
                 : validEsencias.filter(e => {
                     if (!e.gender) return false;
-                    return e.gender.toLowerCase() === base.essenceGender?.toLowerCase();
+                    return e.gender.toLowerCase().trim() === base.essenceGender?.toLowerCase().trim();
                 });
-            
-            // Log para debug
-            if (isLimpiaPisos || isEsenciaAmbiente) {
-                console.log(`Generación Especial: Tomando TODAS las ${targetEsencias.length} esencias sin filtrar género.`);
-            }
 
             if (targetEsencias.length === 0) {
-                return reject(new Error(`No hay productos de género '${base.essenceGender}' en la categoría '${base.category || 'Perfumería Fina'}'`));
+                return reject(new Error(`No se encontraron esencias para el género '${base.essenceGender}' en la categoría '${base.category || 'Perfumería Fina'}'`));
             }
 
             const newProductsGenerated: Producto[] = [];
@@ -1797,12 +1854,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                     .trim()
                     .toUpperCase();
 
-                if (isLimpiaPisos) {
-                    const is5L = base.name.includes("5L");
-                    cleanName += is5L ? " 5L" : " 1L";
-                }
+                const targetCategory = base.category || "Frascos de 50 ML";
 
-                const targetCategory = base.category || "Perfumería Fina";
+                if (targetCategory.includes("50") && !cleanName.includes("50 ML")) {
+                    cleanName += " 50 ML";
+                } else if (targetCategory.includes("30") && !cleanName.includes("30 ML")) {
+                    cleanName += " 30 ML";
+                } else if (targetCategory.toLowerCase().includes("difusor") && !cleanName.toLowerCase().includes("DIFUSOR")) {
+                    cleanName += " DIFUSOR";
+                } else if (targetCategory.toLowerCase().includes("auto") && !cleanName.toLowerCase().includes("AUTO")) {
+                    cleanName += " AUTO";
+                }
                 const margins = categoryMargins[targetCategory] || { mayorista: 1.5, minorista: 2.0 };
 
                 // REGLA: Si la esencia no tiene ningún precio válido (p100, p250, p30 ni cost), el producto final será 'Consultar' (Precio 0)
@@ -2275,6 +2337,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         isLoading,
         addSystemLog,
         clearAllProductos,
+        clearAllInventario,
         usdRate,
         usdLastUpdate,
         syncUsdRate,

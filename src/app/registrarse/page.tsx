@@ -58,14 +58,14 @@ export default function RegisterPage() {
 
     if (success) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-white dark:bg-[#0f172a] transition-colors duration-500">
-                <div className="p-10 rounded-[2.5rem] bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 shadow-2xl z-10 mx-4 max-w-md w-full text-center space-y-6">
-                    <div className="w-20 h-20 bg-emerald-500/10 rounded-full flex items-center justify-center mx-auto">
-                        <CheckCircle2 className="w-12 h-12 text-emerald-500" />
+            <div className="min-h-screen flex items-center justify-center bg-[#F9F6F0] dark:bg-[#1B1D1A] transition-colors duration-500">
+                <div className="p-10 rounded-[2.5rem] bg-white dark:bg-[#242723] border border-[#E6DFD5] dark:border-[#353B33] shadow-2xl z-10 mx-4 max-w-md w-full text-center space-y-6">
+                    <div className="w-20 h-20 bg-[#7D9878]/10 rounded-full flex items-center justify-center mx-auto">
+                        <CheckCircle2 className="w-12 h-12 text-[#7D9878]" />
                     </div>
                     <div>
-                        <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tighter">¡Cuenta Creada!</h1>
-                        <p className="text-slate-500 dark:text-slate-400 font-bold uppercase tracking-widest text-[10px] mt-2">Redirigiendo al inicio de sesión...</p>
+                        <h1 className="text-3xl font-black text-[#2C2C2C] dark:text-[#F4EFEA] tracking-tighter font-brand">¡Cuenta Creada!</h1>
+                        <p className="text-[#2C2C2C]/50 dark:text-[#F4EFEA]/50 font-bold uppercase tracking-widest text-[10px] mt-2">Redirigiendo al inicio de sesión...</p>
                     </div>
                 </div>
             </div>
@@ -73,7 +73,7 @@ export default function RegisterPage() {
     }
 
     return (
-        <div className="min-h-screen flex items-center justify-center relative overflow-hidden bg-white dark:bg-[#0f172a] transition-colors duration-500">
+        <div className="min-h-screen flex items-center justify-center relative overflow-hidden bg-[#F9F6F0] dark:bg-[#1B1D1A] transition-colors duration-500">
             {/* Dynamic Background Elements */}
             <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] rounded-full bg-indigo-500/10 blur-[100px] pointer-events-none" />
             <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] rounded-full bg-blue-500/10 blur-[100px] pointer-events-none" />

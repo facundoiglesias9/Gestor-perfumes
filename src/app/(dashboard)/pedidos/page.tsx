@@ -167,16 +167,16 @@ export default function PedidosPage() {
 
     return (
         <div className="space-y-8 pb-12 animate-in fade-in duration-700 relative">
-            <header className="flex flex-col md:flex-row md:justify-between md:items-end gap-6 bg-white dark:bg-slate-900 p-8 md:p-10 rounded-[2.5rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.2)] border border-slate-100 dark:border-slate-800 transition-colors duration-300">
+            <header className="flex flex-col md:flex-row md:justify-between md:items-end gap-6 bg-white dark:bg-[#242723] p-8 md:p-10 rounded-[2.5rem] shadow-sm border border-[#E6DFD5] dark:border-[#353B33] transition-colors duration-300">
                 <div className="space-y-3">
-                    <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-cyan-50 dark:bg-cyan-500/10 text-cyan-700 dark:text-cyan-400 text-xs font-bold tracking-widest uppercase mb-1">
+                    <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#7D9878]/10 text-[#7D9878] dark:text-[#A3B69B] text-xs font-bold tracking-widest uppercase mb-1">
                         <ShoppingCart className="w-3.5 h-3.5" />
                         Compras
                     </div>
-                    <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight text-slate-900 dark:text-slate-50 transition-colors">
+                    <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight text-[#2C2C2C] dark:text-[#F4EFEA] transition-colors font-brand">
                         Pedido Mayorista
                     </h1>
-                    <p className="text-slate-500 dark:text-slate-400 text-lg max-w-xl leading-relaxed font-medium transition-colors">
+                    <p className="text-[#2C2C2C]/70 dark:text-[#F4EFEA]/70 text-lg max-w-xl leading-relaxed font-medium transition-colors">
                         Simulá y confirmá compras a tus proveedores. Modifica caja e inventario.
                     </p>
                 </div>
@@ -184,21 +184,21 @@ export default function PedidosPage() {
 
             <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
                 {/* Formulario Agregar Ítem */}
-                <div className="xl:col-span-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[2.5rem] p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.2)]">
-                    <h3 className="text-xl font-bold text-slate-900 dark:text-slate-100 mb-6 flex items-center gap-2">
-                        <Package className="w-5 h-5 text-cyan-500" />
+                <div className="xl:col-span-1 bg-white dark:bg-[#242723] border border-[#E6DFD5] dark:border-[#353B33] rounded-[2.5rem] p-8 shadow-sm">
+                    <h3 className="text-xl font-bold text-[#2C2C2C] dark:text-[#F4EFEA] mb-6 flex items-center gap-2">
+                        <Package className="w-5 h-5 text-[#7D9878] dark:text-[#A3B69B]" />
                         Añadir al Pedido
                     </h3>
 
                     <div className="space-y-6">
                         <div className="space-y-2">
-                            <label className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest pl-1">Tipo de Insumo</label>
+                            <label className="text-xs font-bold text-[#2C2C2C]/50 dark:text-[#F4EFEA]/50 uppercase tracking-widest pl-1">Tipo de Insumo</label>
                             <div className="grid grid-cols-2 gap-3">
                                 <button
                                     onClick={() => setFormData({ ...formData, type: "Esencia", item_id: "" })}
                                     className={`py-3 rounded-2xl font-bold transition-all border ${formData.type === "Esencia"
-                                        ? "bg-cyan-50 dark:bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-200 dark:border-cyan-500/30 font-black"
-                                        : "bg-slate-50 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400 border-transparent hover:bg-slate-100 dark:hover:bg-slate-800"
+                                        ? "bg-[#7D9878]/10 text-[#7D9878] dark:text-[#A3B69B] border-[#7D9878]/30 font-black"
+                                        : "bg-[#F9F6F0] dark:bg-[#1B1D1A] text-[#2C2C2C]/70 dark:text-[#F4EFEA]/70 border-[#E6DFD5] dark:border-[#353B33]"
                                         }`}
                                 >
                                     Esencias
@@ -206,8 +206,8 @@ export default function PedidosPage() {
                                 <button
                                     onClick={() => setFormData({ ...formData, type: "Insumo", item_id: "" })}
                                     className={`py-3 rounded-2xl font-bold transition-all border ${formData.type === "Insumo"
-                                        ? "bg-cyan-50 dark:bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-200 dark:border-cyan-500/30 font-black"
-                                        : "bg-slate-50 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400 border-transparent hover:bg-slate-100 dark:hover:bg-slate-800"
+                                        ? "bg-[#7D9878]/10 text-[#7D9878] dark:text-[#A3B69B] border-[#7D9878]/30 font-black"
+                                        : "bg-[#F9F6F0] dark:bg-[#1B1D1A] text-[#2C2C2C]/70 dark:text-[#F4EFEA]/70 border-[#E6DFD5] dark:border-[#353B33]"
                                         }`}
                                 >
                                     Insumos
@@ -319,7 +319,7 @@ export default function PedidosPage() {
                         <button
                             onClick={handleConfirmOrder}
                             disabled={cart.length === 0}
-                            className="w-full py-5 rounded-[1.5rem] bg-indigo-600 text-white font-black text-xl flex items-center justify-center gap-3 shadow-xl hover:bg-indigo-700 active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none transition-all"
+                            className="w-full py-5 rounded-[1.5rem] bg-[#7D9878] text-white font-black text-xl flex items-center justify-center gap-3 shadow-xl hover:bg-[#6b8566] active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none transition-all font-brand"
                         >
                             <CheckCircle2 className="w-7 h-7" />
                             Confirmar Compra
@@ -330,24 +330,24 @@ export default function PedidosPage() {
 
             {/* Modal de Búsqueda de Esencias */}
             {isEsenciaModalOpen && (
-                <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-950/40 backdrop-blur-sm animate-in fade-in duration-200">
-                    <div className="bg-white dark:bg-slate-900 rounded-[2rem] shadow-2xl w-full max-w-2xl h-[80vh] flex flex-col overflow-hidden border border-slate-200 dark:border-slate-800">
+                <div className="fixed inset-0 z-[200] flex items-center justify-center pt-24 pb-8 px-4 sm:px-6 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200 overflow-y-auto">
+                    <div className="bg-white dark:bg-[#242723] rounded-[2rem] shadow-2xl w-full max-w-2xl max-h-[calc(100vh-8rem)] flex flex-col overflow-hidden border border-[#E6DFD5] dark:border-[#353B33] my-auto">
                         {/* Header */}
-                        <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center shrink-0">
-                            <h2 className="text-xl font-black text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                                <FlaskConical className="w-5 h-5 text-orange-500" />
+                        <div className="p-5 border-b border-[#E6DFD5] dark:border-[#353B33] flex justify-between items-center shrink-0 bg-[#F9F6F0] dark:bg-[#1B1D1A]">
+                            <h2 className="text-xl font-black text-[#2C2C2C] dark:text-[#F4EFEA] flex items-center gap-2 font-brand">
+                                <FlaskConical className="w-5 h-5 text-[#7D9878]" />
                                 Seleccionar Esencia
                             </h2>
-                            <button onClick={() => setIsEsenciaModalOpen(false)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all">
+                            <button onClick={() => setIsEsenciaModalOpen(false)} className="p-2.5 rounded-full bg-[#1B1D1A] text-white hover:bg-rose-600 hover:text-white hover:rotate-90 hover:scale-110 active:scale-95 transition-all duration-300 shadow-sm border border-[#353B33] flex items-center justify-center shrink-0 cursor-pointer" title="Cerrar">
                                 <X className="w-5 h-5" />
                             </button>
                         </div>
 
                         {/* Tabs */}
-                        <div className="flex gap-0 border-b border-slate-200 dark:border-slate-800 shrink-0 px-5">
+                        <div className="flex gap-0 border-b border-[#E6DFD5] dark:border-[#353B33] shrink-0 px-5 bg-[#F9F6F0] dark:bg-[#1B1D1A]">
                             {(["Perfumería", "Limpia Pisos"] as const).map(tab => (
                                 <button key={tab} onClick={() => { setEsenciaTab(tab); setEsenciaGenderFilter("Todos"); setEsenciaProviderFilter("Todos"); setEsenciaCategoryFilter("Todos"); }}
-                                    className={`pb-3 pt-3 px-4 font-black text-sm transition-colors border-b-2 ${esenciaTab === tab ? "border-cyan-500 text-cyan-600 dark:text-cyan-400" : "border-transparent text-slate-400 hover:text-slate-600"
+                                    className={`pb-3 pt-3 px-4 font-black text-sm transition-colors border-b-2 ${esenciaTab === tab ? "border-[#7D9878] text-[#7D9878] dark:text-[#A3B69B]" : "border-transparent text-[#2C2C2C]/50 dark:text-[#F4EFEA]/50 hover:text-[#7D9878]"
                                         }`}>
                                     {tab === "Perfumería" ? "Perfumería Fina" : "Limpia Pisos"}
                                 </button>
@@ -355,29 +355,29 @@ export default function PedidosPage() {
                         </div>
 
                         {/* Filtros */}
-                        <div className="p-3 bg-slate-50 dark:bg-slate-950/30 border-b border-slate-100 dark:border-slate-800 flex flex-wrap gap-2 shrink-0">
+                        <div className="p-3 bg-[#F9F6F0] dark:bg-[#1B1D1A] border-b border-[#E6DFD5] dark:border-[#353B33] flex flex-wrap gap-2 shrink-0">
                             <div className="relative flex-1 min-w-[180px]">
-                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#2C2C2C]/40" />
                                 <input autoFocus type="text" placeholder="Buscar por nombre..." value={esenciaSearch}
                                     onChange={e => setEsenciaSearch(e.target.value)}
-                                    className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl py-2 pl-9 pr-4 text-sm font-bold focus:outline-none focus:border-cyan-500 transition-all" />
+                                    className="w-full bg-white dark:bg-[#242723] border border-[#E6DFD5] dark:border-[#353B33] text-[#2C2C2C] dark:text-[#F4EFEA] rounded-xl py-2 pl-9 pr-4 text-sm font-bold focus:outline-none focus:border-[#7D9878] transition-all" />
                             </div>
                             {esenciaTab === "Perfumería" ? (
                                 <>
                                     <select value={esenciaGenderFilter} onChange={e => setEsenciaGenderFilter(e.target.value)}
-                                        className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-xs font-black focus:outline-none appearance-none cursor-pointer">
+                                        className="bg-white dark:bg-[#242723] border border-[#E6DFD5] dark:border-[#353B33] text-[#2C2C2C] dark:text-[#F4EFEA] rounded-xl px-3 py-2 text-xs font-black focus:outline-none appearance-none cursor-pointer">
                                         <option value="Todos">Género: Todos</option>
                                         {generos.filter(g => g.toLowerCase() !== "limpia pisos").map((g, i) => <option key={i} value={g}>{g}</option>)}
                                     </select>
                                     <select value={esenciaProviderFilter} onChange={e => setEsenciaProviderFilter(e.target.value)}
-                                        className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-xs font-black focus:outline-none appearance-none cursor-pointer">
+                                        className="bg-white dark:bg-[#242723] border border-[#E6DFD5] dark:border-[#353B33] text-[#2C2C2C] dark:text-[#F4EFEA] rounded-xl px-3 py-2 text-xs font-black focus:outline-none appearance-none cursor-pointer">
                                         <option value="Todos">Proveedor: Todos</option>
                                         {proveedores.map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
                                     </select>
                                 </>
                             ) : (
                                 <select value={esenciaCategoryFilter} onChange={e => setEsenciaCategoryFilter(e.target.value)}
-                                    className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-xs font-black focus:outline-none appearance-none cursor-pointer">
+                                    className="bg-white dark:bg-[#242723] border border-[#E6DFD5] dark:border-[#353B33] text-[#2C2C2C] dark:text-[#F4EFEA] rounded-xl px-3 py-2 text-xs font-black focus:outline-none appearance-none cursor-pointer">
                                     <option value="Todos">Categoría: Todos</option>
                                     {categorias.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
                                 </select>
@@ -387,24 +387,24 @@ export default function PedidosPage() {
                         {/* Lista */}
                         <div className="flex-1 overflow-y-auto p-4 space-y-2 custom-scrollbar">
                             {filteredEsencias.length === 0 && (
-                                <div className="py-10 text-center text-slate-400 font-bold text-sm">No se encontraron esencias.</div>
+                                <div className="py-10 text-center text-[#2C2C2C]/40 dark:text-[#F4EFEA]/40 font-bold text-sm">No se encontraron esencias.</div>
                             )}
                             {filteredEsencias.map(e => {
                                 const isLP = e.gender?.toLowerCase() === "limpia pisos" || e.category?.toLowerCase()?.includes("limpia pisos");
                                 const gender = e.gender || (e.category?.toLowerCase().includes("femenina") ? "Femenino" : "Masculino");
                                 const catLabel = e.category || (isLP ? "Limpia Pisos" : "Perfumería Fina");
                                 return (
-                                    <div key={e.id} className="bg-white dark:bg-slate-800/40 p-4 rounded-xl border border-slate-100 dark:border-slate-800 hover:border-cyan-500/40 transition-all flex flex-col gap-3">
+                                    <div key={e.id} className="bg-white dark:bg-[#1B1D1A] p-4 rounded-xl border border-[#E6DFD5] dark:border-[#353B33] hover:border-[#7D9878]/50 transition-all flex flex-col gap-3">
                                         <div className="flex items-start justify-between gap-2">
                                             <div className="flex-1 min-w-0">
                                                 <div className="flex items-center gap-2 mb-1">
-                                                    <span className={`text-[8px] font-black uppercase px-1.5 py-0.5 rounded ${isLP ? "bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600" :
-                                                            gender === "Femenino" ? "bg-rose-50 text-rose-500" : "bg-indigo-50 text-indigo-500"
+                                                    <span className={`text-[8px] font-black uppercase px-1.5 py-0.5 rounded ${isLP ? "bg-[#7D9878]/10 text-[#7D9878]" :
+                                                            gender === "Femenino" ? "bg-[#C9866F]/10 text-[#C9866F]" : "bg-[#7D9878]/10 text-[#7D9878]"
                                                         }`}>{isLP ? "LP" : gender === "Femenino" ? "F" : "M"}</span>
-                                                    <span className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">{catLabel}</span>
-                                                    {e.provider && <span className="text-[9px] text-slate-400 font-bold uppercase">• {e.provider}</span>}
+                                                    <span className="text-[9px] text-[#2C2C2C]/40 dark:text-[#F4EFEA]/40 font-bold uppercase tracking-widest">{catLabel}</span>
+                                                    {e.provider && <span className="text-[9px] text-[#2C2C2C]/40 dark:text-[#F4EFEA]/40 font-bold uppercase">• {e.provider}</span>}
                                                 </div>
-                                                <h4 className="text-sm font-bold text-slate-800 dark:text-white">{e.name}</h4>
+                                                <h4 className="text-sm font-bold text-[#2C2C2C] dark:text-[#F4EFEA]">{e.name}</h4>
                                             </div>
                                         </div>
                                         {isLP ? (
@@ -423,24 +423,24 @@ export default function PedidosPage() {
                                                     }]);
                                                     setIsEsenciaModalOpen(false);
                                                 }}
-                                                className="w-full flex items-center justify-between px-4 py-2 rounded-lg border border-slate-100 dark:border-slate-700 hover:border-cyan-500 hover:bg-cyan-50 dark:hover:bg-cyan-500/10 transition-all"
+                                                className="w-full flex items-center justify-between px-4 py-2 rounded-lg border border-[#E6DFD5] dark:border-[#353B33] hover:border-[#7D9878] hover:bg-[#7D9878]/10 transition-all"
                                             >
-                                                <span className="text-xs font-black text-slate-500 uppercase">Costo</span>
-                                                <span className="text-sm font-black text-slate-900 dark:text-white">${(e.cost || 0).toLocaleString()}</span>
+                                                <span className="text-xs font-black text-[#2C2C2C]/50 dark:text-[#F4EFEA]/50 uppercase">Costo</span>
+                                                <span className="text-sm font-black text-[#2C2C2C] dark:text-[#F4EFEA]">${(e.cost || 0).toLocaleString()}</span>
                                             </button>
                                         ) : (
                                             <div className="grid grid-cols-2 gap-2">
                                                 <button onClick={() => handleSelectEsencia(e, '30g')}
-                                                    className="flex flex-col items-center py-2 rounded-lg border border-slate-100 dark:border-slate-700 hover:border-orange-500 hover:bg-orange-50 dark:hover:bg-orange-500/10 transition-all">
-                                                    <span className="text-[8px] font-black text-slate-400 uppercase">30g</span>
-                                                    <span className="text-xs font-black text-slate-900 dark:text-white">
+                                                    className="flex flex-col items-center py-2 rounded-lg border border-[#E6DFD5] dark:border-[#353B33] hover:border-[#DAC4AA] hover:bg-[#DAC4AA]/10 transition-all">
+                                                    <span className="text-[8px] font-black text-[#2C2C2C]/40 uppercase">30g</span>
+                                                    <span className="text-xs font-black text-[#2C2C2C] dark:text-[#F4EFEA]">
                                                         {typeof e.price30g === 'number' ? `$${e.price30g.toLocaleString()}` : 'Cons.'}
                                                     </span>
                                                 </button>
                                                 <button onClick={() => handleSelectEsencia(e, '100g')}
-                                                    className="flex flex-col items-center py-2 rounded-lg border border-slate-100 dark:border-slate-700 hover:border-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 transition-all">
-                                                    <span className="text-[8px] font-black text-slate-400 uppercase">100g</span>
-                                                    <span className="text-xs font-black text-slate-900 dark:text-white">
+                                                    className="flex flex-col items-center py-2 rounded-lg border border-[#E6DFD5] dark:border-[#353B33] hover:border-[#7D9878] hover:bg-[#7D9878]/10 transition-all">
+                                                    <span className="text-[8px] font-black text-[#2C2C2C]/40 uppercase">100g</span>
+                                                    <span className="text-xs font-black text-[#2C2C2C] dark:text-[#F4EFEA]">
                                                         {typeof e.price100g === 'number' ? `$${e.price100g.toLocaleString()}` : 'Cons.'}
                                                     </span>
                                                 </button>

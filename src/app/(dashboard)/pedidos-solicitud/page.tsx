@@ -1,6 +1,6 @@
 "use client";
 
-import { Package, Clock, CheckCircle2, Truck, ClipboardList, Search, Filter, ShoppingCart, ArrowRight, X, Trash2 } from "lucide-react";
+import { Package, Clock, CheckCircle2, Truck, ClipboardList, Search, Filter, ShoppingCart, ArrowRight, X, Trash2, AlertTriangle } from "lucide-react";
 import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { useAppContext, OrderStatus, Order, Transaccion, InventarioItem } from "@/context/AppContext";
@@ -296,28 +296,35 @@ function PedidosSolicitudContent() {
             {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
 
             {itemToCancel && (
-                <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-in fade-in duration-300">
-                    <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] p-8 md:p-10 w-full max-w-lg shadow-2xl border border-slate-200 dark:border-slate-800 animate-in zoom-in-95 duration-300">
+                <div className="fixed inset-0 z-[200] flex items-center justify-center pt-24 pb-8 px-4 sm:px-6 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300 overflow-y-auto">
+                    <div className="bg-white dark:bg-[#242723] rounded-[2.5rem] p-8 md:p-10 w-full max-w-lg shadow-2xl border border-[#E6DFD5] dark:border-[#353B33] animate-in zoom-in-95 duration-300 my-auto relative">
+                        <button
+                            onClick={() => { setItemToCancel(null); setCancelReason(""); }}
+                            className="absolute top-6 right-6 p-2.5 rounded-full bg-[#1B1D1A] text-white hover:bg-rose-600 hover:text-white hover:rotate-90 hover:scale-110 active:scale-95 transition-all duration-300 shadow-sm border border-[#353B33] flex items-center justify-center shrink-0 cursor-pointer"
+                            title="Cerrar"
+                        >
+                            <X className="w-5 h-5" />
+                        </button>
                         <div className="flex items-center gap-4 mb-6">
-                            <div className="p-3 bg-rose-50 dark:bg-rose-500/10 rounded-2xl">
-                                <X className="w-6 h-6 text-rose-500" />
+                            <div className="p-3 bg-[#C9866F]/10 rounded-2xl">
+                                <AlertTriangle className="w-6 h-6 text-[#C9866F]" />
                             </div>
-                            <h2 className="text-2xl font-black text-slate-900 dark:text-slate-50 uppercase tracking-tight">Cancelar Pedido</h2>
+                            <h2 className="text-2xl font-black text-[#2C2C2C] dark:text-[#F4EFEA] uppercase tracking-tight font-brand">Cancelar Pedido</h2>
                         </div>
-                        <p className="text-slate-500 dark:text-slate-400 font-medium mb-6">
-                            ¿Por qué deseas cancelar el pedido <span className="text-slate-900 dark:text-slate-50 font-bold">#{itemToCancel}</span>? El motivo será enviado al cliente.
+                        <p className="text-[#2C2C2C]/60 dark:text-[#F4EFEA]/60 font-medium mb-6">
+                            ¿Por qué deseas cancelar el pedido <span className="text-[#2C2C2C] dark:text-[#F4EFEA] font-bold">#{itemToCancel}</span>? El motivo será enviado al cliente.
                         </p>
                         <div className="space-y-4">
                             <textarea
                                 value={cancelReason}
                                 onChange={(e) => setCancelReason(e.target.value)}
                                 placeholder="Ej: Sin stock de envases de 50ml, pago rechazado..."
-                                className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 text-slate-900 dark:text-slate-50 focus:outline-none focus:ring-4 focus:ring-rose-500/10 focus:border-rose-500/50 transition-all font-semibold resize-none h-32"
+                                className="w-full bg-[#F9F6F0] dark:bg-[#1B1D1A] border border-[#E6DFD5] dark:border-[#353B33] rounded-2xl p-4 text-[#2C2C2C] dark:text-[#F4EFEA] focus:outline-none focus:ring-2 focus:ring-[#C9866F]/30 focus:border-[#C9866F] transition-all font-semibold resize-none h-32"
                             />
                             <div className="grid grid-cols-2 gap-4 pt-4">
                                 <button
                                     onClick={() => { setItemToCancel(null); setCancelReason(""); }}
-                                    className="px-6 py-4 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-black uppercase text-xs tracking-widest hover:bg-slate-200 transition-all"
+                                    className="px-6 py-4 rounded-2xl bg-[#F9F6F0] dark:bg-[#1B1D1A] text-[#2C2C2C]/60 dark:text-[#F4EFEA]/60 font-black uppercase text-xs tracking-widest hover:bg-[#7D9878]/10 transition-all border border-[#E6DFD5] dark:border-[#353B33]"
                                 >
                                     Volver
                                 </button>
@@ -329,9 +336,9 @@ function PedidosSolicitudContent() {
                                         setCancelReason("");
                                         setToast({ message: "Pedido cancelado y notificado.", type: "error" });
                                     }}
-                                    className="px-6 py-4 rounded-2xl bg-rose-600 text-white font-black uppercase text-xs tracking-widest hover:bg-rose-700 transition-all disabled:opacity-50"
+                                    className="px-6 py-4 rounded-2xl bg-[#C9866F] text-white font-black uppercase text-xs tracking-widest hover:bg-[#b5735c] transition-all shadow-lg shadow-[#C9866F]/20 disabled:opacity-50 font-brand"
                                 >
-                                    Confirmar Cancelación
+                                    Confirmar
                                 </button>
                             </div>
                         </div>

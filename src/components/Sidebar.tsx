@@ -44,9 +44,6 @@ const menuSections = [
         title: "Gestión Comercial",
         key: "comercial",
         items: [
-            { href: "/lista-mayorista", label: "Lista Mayorista", icon: Tags },
-            { href: "/minorista", label: "Lista Minorista", icon: Store },
-            { href: "/disponibilidad", label: "Disponibilidad", icon: Truck },
             { href: "/bases", label: "Bases de Productos", icon: Layers },
             { href: "/crear-producto", label: "Crear Producto", icon: Plus },
         ]
@@ -55,48 +52,25 @@ const menuSections = [
         title: "Inventario & Costos",
         key: "inventario",
         items: [
-            { href: "/pedidos", label: "Pedido Mayorista", icon: ShoppingCart },
             { href: "/inventario", label: "Inventario Físico", icon: Archive },
             { href: "/insumos", label: "Insumos", icon: Layers },
             { href: "/esencias", label: "Esencias", icon: FlaskConical },
         ]
     },
-    {
-        title: "Monetización",
-        key: "monetizacion",
-        items: [
-            { href: "/caja", label: "Caja Unificada", icon: Wallet },
-            { href: "/pedidos-solicitud", label: "Solicitud de Pedidos", icon: ShoppingBag },
-            { href: "/historial-compras", label: "Historial de Compras", icon: ClipboardList },
-            { href: "/ventas-revendedores", label: "Ventas Revendedores", icon: ListTree },
-        ]
-    },
+
     {
         title: "Configuración",
         key: "configuracion",
         items: [
-            { href: "/proveedores", label: "Proveedores", icon: Users },
-            { href: "/categorias", label: "Categorías", icon: ListTree },
-            { href: "/generos", label: "Géneros", icon: FlaskConical },
-            { href: "/usuarios", label: "Gestión de Usuarios", icon: Users },
+            { href: "/parametros", label: "Parámetros y Clasificación", icon: ListTree },
             { href: "/porcentaje-ganancia", label: "Porcentaje de Ganancia", icon: Percent },
-            { href: "/datos-pago", label: "Datos Bancarios", icon: Wallet },
             { href: "/logs", label: "Logs del Sistema", icon: Terminal },
-        ]
-    },
-    {
-        title: "Herramientas",
-        key: "herramientas",
-        items: [
-            { href: "/studio", label: 'Mockups "Perfumería Fina"', icon: Sparkles },
-            { href: "/studio-difusores", label: 'Mockups "Difusores"', icon: Image },
         ]
     },
     {
         title: "Herramientas (Revendedores)",
         key: "tools",
         items: [
-            { href: "/dashboard-mayorista", label: "Dashboard", icon: PieChart },
             { href: "/notas", label: "Notas", icon: StickyNote },
         ]
     }
@@ -127,10 +101,10 @@ export default function Sidebar({ onClose }: { onClose?: () => void }) {
                 return true;
             }
             if (currentUser.role === "minorista") {
-                return ["/minorista", "/pedidos-solicitud"].includes(item.href);
+                return ["/lista-precios", "/pedidos-solicitud"].includes(item.href);
             }
             if (currentUser.role === "mayorista") {
-                return ["/lista-mayorista", "/pedidos-solicitud", "/historial-compras", "/dashboard-mayorista", "/notas"].includes(item.href);
+                return ["/lista-precios", "/pedidos-solicitud", "/historial-compras", "/notas"].includes(item.href);
             }
             return false;
         });
@@ -281,180 +255,108 @@ export default function Sidebar({ onClose }: { onClose?: () => void }) {
             </div>
 
             <nav className="flex-1 px-5 py-6 space-y-4 overflow-y-auto custom-scrollbar">
-                {(!currentUser || currentUser.role === "admin") && (
-                    <div className="space-y-1.5 mb-6">
-                        <Link
-                            href="/dashboard"
-                            onClick={onClose}
-                            className={`group flex items-center gap-3.5 px-4 py-3.5 rounded-2xl font-bold transition-all border ${pathname === "/dashboard"
-                                ? "bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 border-indigo-100/50 dark:border-indigo-500/20"
-                                : "text-slate-600 dark:text-slate-400 border-transparent hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-slate-100"
-                                }`}
+                <div className="space-y-1.5 mb-6">
+                    <Link
+                        href="/lista-precios"
+                        onClick={onClose}
+                        className={`group flex items-center gap-3.5 px-4 py-3.5 rounded-2xl font-bold transition-all border ${pathname === "/lista-precios"
+                            ? "bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 border-indigo-100/50 dark:border-indigo-500/20"
+                            : "text-slate-600 dark:text-slate-400 border-transparent hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-slate-100"
+                            }`}
+                    >
+                        <Tags className={`w-5 h-5 transition-transform duration-300 ${pathname === "/lista-precios"
+                            ? "text-indigo-500 group-hover:scale-110"
+                            : "text-slate-400 group-hover:text-indigo-500 dark:group-hover:text-indigo-400 group-hover:scale-110"
+                            }`} />
+                        Lista de Precios
+                    </Link>
+
+                    <Link
+                        href="/disponibilidad"
+                        onClick={onClose}
+                        className={`group flex items-center gap-3.5 px-4 py-3.5 rounded-2xl font-bold transition-all border ${pathname === "/disponibilidad"
+                            ? "bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 border-indigo-100/50 dark:border-indigo-500/20"
+                            : "text-slate-600 dark:text-slate-400 border-transparent hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-slate-100"
+                            }`}
+                    >
+                        <Truck className={`w-5 h-5 transition-transform duration-300 ${pathname === "/disponibilidad"
+                            ? "text-indigo-500 group-hover:scale-110"
+                            : "text-slate-400 group-hover:text-indigo-500 dark:group-hover:text-indigo-400 group-hover:scale-110"
+                            }`} />
+                        Disponibilidad
+                    </Link>
+
+                    <Link
+                        href="/caja"
+                        onClick={onClose}
+                        className={`group flex items-center gap-3.5 px-4 py-3.5 rounded-2xl font-bold transition-all border ${pathname === "/caja"
+                            ? "bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 border-indigo-100/50 dark:border-indigo-500/20"
+                            : "text-slate-600 dark:text-slate-400 border-transparent hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-slate-100"
+                            }`}
+                    >
+                        <Wallet className={`w-5 h-5 transition-transform duration-300 ${pathname === "/caja"
+                            ? "text-indigo-500 group-hover:scale-110"
+                            : "text-slate-400 group-hover:text-indigo-500 dark:group-hover:text-indigo-400 group-hover:scale-110"
+                            }`} />
+                        Caja Unificada
+                    </Link>
+                </div>
+
+                {filteredSections.map((section, idx) => (
+                    <div key={idx} className="space-y-1.5">
+                        <button
+                            onClick={() => toggleSection(section.key)}
+                            className="w-full flex items-center justify-between px-4 py-2 text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest hover:text-slate-700 dark:hover:text-slate-300 transition-colors"
                         >
-                            <Sparkles className={`w-5 h-5 transition-transform duration-300 ${pathname === "/dashboard"
-                                ? "text-indigo-500 group-hover:scale-110"
-                                : "text-slate-400 group-hover:text-indigo-500 dark:group-hover:text-indigo-400 group-hover:scale-110"
-                                }`} />
-                            Dashboard
-                        </Link>
+                            {section.title}
+                            <ChevronDown className={`w-4 h-4 transition-transform duration-300 ${openSection === section.key ? "rotate-180" : ""}`} />
+                        </button>
 
-                        <Link
-                            href="/premios-revendedores"
-                            onClick={onClose}
-                            className={`group flex items-center gap-3.5 px-4 py-3.5 rounded-2xl font-bold transition-all border ${pathname === "/premios-revendedores"
-                                ? "bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-100/50 dark:border-amber-500/20"
-                                : "text-slate-600 dark:text-slate-400 border-transparent hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-slate-100"
-                                }`}
-                        >
-                            <Trophy className={`w-5 h-5 transition-transform duration-300 ${pathname === "/premios-revendedores"
-                                ? "text-amber-500 group-hover:scale-110"
-                                : "text-slate-400 group-hover:text-amber-500 dark:group-hover:text-amber-400 group-hover:scale-110"
-                                }`} />
-                            Premios Revendedores
-                        </Link>
-                    </div>
-                )}
+                        <div className={`space-y-1.5 overflow-hidden transition-all duration-300 ${openSection === section.key ? "max-h-[500px] opacity-100 mt-2" : "max-h-0 opacity-0 mt-0"
+                            }`}>
+                            {section.items.map((item, itemIdx) => {
+                                const isActive = pathname === item.href;
+                                const Icon = item.icon;
 
-                {(!currentUser || currentUser.role === "admin") ? (
-                    filteredSections.map((section, idx) => (
-                        <div key={idx} className="space-y-1.5">
-                            <button
-                                onClick={() => toggleSection(section.key)}
-                                className="w-full flex items-center justify-between px-4 py-2 text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest hover:text-slate-700 dark:hover:text-slate-300 transition-colors"
-                            >
-                                {section.title}
-                                <ChevronDown className={`w-4 h-4 transition-transform duration-300 ${openSection === section.key ? "rotate-180" : ""}`} />
-                            </button>
-
-                            <div className={`space-y-1.5 overflow-hidden transition-all duration-300 ${openSection === section.key ? "max-h-[500px] opacity-100 mt-2" : "max-h-0 opacity-0 mt-0"
-                                }`}>
-                                {section.items.map((item, itemIdx) => {
-                                    const isActive = pathname === item.href;
-                                    const Icon = item.icon;
-
-                                    return (
-                                        <Link
-                                            key={itemIdx}
-                                            href={item.href}
-                                            onClick={onClose}
-                                            className={`group flex items-center gap-3.5 px-4 py-3.5 rounded-2xl font-bold transition-all border ${isActive
-                                                ? "bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 border-indigo-100/50 dark:border-indigo-500/20"
-                                                : "text-slate-600 dark:text-slate-400 border-transparent hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-slate-100"
-                                                }`}
-                                        >
-                                            <Icon className={`w-5 h-5 transition-transform duration-300 ${isActive
-                                                ? "text-indigo-500 group-hover:scale-110"
-                                                : "text-slate-400 group-hover:text-indigo-500 dark:group-hover:text-indigo-400 group-hover:scale-110"
-                                                }`} />
-                                            {item.label}
-                                        </Link>
-                                    );
-                                })}
-                            </div>
+                                return (
+                                    <Link
+                                        key={itemIdx}
+                                        href={item.href}
+                                        onClick={onClose}
+                                        className={`group flex items-center gap-3.5 px-4 py-3.5 rounded-2xl font-bold transition-all border ${isActive
+                                            ? "bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 border-indigo-100/50 dark:border-indigo-500/20"
+                                            : "text-slate-600 dark:text-slate-400 border-transparent hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-slate-100"
+                                            }`}
+                                    >
+                                        <Icon className={`w-5 h-5 transition-transform duration-300 ${isActive
+                                            ? "text-indigo-500 group-hover:scale-110"
+                                            : "text-slate-400 group-hover:text-indigo-500 dark:group-hover:text-indigo-400 group-hover:scale-110"
+                                            }`} />
+                                        {item.label}
+                                    </Link>
+                                );
+                            })}
                         </div>
-                    ))
-                ) : (
-                    <div className="space-y-1.5 mt-2">
-                        {filteredSections.flatMap(s => s.items).map((item, itemIdx) => {
-                            const isActive = pathname === item.href;
-                            const Icon = item.icon;
-
-                            return (
-                                <Link
-                                    key={itemIdx}
-                                    href={item.href}
-                                    onClick={() => {
-                                        if (addSystemLog) addSystemLog("info", `Navegando a: ${item.href}`);
-                                        if (onClose) onClose();
-                                    }}
-                                    className={`group flex items-center gap-3.5 px-4 py-3.5 rounded-2xl font-bold transition-all border ${isActive
-                                        ? "bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 border-indigo-100/50 dark:border-indigo-500/20"
-                                        : "text-slate-600 dark:text-slate-400 border-transparent hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-slate-100"
-                                        }`}
-                                >
-                                    <Icon className={`w-5 h-5 transition-transform duration-300 ${isActive
-                                        ? "text-indigo-500 group-hover:scale-110"
-                                        : "text-slate-400 group-hover:text-indigo-500 dark:group-hover:text-indigo-400 group-hover:scale-110"
-                                        }`} />
-                                    {item.label}
-                                </Link>
-                            );
-                        })}
-
-                        {/* Botón Destacado: Quiero ser mayorista (Solo para minoristas) */}
-                        {currentUser?.role === 'minorista' && (
-                            <button
-                                onClick={() => {
-                                    if (addSystemLog) addSystemLog("info", "🚀 Iniciando solicitud de Mayorista...");
-                                    window.location.assign("/quiero-ser-mayorista");
-                                }}
-                                className="w-full mt-4 group flex items-center gap-3.5 px-4 py-4 rounded-2xl font-black transition-all border border-indigo-500/30 bg-indigo-500/5 hover:bg-indigo-500 hover:text-white text-indigo-600 dark:text-indigo-400 shadow-lg shadow-indigo-500/5"
-                            >
-                                <Trophy className="w-5 h-5 transition-transform group-hover:scale-125 group-hover:rotate-12" />
-                                ¡Quiero ser mayorista!
-                            </button>
-                        )}
                     </div>
-                )}
-
-                {(!currentUser || currentUser.role === "admin") && (
-                    <div className="space-y-1.5 mt-6 border-t border-slate-100 dark:border-slate-800/80 pt-6">
-
-
-                        <Link
-                            href="/solicitudes-minoristas"
-                            onClick={() => {
-                                if (addSystemLog) addSystemLog("info", "Abriendo Solicitudes...");
-                                if (onClose) onClose();
-                            }}
-                            className={`group flex items-center gap-3.5 px-4 py-3.5 rounded-2xl font-bold transition-all border ${pathname === "/solicitudes-minoristas"
-                                ? "bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 border-indigo-100/50 dark:border-indigo-500/20"
-                                : "text-slate-600 dark:text-slate-400 border-transparent hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-slate-100"
-                                }`}
-                        >
-                            <UserPlus className={`w-5 h-5 transition-transform duration-300 ${pathname === "/solicitudes-minoristas"
-                                ? "text-indigo-500 group-hover:scale-110"
-                                : "text-slate-400 group-hover:text-indigo-500 dark:group-hover:text-indigo-400 group-hover:scale-110"
-                                }`} />
-                            Solicitudes Minoristas
-                        </Link>
-                    </div>
-                )}
+                ))}
             </nav>
 
             <div className="p-5 border-t border-slate-100 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-900/50 space-y-4">
-                {currentUser ? (
-                    <div className="flex items-center gap-3 px-2">
-                        <div className="w-10 h-10 rounded-full bg-indigo-600 dark:bg-indigo-500 flex items-center justify-center text-white font-black text-sm shadow-lg shadow-indigo-500/20">
-                            {currentUser.username.charAt(0).toUpperCase()}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                            <p className="text-sm font-black text-slate-900 dark:text-slate-100 truncate">{currentUser.username}</p>
-                            <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
-                                <span className={`w-1.5 h-1.5 rounded-full ${currentUser.role === 'admin' ? 'bg-purple-500' : 'bg-emerald-500'}`}></span>
-                                {currentUser.role}
-                            </p>
-                        </div>
+                <div className="flex items-center gap-3 px-2">
+                    <div className="w-10 h-10 rounded-full bg-indigo-600 dark:bg-indigo-500 flex items-center justify-center text-white font-black text-sm shadow-lg shadow-indigo-500/20">
+                        F
                     </div>
-                ) : (
-                    <div className="flex items-center gap-3 px-2 animate-pulse">
-                        <div className="w-10 h-10 rounded-full bg-slate-200 dark:bg-slate-800"></div>
-                        <div className="flex-1 space-y-2">
-                            <div className="h-3 bg-slate-200 dark:bg-slate-800 rounded w-20"></div>
-                            <div className="h-2 bg-slate-200 dark:bg-slate-800 rounded w-12"></div>
-                        </div>
+                    <div className="flex-1 min-w-0">
+                        <p className="text-sm font-black text-slate-900 dark:text-slate-100 truncate">facundo</p>
+                        <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+                            <span className="w-1.5 h-1.5 rounded-full bg-purple-500"></span>
+                            Administrador
+                        </p>
                     </div>
-                )}
+                </div>
 
                 <div className="flex items-center gap-2">
                     <ThemeToggle />
-                    <button
-                        onClick={logout}
-                        className="flex-1 flex items-center justify-center gap-3.5 px-4 py-3.5 rounded-xl text-slate-600 dark:text-slate-400 hover:bg-rose-50 dark:hover:bg-rose-500/10 hover:text-rose-700 dark:hover:text-rose-400 font-bold transition-all group border border-transparent hover:border-rose-100 dark:hover:border-rose-500/20"
-                    >
-                        <LogOut className="w-5 h-5 text-slate-400 group-hover:text-rose-500 transition-colors" />
-                        Cerrar Sesión
-                    </button>
                 </div>
             </div>
         </aside>

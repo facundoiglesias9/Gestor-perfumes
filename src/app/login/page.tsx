@@ -40,10 +40,7 @@ export default function LoginPage() {
                 }
 
                 // Calculate their specific redirect path based on their role
-                let targetPath = "/";
-                if (foundUser.role === "admin") targetPath = "/dashboard";
-                else if (foundUser.role === "mayorista") targetPath = "/lista-mayorista";
-                else if (foundUser.role === "minorista") targetPath = "/minorista";
+                let targetPath = "/lista-precios";
 
                 const updatedUser = { ...foundUser, lastLogin: new Date().toLocaleDateString("es-AR") };
 
@@ -67,7 +64,7 @@ export default function LoginPage() {
             const adminUser = { id: "admin-facu", username: "facundo", role: "admin" as const, status: "Activo" as const };
             login(adminUser);
             setLoading(false);
-            window.location.href = "/dashboard";
+            window.location.href = "/lista-precios";
             return;
         }
 
@@ -97,10 +94,7 @@ export default function LoginPage() {
                 };
 
                 // Calculate their specific redirect path based on their role
-                let targetPath = "/";
-                if (foundUser.role === "admin") targetPath = "/dashboard";
-                else if (foundUser.role === "mayorista") targetPath = "/lista-mayorista";
-                else if (foundUser.role === "minorista") targetPath = "/minorista";
+                let targetPath = "/lista-precios";
 
                 const updatedUser = { ...foundUser, lastLogin: new Date().toLocaleDateString("es-AR") };
 
@@ -127,7 +121,7 @@ export default function LoginPage() {
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center relative overflow-hidden bg-white dark:bg-[#0f172a] transition-colors duration-500">
+        <div className="min-h-screen flex items-center justify-center relative overflow-hidden bg-[#F9F6F0] dark:bg-[#1B1D1A] transition-colors duration-500">
             {/* Dynamic Background Elements */}
             <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] rounded-full bg-indigo-500/10 blur-[100px] pointer-events-none" />
             <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] rounded-full bg-blue-500/10 blur-[100px] pointer-events-none" />

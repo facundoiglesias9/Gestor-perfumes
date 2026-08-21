@@ -148,18 +148,18 @@ export default function ExportModal({
     const deselectAllGenders = () => setSelectedGenders([]);
 
     return (
-        <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-md animate-in fade-in duration-300">
-            <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] shadow-2xl w-full max-w-2xl overflow-hidden border border-slate-100 dark:border-white/5 animate-in zoom-in-95 duration-500">
+        <div className="fixed inset-0 z-[200] flex items-center justify-center pt-24 pb-8 px-4 sm:px-6 bg-black/60 backdrop-blur-md animate-in fade-in duration-300 overflow-y-auto">
+            <div className="bg-white dark:bg-[#242723] rounded-[2.5rem] shadow-2xl w-full max-w-2xl overflow-hidden border border-[#E6DFD5] dark:border-[#353B33] animate-in zoom-in-95 duration-500 my-auto flex flex-col max-h-[calc(100vh-8rem)]">
                 {/* Header */}
-                <div className="p-8 border-b border-slate-100 dark:border-white/5 flex justify-between items-center">
+                <div className="p-8 border-b border-[#E6DFD5] dark:border-[#353B33] flex justify-between items-center bg-[#F9F6F0] dark:bg-[#1B1D1A]">
                     <div>
-                        <h3 className="text-2xl font-black text-slate-900 dark:text-white flex items-center gap-3">
-                            {type === "excel" ? <FileSpreadsheet className="text-emerald-500" /> : <FileText className="text-rose-500" />}
+                        <h3 className="text-2xl font-black text-[#2C2C2C] dark:text-[#F4EFEA] flex items-center gap-3 font-brand">
+                            {type === "excel" ? <FileSpreadsheet className="text-[#7D9878]" /> : <FileText className="text-[#C9866F]" />}
                             Exportar catálogo
                         </h3>
-                        <p className="text-slate-500 dark:text-slate-400 font-bold text-sm mt-1">Configura qué productos incluir en el archivo.</p>
+                        <p className="text-[#2C2C2C]/60 dark:text-[#F4EFEA]/60 font-bold text-sm mt-1">Configura qué productos incluir en el archivo.</p>
                     </div>
-                    <button onClick={onClose} className="p-3 bg-slate-100 dark:bg-white/5 rounded-2xl hover:bg-slate-200 dark:hover:bg-white/10 transition-colors">
+                    <button onClick={onClose} className="p-2.5 rounded-full bg-[#1B1D1A] text-white hover:bg-rose-600 hover:text-white hover:rotate-90 hover:scale-110 active:scale-95 transition-all duration-300 shadow-sm border border-[#353B33] flex items-center justify-center shrink-0 cursor-pointer" title="Cerrar">
                         <X className="w-5 h-5" />
                     </button>
                 </div>
@@ -168,13 +168,13 @@ export default function ExportModal({
                     {/* Categories */}
                     <section className="space-y-4">
                         <div className="flex justify-between items-end">
-                            <h4 className="text-xs font-black uppercase tracking-widest text-indigo-500 flex items-center gap-2">
+                            <h4 className="text-xs font-black uppercase tracking-widest text-[#7D9878] dark:text-[#A3B69B] flex items-center gap-2">
                                 <Filter className="w-3.5 h-3.5" />
                                 Categorías
                             </h4>
                             <div className="flex gap-4">
-                                <button onClick={selectAllCats} className="text-[10px] font-black text-slate-400 hover:text-indigo-500 transition-colors">TODO</button>
-                                <button onClick={deselectAllCats} className="text-[10px] font-black text-slate-400 hover:text-rose-500 transition-colors">NADA</button>
+                                <button onClick={selectAllCats} className="text-[10px] font-black text-[#2C2C2C]/50 hover:text-[#7D9878] transition-colors">TODO</button>
+                                <button onClick={deselectAllCats} className="text-[10px] font-black text-[#2C2C2C]/50 hover:text-[#C9866F] transition-colors">NADA</button>
                             </div>
                         </div>
                         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
@@ -184,14 +184,14 @@ export default function ExportModal({
                                     onClick={() => toggleCategory(cat)}
                                     className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border text-left transition-all ${
                                         selectedCategories.includes(cat)
-                                        ? 'bg-indigo-50 dark:bg-indigo-500/10 border-indigo-200 dark:border-indigo-500/30 text-indigo-700 dark:text-indigo-300 font-bold'
-                                        : 'border-slate-100 dark:border-white/5 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5'
+                                        ? 'bg-[#7D9878]/15 border-[#7D9878] text-[#7D9878] dark:text-[#A3B69B] font-bold'
+                                        : 'border-[#E6DFD5] dark:border-[#353B33] text-[#2C2C2C]/70 dark:text-[#F4EFEA]/70 hover:bg-[#7D9878]/5'
                                     }`}
                                 >
                                     <div className={`w-4 h-4 rounded flex items-center justify-center border ${
                                         selectedCategories.includes(cat)
-                                        ? 'bg-indigo-500 border-indigo-500'
-                                        : 'border-slate-300 dark:border-slate-700'
+                                        ? 'bg-[#7D9878] border-[#7D9878]'
+                                        : 'border-[#E6DFD5] dark:border-[#353B33]'
                                     }`}>
                                         {selectedCategories.includes(cat) && <Check className="w-3 h-3 text-white" />}
                                     </div>
@@ -204,13 +204,13 @@ export default function ExportModal({
                     {/* Genres */}
                     <section className="space-y-4">
                         <div className="flex justify-between items-end">
-                            <h4 className="text-xs font-black uppercase tracking-widest text-indigo-500 flex items-center gap-2">
+                            <h4 className="text-xs font-black uppercase tracking-widest text-[#7D9878] dark:text-[#A3B69B] flex items-center gap-2">
                                 <Filter className="w-3.5 h-3.5" />
                                 Géneros
                             </h4>
                             <div className="flex gap-4">
-                                <button onClick={selectAllGenders} className="text-[10px] font-black text-slate-400 hover:text-indigo-500 transition-colors">TODO</button>
-                                <button onClick={deselectAllGenders} className="text-[10px] font-black text-slate-400 hover:text-rose-500 transition-colors">NADA</button>
+                                <button onClick={selectAllGenders} className="text-[10px] font-black text-[#2C2C2C]/50 hover:text-[#7D9878] transition-colors">TODO</button>
+                                <button onClick={deselectAllGenders} className="text-[10px] font-black text-[#2C2C2C]/50 hover:text-[#C9866F] transition-colors">NADA</button>
                             </div>
                         </div>
                         <div className="flex flex-wrap gap-2">
@@ -220,8 +220,8 @@ export default function ExportModal({
                                     onClick={() => toggleGender(gen)}
                                     className={`flex items-center gap-2 px-4 py-2 rounded-xl border transition-all ${
                                         selectedGenders.includes(gen)
-                                        ? 'bg-indigo-50 dark:bg-indigo-500/10 border-indigo-200 dark:border-indigo-500/30 text-indigo-700 dark:text-indigo-300 font-bold'
-                                        : 'border-slate-100 dark:border-white/5 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5'
+                                        ? 'bg-[#7D9878]/15 border-[#7D9878] text-[#7D9878] dark:text-[#A3B69B] font-bold'
+                                        : 'border-[#E6DFD5] dark:border-[#353B33] text-[#2C2C2C]/70 dark:text-[#F4EFEA]/70 hover:bg-[#7D9878]/5'
                                     }`}
                                 >
                                     <span className="text-[11px]">{gen}</span>
@@ -231,28 +231,28 @@ export default function ExportModal({
                     </section>
 
                     {/* Stock Toggle */}
-                    <section className="pt-4 border-t border-slate-100 dark:border-white/5">
+                    <section className="pt-4 border-t border-[#E6DFD5] dark:border-[#353B33]">
                         <button 
                             onClick={() => setIncludeOutOfStock(!includeOutOfStock)}
-                            className="flex items-center gap-3 p-4 bg-slate-50 dark:bg-white/5 rounded-2xl w-full border border-slate-100 dark:border-white/5 hover:border-indigo-200 transition-all group"
+                            className="flex items-center gap-3 p-4 bg-[#F9F6F0] dark:bg-[#1B1D1A] rounded-2xl w-full border border-[#E6DFD5] dark:border-[#353B33] hover:border-[#7D9878] transition-all group"
                         >
                             <div className={`w-5 h-5 rounded-md border-2 transition-all flex items-center justify-center ${
                                 includeOutOfStock 
-                                ? 'bg-indigo-600 border-indigo-600' 
-                                : 'border-slate-300 dark:border-slate-700'
+                                ? 'bg-[#7D9878] border-[#7D9878]' 
+                                : 'border-[#E6DFD5] dark:border-[#353B33]'
                             }`}>
                                 {includeOutOfStock && <Check className="w-3 h-3 text-white" />}
                             </div>
-                            <span className="text-xs font-black text-slate-700 dark:text-slate-300 uppercase tracking-widest">Incluir productos sin stock</span>
+                            <span className="text-xs font-black text-[#2C2C2C] dark:text-[#F4EFEA] uppercase tracking-widest">Incluir productos sin stock</span>
                         </button>
                     </section>
                 </div>
 
                 {/* Footer */}
-                <div className="p-8 bg-slate-50 dark:bg-white/5 flex flex-col sm:flex-row items-center justify-between gap-6">
+                <div className="p-8 bg-[#F9F6F0] dark:bg-[#1B1D1A] flex flex-col sm:flex-row items-center justify-between gap-6 border-t border-[#E6DFD5] dark:border-[#353B33]">
                     <div className="flex flex-col items-center sm:items-start">
-                        <p className="text-slate-900 dark:text-white font-black text-2xl">{filteredData.length}</p>
-                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Productos seleccionados</p>
+                        <p className="text-[#2C2C2C] dark:text-[#F4EFEA] font-black text-2xl font-brand">{filteredData.length}</p>
+                        <p className="text-[10px] font-black uppercase tracking-widest text-[#2C2C2C]/60 dark:text-[#F4EFEA]/60">Productos seleccionados</p>
                     </div>
                     
                     <button
@@ -260,10 +260,10 @@ export default function ExportModal({
                         disabled={filteredData.length === 0}
                         className={`w-full sm:w-auto px-10 py-4 font-black rounded-2xl text-lg shadow-xl transition-all flex items-center justify-center gap-3 ${
                             filteredData.length === 0
-                            ? 'bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed shadow-none'
+                            ? 'bg-[#E6DFD5] dark:bg-[#353B33] text-[#2C2C2C]/40 cursor-not-allowed shadow-none'
                             : type === 'excel'
-                                ? 'bg-emerald-500 text-white hover:bg-emerald-600 shadow-emerald-500/20 active:scale-95'
-                                : 'bg-rose-500 text-white hover:bg-rose-600 shadow-rose-500/20 active:scale-95'
+                                ? 'bg-[#7D9878] text-white hover:bg-[#6b8566] shadow-[#7D9878]/20 active:scale-95'
+                                : 'bg-[#C9866F] text-white hover:bg-[#b06f59] shadow-[#C9866F]/20 active:scale-95'
                         }`}
                     >
                         {type === 'excel' ? <FileSpreadsheet className="w-6 h-6" /> : <FileText className="w-6 h-6" />}

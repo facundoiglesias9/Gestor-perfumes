@@ -78,27 +78,29 @@ export default function NotasPage() {
 
     return (
         <div className="space-y-8 pb-12 animate-in fade-in duration-700">
-            <header className="flex flex-col md:flex-row md:justify-between md:items-end gap-6 bg-white dark:bg-slate-900 p-8 md:p-10 rounded-[2.5rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.2)] border border-slate-100 dark:border-slate-800 transition-colors duration-300">
-                <div className="space-y-3">
-                    <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 text-xs font-bold tracking-widest uppercase mb-1">
+            <header className="relative text-center p-8 md:p-10 bg-white dark:bg-[#242723] rounded-[2.5rem] border border-[#E6DFD5] dark:border-[#353B33] shadow-sm flex flex-col items-center justify-center">
+                <div className="space-y-3 flex flex-col items-center">
+                    <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#7D9878]/10 text-[#7D9878] dark:text-[#A3B69B] text-xs font-bold tracking-widest uppercase mb-1 border border-[#7D9878]/20">
                         <StickyNote className="w-3.5 h-3.5" />
                         Herramientas Personales
                     </div>
-                    <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight text-slate-900 dark:text-slate-50 transition-colors">
+                    <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight text-[#2C2C2C] dark:text-[#F4EFEA] transition-colors font-brand text-center">
                         Notas
                     </h1>
-                    <p className="text-slate-500 dark:text-slate-400 text-lg max-w-xl leading-relaxed font-medium transition-colors">
+                    <p className="text-[#2C2C2C]/70 dark:text-[#F4EFEA]/70 text-lg max-w-xl leading-relaxed font-medium transition-colors text-center">
                         Tu espacio privado tipo post-it para anotar solicitudes, recordatorios o estrategias de venta rápidas.
                     </p>
                 </div>
 
-                <button
-                    onClick={addNota}
-                    className="flex shrink-0 items-center justify-center gap-2 px-6 py-4 bg-slate-900 dark:bg-white hover:bg-indigo-600 dark:hover:bg-indigo-500 text-white dark:text-slate-900 font-black rounded-2xl hover:scale-105 active:scale-95 transition-all shadow-[0_10px_20px_rgba(0,0,0,0.1)] group"
-                >
-                    <Plus className="w-5 h-5 transition-transform group-hover:rotate-90" />
-                    Pegar un Post-it Nuevo
-                </button>
+                <div className="mt-6 md:mt-0 md:absolute md:right-10 md:top-1/2 md:-translate-y-1/2">
+                    <button
+                        onClick={addNota}
+                        className="flex shrink-0 items-center justify-center gap-2 px-6 py-4 bg-[#7D9878] hover:bg-[#6b8566] text-white font-black rounded-2xl hover:scale-105 active:scale-95 transition-all shadow-lg shadow-[#7D9878]/20 group font-brand"
+                    >
+                        <Plus className="w-5 h-5 transition-transform group-hover:rotate-90" />
+                        Pegar un Post-it Nuevo
+                    </button>
+                </div>
             </header>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-6 px-2 items-start">
@@ -156,7 +158,7 @@ export default function NotasPage() {
                                     </button>
                                     <button
                                         onClick={() => confirmEdit(nota.id)}
-                                        className="p-2.5 bg-indigo-500 text-white hover:bg-indigo-600 rounded-full transition-colors shadow-md"
+                                        className="p-2.5 bg-[#7D9878] text-white hover:bg-[#6b8566] rounded-full transition-colors shadow-md"
                                     >
                                         <Check className="w-4 h-4" />
                                     </button>
@@ -173,9 +175,9 @@ export default function NotasPage() {
 
             {notas.length === 0 && (
                 <div className="py-20 text-center flex flex-col items-center">
-                    <StickyNote className="w-16 h-16 text-slate-200 dark:text-slate-800 mb-4" />
-                    <h3 className="text-xl font-bold text-slate-400">Sin notas aún</h3>
-                    <p className="text-sm text-slate-500 font-medium">Créá un post-it para no olvidarte de nada.</p>
+                    <StickyNote className="w-16 h-16 text-[#7D9878]/40 dark:text-[#7D9878]/30 mb-4" />
+                    <h3 className="text-xl font-bold text-[#2C2C2C] dark:text-[#F4EFEA] font-brand">Sin notas aún</h3>
+                    <p className="text-sm text-[#2C2C2C]/60 dark:text-[#F4EFEA]/60 font-medium">Creá un post-it para no olvidarte de nada.</p>
                 </div>
             )}
         </div>

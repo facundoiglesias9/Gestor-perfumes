@@ -239,30 +239,30 @@ export default function EditarProductoPage() {
 
     return (
         <div className="space-y-8 pb-12 animate-in fade-in duration-700">
-            <header className="flex flex-col md:flex-row md:justify-between md:items-end gap-6 bg-white dark:bg-slate-900 p-8 md:p-10 rounded-[2.5rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.2)] border border-slate-100 dark:border-slate-800 transition-colors duration-300">
-                <div className="space-y-3">
-                    <Link href="/lista-mayorista" className="inline-flex items-center gap-2 text-indigo-500 font-bold text-sm mb-2 hover:gap-3 transition-all">
+            <header className="relative text-center p-8 md:p-10 bg-white dark:bg-[#242723] rounded-[2.5rem] border border-[#E6DFD5] dark:border-[#353B33] shadow-sm flex flex-col items-center justify-center">
+                <div className="space-y-3 flex flex-col items-center">
+                    <Link href="/lista-mayorista" className="inline-flex items-center gap-2 text-[#7D9878] font-bold text-sm mb-2 hover:gap-3 transition-all">
                         <ArrowLeft className="w-4 h-4" /> Volver a la lista
                     </Link>
-                    <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight text-slate-900 dark:text-slate-50 transition-colors">
-                        Editar Producto <span className="text-slate-300 dark:text-slate-700">#{existingProduct.id}</span>
+                    <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight text-[#2C2C2C] dark:text-[#F4EFEA] transition-colors font-brand text-center">
+                        Editar Producto <span className="text-[#7D9878]/60 dark:text-[#A3B69B]/60">#{existingProduct.id}</span>
                     </h1>
                 </div>
             </header>
 
             <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 <div className="lg:col-span-2 space-y-8">
-                    <section className="bg-white dark:bg-slate-900 rounded-[2.5rem] p-8 border border-slate-200 dark:border-slate-800 shadow-sm space-y-6">
+                    <section className="bg-white dark:bg-[#242723] rounded-[2.5rem] p-8 border border-[#E6DFD5] dark:border-[#353B33] shadow-sm space-y-6">
                         <div className="flex items-center gap-3 mb-2">
-                            <div className="p-2 bg-indigo-50 dark:bg-indigo-500/10 rounded-xl text-indigo-600">
-                                <Plus className="w-5 h-5" />
+                            <div className="p-2.5 bg-[#7D9878]/15 rounded-xl text-[#7D9878]">
+                                <Package className="w-5 h-5" />
                             </div>
-                            <h2 className="text-xl font-bold text-slate-900 dark:text-slate-50">Información del Producto</h2>
+                            <h2 className="text-xl font-bold text-[#2C2C2C] dark:text-[#F4EFEA] font-brand">Información del Producto</h2>
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div className="space-y-2">
-                                <label className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest pl-1">Seleccionar Base (Opcional)</label>
+                            <div className="space-y-2 md:col-span-2">
+                                <label className="text-xs font-bold text-[#2C2C2C]/60 dark:text-[#F4EFEA]/60 uppercase tracking-widest pl-1">Seleccionar Base (Opcional)</label>
                                 <select
                                     value={selectedBaseId}
                                     onChange={(e) => {
@@ -278,95 +278,13 @@ export default function EditarProductoPage() {
                                             }
                                         }
                                     }}
-                                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl py-3.5 px-4 text-slate-900 dark:text-slate-50 font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-semibold"
+                                    className="w-full bg-[#F9F6F0] dark:bg-[#1B1D1A] border border-[#E6DFD5] dark:border-[#353B33] rounded-2xl py-3.5 px-4 text-[#2C2C2C] dark:text-[#F4EFEA] font-bold focus:outline-none focus:border-[#7D9878] transition-all font-semibold"
                                 >
                                     <option value="">-- Sin Base (Carga Manual) --</option>
                                     {bases.map(b => (
                                         <option key={b.id} value={b.id}>{b.name}</option>
                                     ))}
                                 </select>
-                            </div>
-
-                            <div className="space-y-2">
-                                <label className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest pl-1">Categoría</label>
-                                <select
-                                    required
-                                    value={category}
-                                    onChange={(e) => setCategory(e.target.value)}
-                                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl py-3.5 px-4 text-slate-900 dark:text-slate-100 font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-semibold"
-                                >
-                                    <option value="">-- Seleccionar Categoría --</option>
-                                    {categorias.map(c => (
-                                        <option key={c.id} value={c.name}>{c.name}</option>
-                                    ))}
-                                </select>
-                            </div>
-
-                            <div className="space-y-2">
-                                <label className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest pl-1">Género</label>
-                                <select
-                                    required
-                                    value={gender}
-                                    onChange={(e) => setGender(e.target.value)}
-                                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl py-3.5 px-4 text-slate-900 dark:text-slate-100 font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-semibold"
-                                >
-                                    <option value="">-- Seleccionar Género --</option>
-                                    {generos.map((g, idx) => (
-                                        <option key={idx} value={g}>{g}</option>
-                                    ))}
-                                </select>
-                            </div>
-
-                            <div className="space-y-4">
-                                <label className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest pl-1">URL de la Imagen (Opcional)</label>
-
-                                {imageUrl ? (
-                                    <div className="relative aspect-square w-32 rounded-2xl overflow-hidden border-2 border-slate-200 dark:border-slate-800 group">
-                                        <img src={imageUrl} alt="Preview" className="w-full h-full object-cover" />
-                                        <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-sm">
-                                            <button
-                                                type="button"
-                                                onClick={handleDeleteImage}
-                                                className="p-2 bg-rose-500 text-white rounded-xl hover:bg-rose-600 hover:scale-105 active:scale-95 transition-all shadow-lg"
-                                                title="Eliminar imagen"
-                                            >
-                                                <Trash2 className="w-4 h-4" />
-                                            </button>
-                                        </div>
-                                    </div>
-                                ) : (
-                                    <div className="flex gap-2">
-                                        <div className="relative flex-1 flex items-center">
-                                            <div className="absolute left-4 text-slate-400">
-                                                <LinkIcon className="w-4 h-4" />
-                                            </div>
-                                            <input
-                                                type="url"
-                                                placeholder="https://... o tocar botón de cámara"
-                                                value={imageUrl}
-                                                onChange={(e) => setImageUrl(e.target.value)}
-                                                className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl py-3.5 pl-11 pr-4 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-semibold"
-                                            />
-                                        </div>
-                                        <div className="relative flex-shrink-0">
-                                            <input
-                                                type="file"
-                                                accept="image/*"
-                                                onChange={handleImageUpload}
-                                                disabled={uploadingImage}
-                                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed z-10"
-                                                title="Subir archivo de imagen"
-                                            />
-                                            <button
-                                                type="button"
-                                                disabled={uploadingImage}
-                                                className="h-[52px] px-5 bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-100 dark:border-indigo-500/20 text-indigo-600 rounded-2xl flex items-center justify-center hover:bg-indigo-100 dark:hover:bg-indigo-500/20 transition-colors shadow-sm"
-                                            >
-                                                {uploadingImage ? <Loader2 className="w-5 h-5 animate-spin" /> : <ImagePlus className="w-5 h-5" />}
-                                            </button>
-                                        </div>
-                                    </div>
-                                )}
                             </div>
 
                             <div className="md:col-span-2 space-y-2">
@@ -570,7 +488,7 @@ export default function EditarProductoPage() {
 
                         <button
                             type="submit"
-                            className="w-full py-5 rounded-2xl bg-indigo-600 text-white font-black text-xl hover:bg-indigo-700 hover:shadow-2xl hover:shadow-indigo-600/30 active:scale-[0.98] transition-all flex items-center justify-center gap-3 mt-4 group"
+                            className="w-full py-5 rounded-2xl bg-[#7D9878] text-white font-black text-xl hover:bg-[#6b8566] hover:shadow-2xl hover:shadow-[#7D9878]/30 active:scale-[0.98] transition-all flex items-center justify-center gap-3 mt-4 group font-brand"
                         >
                             <Save className="w-6 h-6 group-hover:scale-110 transition-transform" />
                             Guardar Cambios

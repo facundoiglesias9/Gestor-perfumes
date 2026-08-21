@@ -16,37 +16,41 @@
 
 @layer base {
   :root {
-    --background: #f8fafc; /* Slate 50 */
-    --foreground: #0f172a; /* Slate 900 */
-    --card: #ffffff;
-    --card-foreground: #0f172a;
-    --primary: #c084fc; /* Purple 400 */
+    --background: #F9F6F0; /* Arena tibia suave */
+    --foreground: #2C2C2C; /* Negro carbón */
+    --card: #FFFFFF;
+    --card-foreground: #2C2C2C;
+    --primary: #7D9878; /* Verde hoja apagado */
     --primary-foreground: #ffffff;
-    --border: #e2e8f0; /* Slate 200 */
-    --input: #ffffff;
-    --ring: #c084fc;
-    --radius: 0.75rem;
+    --border: #E6DFD5;
+    --input: #FFFFFF;
+    --ring: #7D9878;
+    --radius: 0.85rem;
   }
 
   .dark {
-    --background: #0f172a; /* Slate 900 */
-    --foreground: #f8fafc; /* Slate 50 */
-    --card: #1e293b; /* Slate 800 */
-    --card-foreground: #f8fafc;
-    --primary: #c084fc;
-    --primary-foreground: #ffffff;
-    --border: #334155; /* Slate 700 */
-    --input: #1e293b;
-    --ring: #c084fc;
+    --background: #1B1D1A; /* Negro carbón profundo */
+    --foreground: #F4EFEA; /* Arena clara */
+    --card: #242723; /* Verde musgo noche */
+    --card-foreground: #F4EFEA;
+    --primary: #A3B69B; /* Musgo suave */
+    --primary-foreground: #1B1D1A;
+    --border: #353B33;
+    --input: #242723;
+    --ring: #A3B69B;
   }
 }
 
 @layer base {
-  body {
+  html, body {
     background-color: var(--background);
     color: var(--foreground);
     @apply antialiased selection:bg-primary/30 selection:text-primary-foreground min-h-screen font-sans;
   }
+}
+
+.font-brand {
+  font-family: 'Cinzel', 'Cormorant Garamond', serif;
 }
 
 /* Hide default number input arrows */

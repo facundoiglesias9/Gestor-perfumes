@@ -250,9 +250,9 @@ export default function VentasRevendedoresPage() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div className="bg-indigo-600 p-10 rounded-[2.5rem] text-white shadow-xl shadow-indigo-500/20 relative overflow-hidden group">
+                <div className="bg-[#7D9878] p-10 rounded-[2.5rem] text-white shadow-xl shadow-[#7D9878]/20 relative overflow-hidden group">
                     <div className="relative z-10 space-y-4">
-                        <h2 className="text-2xl font-black">Reporte de Crecimiento</h2>
+                        <h2 className="text-2xl font-black font-brand">Reporte de Crecimiento</h2>
                         <p className="text-indigo-100 font-medium leading-relaxed">
                             Los datos que ves son reales y provienen directamente de las órdenes procesadas en el sistema.
                             Usá los selectores de mes para auditar cierres de caja históricos.

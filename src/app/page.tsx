@@ -185,31 +185,13 @@ export default function HomePage() {
                         <div className="flex items-center gap-2 md:gap-4">
                             {/* Auth Buttons */}
                             <div className="flex items-center gap-1 md:gap-4">
-                                {currentUser ? (
-                                    <Link
-                                        href={currentUser.role === 'minorista' ? '/minorista' : '/lista-mayorista'}
-                                        className="flex items-center gap-2 px-3 md:px-4 py-2 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 rounded-xl font-black text-[10px] md:text-xs uppercase tracking-widest border border-indigo-100 dark:border-indigo-500/20 hover:scale-105 transition-all"
-                                    >
-                                        <LayoutDashboard className="w-4 h-4" />
-                                        <span className="hidden sm:inline">Mi Panel</span>
-                                    </Link>
-                                ) : (
-                                    <>
-                                        <Link
-                                            href="/login"
-                                            className="px-2 md:px-4 py-2 text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 font-black text-[10px] md:text-xs uppercase tracking-widest transition-colors flex items-center gap-1"
-                                        >
-                                            <User className="w-4 h-4" />
-                                            <span className="hidden sm:inline">Iniciar Sesión</span>
-                                        </Link>
-                                        <Link
-                                            href="/registrarse"
-                                            className="px-3 md:px-4 py-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-xl font-black text-[10px] md:text-xs uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-lg whitespace-nowrap"
-                                        >
-                                            Registrarme
-                                        </Link>
-                                    </>
-                                )}
+                                <Link
+                                    href="/lista-precios"
+                                    className="flex items-center gap-2 px-3 md:px-4 py-2 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 rounded-xl font-black text-[10px] md:text-xs uppercase tracking-widest border border-indigo-100 dark:border-indigo-500/20 hover:scale-105 transition-all"
+                                >
+                                    <LayoutDashboard className="w-4 h-4" />
+                                    <span className="hidden sm:inline">Mi Panel</span>
+                                </Link>
                             </div>
 
                             {/* Theme Toggle */}
