@@ -5,14 +5,15 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
     Tags, Truck, Wallet, ChevronDown, Layers, Plus, ShoppingCart, Archive,
-    FlaskConical, ListTree, Percent, Terminal, StickyNote, Menu, X, Sparkles
+    FlaskConical, ListTree, Percent, Terminal, StickyNote, Menu, X, Sparkles,
+    ShieldCheck, LogOut
 } from "lucide-react";
 import ThemeToggle from "@/components/ThemeToggle";
 import { useAppContext } from "@/context/AppContext";
 
 export default function TopNav() {
     const pathname = usePathname();
-    const { usdRate, usdLastUpdate, orders } = useAppContext();
+    const { usdRate, usdLastUpdate, orders, currentUser, logout } = useAppContext();
     const pendingOrdersCount = orders ? orders.filter(o => o.status === "solicitud recibida" || o.status === "en preparacion").length : 0;
     const [openDropdown, setOpenDropdown] = useState<string | null>(null);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -95,8 +96,8 @@ export default function TopNav() {
                         </Link>
                     </div>
 
-                    {/* CENTER: Desktop Navigation (Absolute exact center) */}
-                    <nav ref={dropdownRef} className="hidden lg:flex items-center justify-center gap-1 xl:gap-2 absolute left-1/2 -translate-x-1/2">
+                    {/* CENTER: Desktop Navigation (Flex natural alignment) */}
+                    <nav ref={dropdownRef} className="hidden lg:flex items-center justify-center gap-1 xl:gap-2 flex-1 mx-4">
                         {/* Direct Links */}
                         {directItems.map((item) => {
                             const isActive = pathname === item.href;
@@ -105,13 +106,13 @@ export default function TopNav() {
                                 <Link
                                     key={item.href}
                                     href={item.href}
-                                    className={`flex items-center gap-2.5 px-4 py-2.5 rounded-xl font-bold text-sm whitespace-nowrap transition-all duration-200 ${
+                                    className={`flex items-center gap-2 px-3 xl:px-4 py-2 rounded-xl font-bold text-xs xl:text-sm whitespace-nowrap transition-all duration-200 ${
                                         isActive
                                             ? "bg-[#7D9878]/10 dark:bg-[#A3B69B]/15 text-[#7D9878] dark:text-[#A3B69B] border border-[#7D9878]/20 dark:border-[#A3B69B]/30 shadow-sm font-extrabold"
                                             : "text-[#2C2C2C] dark:text-[#F4EFEA]/80 hover:text-[#7D9878] dark:hover:text-[#A3B69B] hover:bg-[#7D9878]/5 dark:hover:bg-[#A3B69B]/10"
                                     }`}
                                 >
-                                    <Icon className="w-4.5 h-4.5 shrink-0" />
+                                    <Icon className="w-4 h-4 shrink-0" />
                                     <span>{item.label}</span>
                                 </Link>
                             );
@@ -126,14 +127,14 @@ export default function TopNav() {
                                 <div key={section.key} className="relative">
                                     <button
                                         onClick={() => setOpenDropdown(isOpen ? null : section.key)}
-                                        className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-sm whitespace-nowrap transition-all duration-200 ${
+                                        className={`flex items-center gap-1.5 px-3 xl:px-4 py-2 rounded-xl font-bold text-xs xl:text-sm whitespace-nowrap transition-all duration-200 ${
                                             isSectionActive || isOpen
                                                 ? "bg-[#7D9878]/10 dark:bg-[#A3B69B]/15 text-[#7D9878] dark:text-[#A3B69B] font-extrabold"
                                                 : "text-[#2C2C2C] dark:text-[#F4EFEA]/80 hover:text-[#7D9878] dark:hover:text-[#A3B69B] hover:bg-[#7D9878]/5 dark:hover:bg-[#A3B69B]/10"
                                         }`}
                                     >
                                         <span>{section.title}</span>
-                                        <ChevronDown className={`w-4 h-4 shrink-0 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} />
+                                        <ChevronDown className={`w-3.5 h-3.5 shrink-0 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} />
                                     </button>
 
                                     {/* Dropdown Menu */}
@@ -199,6 +200,29 @@ export default function TopNav() {
 
                         {/* Theme Toggle */}
                         <ThemeToggle />
+
+                        {/* Current User Badge & Logout */}
+                        {currentUser && (
+                            <div className="flex items-center gap-2.5 bg-[#7D9878]/10 dark:bg-[#242723] px-3.5 py-2 rounded-xl border border-[#7D9878]/25 dark:border-[#353B33] transition-all">
+                                <div className="flex items-center gap-1.5 text-[#7D9878] dark:text-[#A3B69B]">
+                                    <ShieldCheck className="w-4 h-4 text-[#7D9878] dark:text-[#A3B69B]" />
+                                    <span className="text-xs font-black uppercase tracking-wider">
+                                        {currentUser.username}
+                                    </span>
+                                </div>
+                                <span className="w-1 h-1 rounded-full bg-[#7D9878]/30 dark:bg-[#353B33]" />
+                                <button
+                                    onClick={() => {
+                                        logout();
+                                        window.location.href = "/login";
+                                    }}
+                                    className="text-[10px] font-black text-rose-500 hover:text-rose-600 uppercase tracking-widest transition-colors flex items-center gap-1"
+                                    title="Cerrar Sesión"
+                                >
+                                    <span>Salir</span>
+                                </button>
+                            </div>
+                        )}
                     </div>
 
                     {/* MOBILE MENU BUTTON */}

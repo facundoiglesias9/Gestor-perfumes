@@ -34,10 +34,10 @@ export default function ThemeToggle() {
     return (
         <button
             onClick={toggleTheme}
-            className="p-2.5 rounded-xl bg-slate-100/50 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 transition-colors"
-            title="Alternar entre modo claro y oscuro"
+            className="p-2.5 rounded-xl bg-[#7D9878]/10 hover:bg-[#7D9878]/20 dark:bg-[#242723] dark:hover:bg-[#2F332E] text-[#7D9878] dark:text-[#A3B69B] border border-[#7D9878]/20 dark:border-[#353B33] transition-all"
+            title="Alternar modo claro / oscuro"
         >
-            {theme === "light" ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
+            {theme === "light" ? <Moon className="w-4.5 h-4.5" /> : <Sun className="w-4.5 h-4.5 text-[#A3B69B]" />}
         </button>
     );
 }
