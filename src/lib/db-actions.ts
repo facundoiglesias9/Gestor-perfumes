@@ -43,6 +43,12 @@ export async function fetchTable(tableName: string, options: any = {}, retries =
   }
 }
 
+// Varias consultas en un solo viaje al servidor. Next.js ejecuta las server actions de a una
+// (en fila), así que pedir cada tabla por separado suma los tiempos; acá corren en paralelo.
+export async function fetchTables(requests: { table: string; options?: any }[]): Promise<any[]> {
+  return Promise.all(requests.map(r => fetchTable(r.table, r.options ?? {})));
+}
+
 export async function upsertRecord(tableName: string, record: any) {
   try {
     const columns = Object.keys(record);

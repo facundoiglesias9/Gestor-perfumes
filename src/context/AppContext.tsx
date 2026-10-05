@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useState, useRef, useMemo } from "react";
 import { toast } from "sonner";
-import { fetchTable, upsertRecord, upsertRecords, deleteRecord, deleteRecords, clearTable } from "@/lib/db-actions";
+import { fetchTable, fetchTables, upsertRecord, upsertRecords, deleteRecord, deleteRecords, clearTable } from "@/lib/db-actions";
 import { sendOrderNotification } from "@/lib/email-service";
 
 
@@ -725,13 +725,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     useEffect(() => {
         const initializeApp = async () => {
             try {
-                const { data: configRows } = await fetchTable("config");
-                if (configRows) {
-                    const rateRow = configRows.find((r: any) => r.key === "usd_rate");
-                    const updateRow = configRows.find((r: any) => r.key === "usd_last_update");
-                    if (rateRow) setUsdRate(parseFloat(rateRow.value));
-                    if (updateRow) setUsdLastUpdate(updateRow.value);
-                }
+                // (La cotización del dólar llega más abajo, en la misma carga que el resto de las tablas.)
 
                 // 1. Auth check - only from local storage mock for now
                 let resolvedUser: Usuario | null = null;
@@ -791,25 +785,26 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                 console.log("🚀 Iniciando sincronización de datos...");
 
                 const essentialRequests = [
-                    fetchTable("categorias", { orderBy: "name" }),
-                    fetchTable("productos", { columns: ["id", "name", "category", "base_id", "components", "cost", "price", "price_minorista", "stock", "description", "gender", "last_update", "availability_status", "delivery_days"] }),
-                    fetchTable("promociones"),
-                    fetchTable("config"),
+                    { table: "categorias", options: { orderBy: "name" } },
+                    { table: "productos", options: { columns: ["id", "name", "category", "base_id", "components", "cost", "price", "price_minorista", "stock", "description", "gender", "last_update", "availability_status", "delivery_days"] } },
+                    { table: "promociones" },
+                    { table: "config" },
                 ];
-                
+
                 const adminRequests = isAdmin ? [
-                    fetchTable("proveedores", { orderBy: "name" }),
-                    fetchTable("esencias", { orderBy: "name" }),
-                    fetchTable("insumos", { orderBy: "name" }),
-                    fetchTable("inventario", { orderBy: "name" }),
-                    fetchTable("transacciones", { orderBy: "created_at", orderDir: "desc" }),
-                    fetchTable("bases", { orderBy: "name" }),
-                    fetchTable("usuarios", { orderBy: "username" }),
-                    fetchTable("orders", { orderBy: "date", orderDir: "desc" }),
-                    fetchTable("solicitudes_mayorista", { filter: { estado: 'pendiente' }, orderBy: 'created_at', orderDir: 'desc' }),
+                    { table: "proveedores", options: { orderBy: "name" } },
+                    { table: "esencias", options: { orderBy: "name" } },
+                    { table: "insumos", options: { orderBy: "name" } },
+                    { table: "inventario", options: { orderBy: "name" } },
+                    { table: "transacciones", options: { orderBy: "created_at", orderDir: "desc" } },
+                    { table: "bases", options: { orderBy: "name" } },
+                    { table: "usuarios", options: { orderBy: "username" } },
+                    { table: "orders", options: { orderBy: "date", orderDir: "desc" } },
+                    { table: "solicitudes_mayorista", options: { filter: { estado: 'pendiente' }, orderBy: 'created_at', orderDir: 'desc' } },
                 ] : [];
 
-                const results = await Promise.all([...essentialRequests, ...adminRequests]);
+                // Un solo viaje al servidor para todas las tablas (antes eran 13 en fila).
+                const results = await fetchTables([...essentialRequests, ...adminRequests]);
                 const endTime = performance.now();
                 console.log(`✅ Sincronización completada en ${((endTime - startTime) / 1000).toFixed(2)}s`);
 
@@ -1034,9 +1029,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         const refreshData = async () => {
             console.log("Refreshing data (Realtime substitute)...");
             if (isUserAdmin) {
-                const { data } = await fetchTable("orders", { orderBy: "date", orderDir: "desc" });
-                if (data) setOrders(data.map(dbToOrder));
-                await fetchSolicitudesMinoristas();
+                // Pedidos y solicitudes en un solo viaje al servidor.
+                const [ordersRes, solicitudesRes] = await fetchTables([
+                    { table: "orders", options: { orderBy: "date", orderDir: "desc" } },
+                    { table: "solicitudes_mayorista", options: { filter: { estado: 'pendiente' }, orderBy: 'created_at', orderDir: 'desc' } },
+                ]);
+                if (ordersRes.data) setOrders(ordersRes.data.map(dbToOrder));
+                if (!solicitudesRes.error) setSolicitudesMinoristas(solicitudesRes.data || []);
             } else {
                 const { data } = await fetchTable("orders", { 
                     filter: { customer_name: currentUser.username.trim() },
@@ -2262,7 +2261,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     };
 
     useEffect(() => {
-        if (!mounted) return;
+        // Solo el admin actualiza precios de esencias: los demás usuarios no las tienen cargadas
+        // y, si corrieran el scraper, reescribirían todas las esencias en la base en cada visita.
+        if (!mounted || currentUser?.role !== "admin") return;
 
         const checkSync = () => {
             const currentStatus = JSON.parse(localStorage.getItem("scraperStatus") || "{}");
@@ -2278,7 +2279,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         const intervalId = setInterval(checkSync, 60000); // Revisar cada minuto en el fondo (útil si dejan la pestaña abierta 24/7)
 
         return () => clearInterval(intervalId);
-    }, [mounted]); // Removemos las dependencias excesivas para evitar loops, leer de localstorage es seguro aqui
+    }, [mounted, currentUser?.role]); // Removemos las dependencias excesivas para evitar loops, leer de localstorage es seguro aqui
 
     const contextValue = React.useMemo(() => ({
         categorias, setCategorias: _setCategorias,
