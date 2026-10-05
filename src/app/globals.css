@@ -12,6 +12,108 @@
   --color-input: var(--input);
   --color-ring: var(--ring);
   --radius: var(--radius);
+
+  /* Paleta Scenta: se reemplazan los tonos azulados/violetas de Tailwind
+     para que ningún componente muestre azul, índigo o violeta. */
+
+  /* slate -> neutros cálidos (arena / oliva) */
+  --color-slate-50: #F9F6F0;
+  --color-slate-100: #F4EFEA;
+  --color-slate-200: #E6DFD5;
+  --color-slate-300: #D3CBBF;
+  --color-slate-400: #A5A298;
+  --color-slate-500: #7F7D74;
+  --color-slate-600: #5F6159;
+  --color-slate-700: #474C44;
+  --color-slate-800: #353B33;
+  --color-slate-900: #242723;
+  --color-slate-950: #1B1D1A;
+
+  /* indigo / blue / sky / cyan -> verde musgo */
+  --color-indigo-50: #F3F6F1;
+  --color-indigo-100: #E4EBE1;
+  --color-indigo-200: #C9D6C4;
+  --color-indigo-300: #A3B69B;
+  --color-indigo-400: #8FA888;
+  --color-indigo-500: #7D9878;
+  --color-indigo-600: #6B8566;
+  --color-indigo-700: #5A7356;
+  --color-indigo-800: #465A43;
+  --color-indigo-900: #354432;
+  --color-indigo-950: #1F281D;
+
+  --color-blue-50: var(--color-indigo-50);
+  --color-blue-100: var(--color-indigo-100);
+  --color-blue-200: var(--color-indigo-200);
+  --color-blue-300: var(--color-indigo-300);
+  --color-blue-400: var(--color-indigo-400);
+  --color-blue-500: var(--color-indigo-500);
+  --color-blue-600: var(--color-indigo-600);
+  --color-blue-700: var(--color-indigo-700);
+  --color-blue-800: var(--color-indigo-800);
+  --color-blue-900: var(--color-indigo-900);
+  --color-blue-950: var(--color-indigo-950);
+
+  --color-sky-50: var(--color-indigo-50);
+  --color-sky-100: var(--color-indigo-100);
+  --color-sky-200: var(--color-indigo-200);
+  --color-sky-300: var(--color-indigo-300);
+  --color-sky-400: var(--color-indigo-400);
+  --color-sky-500: var(--color-indigo-500);
+  --color-sky-600: var(--color-indigo-600);
+  --color-sky-700: var(--color-indigo-700);
+  --color-sky-800: var(--color-indigo-800);
+  --color-sky-900: var(--color-indigo-900);
+  --color-sky-950: var(--color-indigo-950);
+
+  --color-cyan-50: var(--color-indigo-50);
+  --color-cyan-100: var(--color-indigo-100);
+  --color-cyan-200: var(--color-indigo-200);
+  --color-cyan-300: var(--color-indigo-300);
+  --color-cyan-400: var(--color-indigo-400);
+  --color-cyan-500: var(--color-indigo-500);
+  --color-cyan-600: var(--color-indigo-600);
+  --color-cyan-700: var(--color-indigo-700);
+  --color-cyan-800: var(--color-indigo-800);
+  --color-cyan-900: var(--color-indigo-900);
+  --color-cyan-950: var(--color-indigo-950);
+
+  /* violet / purple / fuchsia -> terracota */
+  --color-violet-50: #FAF3F0;
+  --color-violet-100: #F3E2DB;
+  --color-violet-200: #E8C5B8;
+  --color-violet-300: #DBA793;
+  --color-violet-400: #D29680;
+  --color-violet-500: #C9866F;
+  --color-violet-600: #B5735C;
+  --color-violet-700: #97604D;
+  --color-violet-800: #7A4E3F;
+  --color-violet-900: #5E3C31;
+  --color-violet-950: #3A251E;
+
+  --color-purple-50: var(--color-violet-50);
+  --color-purple-100: var(--color-violet-100);
+  --color-purple-200: var(--color-violet-200);
+  --color-purple-300: var(--color-violet-300);
+  --color-purple-400: var(--color-violet-400);
+  --color-purple-500: var(--color-violet-500);
+  --color-purple-600: var(--color-violet-600);
+  --color-purple-700: var(--color-violet-700);
+  --color-purple-800: var(--color-violet-800);
+  --color-purple-900: var(--color-violet-900);
+  --color-purple-950: var(--color-violet-950);
+
+  --color-fuchsia-50: var(--color-violet-50);
+  --color-fuchsia-100: var(--color-violet-100);
+  --color-fuchsia-200: var(--color-violet-200);
+  --color-fuchsia-300: var(--color-violet-300);
+  --color-fuchsia-400: var(--color-violet-400);
+  --color-fuchsia-500: var(--color-violet-500);
+  --color-fuchsia-600: var(--color-violet-600);
+  --color-fuchsia-700: var(--color-violet-700);
+  --color-fuchsia-800: var(--color-violet-800);
+  --color-fuchsia-900: var(--color-violet-900);
+  --color-fuchsia-950: var(--color-violet-950);
 }
 
 @layer base {

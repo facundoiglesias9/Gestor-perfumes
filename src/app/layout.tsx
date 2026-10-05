@@ -10,7 +10,7 @@ export const metadata: Metadata = {
   generator: "Scenta v1.0.2 - Force Redeploy",
 };
 
-import { AppProvider } from "@/context/AppContext";
+import AppProviderGate from "@/components/AppProviderGate";
 import { Toaster } from "sonner";
 
 export default function RootLayout({
@@ -41,7 +41,7 @@ export default function RootLayout({
         />
       </head>
       <body className="antialiased bg-[#F9F6F0] dark:bg-[#1B1D1A]">
-        <AppProvider>
+        <AppProviderGate>
           {children}
           <Toaster 
             position="top-right" 
@@ -49,7 +49,7 @@ export default function RootLayout({
             richColors 
             expand={false}
           />
-        </AppProvider>
+        </AppProviderGate>
       </body>
     </html>
   );

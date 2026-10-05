@@ -161,7 +161,7 @@ export default function VentasRevendedoresPage() {
                     </div>
                 </div>
 
-                <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-indigo-200 dark:border-indigo-500/30 shadow-[0_10px_40px_rgba(99,102,241,0.05)] space-y-4 relative overflow-hidden group">
+                <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-indigo-200 dark:border-indigo-500/30 shadow-[0_10px_40px_rgba(125,152,120,0.05)] space-y-4 relative overflow-hidden group">
                     <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-110 transition-transform">
                         <Trophy className="w-24 h-24 text-indigo-600" />
                     </div>

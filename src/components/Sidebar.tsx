@@ -113,7 +113,7 @@ export default function Sidebar({ onClose }: { onClose?: () => void }) {
     }).filter(section => section.items.length > 0);
 
     return (
-        <aside className="w-[300px] h-full bg-white dark:bg-[#1e293b] border-r border-slate-200 dark:border-slate-800 flex flex-col shadow-[4px_0_24px_rgba(0,0,0,0.02)] z-10 relative transition-colors duration-300">
+        <aside className="w-[300px] h-full bg-white dark:bg-[#242723] border-r border-slate-200 dark:border-slate-800 flex flex-col shadow-[4px_0_24px_rgba(0,0,0,0.02)] z-10 relative transition-colors duration-300">
             {/* Logo Area */}
             <div className="h-24 flex shrink-0 items-center justify-between px-8 border-b border-slate-100 dark:border-slate-800/80">
                 <div className="flex items-center gap-3 text-indigo-600 dark:text-indigo-400 font-extrabold text-2xl tracking-tighter">
@@ -124,7 +124,7 @@ export default function Sidebar({ onClose }: { onClose?: () => void }) {
                             className="w-full h-full object-cover scale-150"
                         />
                     </div>
-                    <span className="text-[#8b5cf6] dark:text-[#a78bfa] font-black tracking-tighter text-3xl">
+                    <span className="text-[#7D9878] dark:text-[#A3B69B] font-black tracking-tighter text-3xl">
                         Scenta
                     </span>
                 </div>
@@ -137,7 +137,7 @@ export default function Sidebar({ onClose }: { onClose?: () => void }) {
                         >
                             <Bell className="w-5 h-5" />
                             {unreadCount > 0 && (
-                                <span className="absolute -top-1 -right-1 w-5 h-5 bg-rose-500 text-white text-[10px] font-black flex items-center justify-center rounded-full border-2 border-white dark:border-[#1e293b] animate-bounce">
+                                <span className="absolute -top-1 -right-1 w-5 h-5 bg-rose-500 text-white text-[10px] font-black flex items-center justify-center rounded-full border-2 border-white dark:border-[#242723] animate-bounce">
                                     {unreadCount > 9 ? "+9" : unreadCount}
                                 </span>
                             )}
@@ -149,7 +149,7 @@ export default function Sidebar({ onClose }: { onClose?: () => void }) {
                                     initial={{ opacity: 0, x: -20, scale: 0.95 }}
                                     animate={{ opacity: 1, x: 0, scale: 1 }}
                                     exit={{ opacity: 0, x: -20, scale: 0.95 }}
-                                    className="fixed top-5 left-4 md:left-[320px] md:top-8 w-[calc(100vw-2rem)] md:w-[400px] max-h-[85vh] bg-white dark:bg-[#1e293b] rounded-[2rem] shadow-[0_25px_80px_-12px_rgba(0,0,0,0.5)] border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col z-[999]"
+                                    className="fixed top-5 left-4 md:left-[320px] md:top-8 w-[calc(100vw-2rem)] md:w-[400px] max-h-[85vh] bg-white dark:bg-[#242723] rounded-[2rem] shadow-[0_25px_80px_-12px_rgba(0,0,0,0.5)] border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col z-[999]"
                                 >
                                     <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/80 dark:bg-slate-900/80 backdrop-blur-md">
                                         <div className="flex items-center gap-3">
@@ -227,7 +227,7 @@ export default function Sidebar({ onClose }: { onClose?: () => void }) {
                                                             </div>
                                                         </div>
                                                         {!notif.read && (
-                                                            <div className="absolute top-6 right-6 w-2.5 h-2.5 bg-indigo-500 rounded-full shadow-[0_0_15px_rgba(99,102,241,0.8)] border-2 border-white dark:border-[#1e293b]"></div>
+                                                            <div className="absolute top-6 right-6 w-2.5 h-2.5 bg-indigo-500 rounded-full shadow-[0_0_15px_rgba(125,152,120,0.8)] border-2 border-white dark:border-[#242723]"></div>
                                                         )}
                                                     </div>
                                                 ))}

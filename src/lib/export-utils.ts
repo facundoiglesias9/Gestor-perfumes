@@ -170,20 +170,20 @@ export const exportToPDF = async (
             const imgHeight = (logoImg.naturalHeight / logoImg.naturalWidth) * imgWidth;
             doc.addImage(logoImg, 'PNG', (210 - imgWidth) / 2, 40, imgWidth, imgHeight);
         } else {
-            doc.setTextColor(15, 23, 42); // slate-900
+            doc.setTextColor(27, 29, 26); // oliva Scenta
             doc.setFontSize(40);
             doc.text("SCENTA", 105, 100, { align: 'center' });
         }
 
         // Title and Info
-        doc.setTextColor(30, 41, 59); // slate-800
+        doc.setTextColor(36, 39, 35); // oliva Scenta
         doc.setFontSize(26);
         doc.setFont('helvetica', 'bold');
         doc.text(title, 105, 160, { align: 'center' });
 
         doc.setFontSize(14);
         doc.setFont('helvetica', 'normal');
-        doc.setTextColor(100, 116, 139); // slate-500
+        doc.setTextColor(127, 125, 116); // gris cálido Scenta
         doc.text(`Actualizado al ${new Date().toLocaleDateString('es-AR')}`, 105, 175, { align: 'center' });
 
         // WhatsApp Info
@@ -195,16 +195,16 @@ export const exportToPDF = async (
         const boxX = (210 - boxWidth) / 2;
         
         // Draw elegant pill
-        doc.setFillColor(248, 250, 252); // slate-50
-        doc.setDrawColor(226, 232, 240); // slate-200 border
+        doc.setFillColor(249, 246, 240); // arena Scenta
+        doc.setDrawColor(230, 223, 213); // borde arena Scenta
         doc.roundedRect(boxX, 200, boxWidth, 20, 10, 10, 'FD'); // Fill and stroke
 
         if (waImg.complete && waImg.naturalWidth > 0) {
             doc.addImage(waImg, 'PNG', boxX + 8, 204, 12, 12);
-            doc.setTextColor(30, 41, 59); // slate-800
+            doc.setTextColor(36, 39, 35); // oliva Scenta
             doc.text(waText, boxX + 24, 213.5, { align: 'left' });
         } else {
-            doc.setTextColor(30, 41, 59); // slate-800
+            doc.setTextColor(36, 39, 35); // oliva Scenta
             doc.text(waText, 105, 213.5, { align: 'center' });
         }
 
@@ -222,11 +222,11 @@ export const exportToPDF = async (
 
     // Header section for table page
     doc.setFontSize(22);
-    doc.setTextColor(31, 41, 55); // Gray-800
+    doc.setTextColor(36, 39, 35); // Oliva oscuro Scenta
     doc.text(title, 14, 22);
 
     doc.setFontSize(10);
-    doc.setTextColor(100, 116, 139); // Slate-500
+    doc.setTextColor(127, 125, 116); // gris cálido Scenta
     doc.text(`Fecha: ${new Date().toLocaleDateString('es-AR')}`, 14, 30);
 
     // Table
@@ -238,7 +238,7 @@ export const exportToPDF = async (
         rowPageBreak: 'avoid',
         margin: { top: 25, bottom: 25 },
         headStyles: {
-            fillColor: [31, 41, 55], // Gray-800
+            fillColor: [36, 39, 35], // Oliva oscuro Scenta
             textColor: [255, 255, 255],
             fontSize: 12,
             fontStyle: 'bold',

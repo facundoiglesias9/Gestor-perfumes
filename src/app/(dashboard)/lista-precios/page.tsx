@@ -47,45 +47,15 @@ import { QRCodeSVG } from "qrcode.react";
 import Image from "next/image";
 import { getOptimizedImageUrl } from "@/lib/image-optimizer";
 import { useState, useMemo, useEffect, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { useAppContext, Producto } from "@/context/AppContext";
 import { motion, AnimatePresence } from "framer-motion";
 import { exportToExcel, exportToPDF } from "@/lib/export-utils";
 import { formatNumber } from "@/lib/format-utils";
+import { extractBrand } from "@/lib/product-utils";
 import ExportModal from "@/components/ExportModal";
 import ListSelectorToggle from "@/components/ListSelectorToggle";
 import PaginationControls from "@/components/PaginationControls";
-
-const extractBrand = (name: string) => {
-    if (name.includes('(') && name.includes(')')) {
-        const parts = name.split('(');
-        return {
-            title: parts[0].trim(),
-            brand: parts[1].split(')')[0].trim()
-        };
-    }
-
-    const KNOWN_BRANDS = [
-        "CAROLINA HERRERA", "C. HERRERA", "PACO RABANNE", "DIOR", "CHANEL",
-        "CALVIN KLEIN", "ARMANI", "GIORGIO ARMANI", "NINA RICCI", "KENZO",
-        "VERSACE", "GIVENCHY", "HUGO BOSS", "RALPH LAUREN", "JEAN PAUL GAULTIER",
-        "YVES SAINT LAURENT", "YSL", "DOLCE & GABBANA", "ISSEY MIYAKE", "GUERLAIN",
-        "BVLGARI", "LANCOME", "THIERRY MUGLER", "MUGLER", "ANTONIO BANDERAS", "CHER",
-        "TOM FORD", "VICTORIA SECRET", "VICTORIA'S SECRET", "POLO", "TOMMY HILFIGER",
-        "LACOSTE", "MOSCHINO", "BURBERRY", "AZZARO", "GUCCI", "BENSE"
-    ];
-
-    const upperName = name.toUpperCase();
-    for (const brand of KNOWN_BRANDS) {
-        if (upperName.includes(brand)) {
-            const regex = new RegExp(`\\s*${brand}\\s*`, "i");
-            let title = name.replace(regex, " ").trim();
-            if (title.endsWith('-')) title = title.slice(0, -1).trim();
-            return { title, brand };
-        }
-    }
-
-    return { title: name, brand: null };
-};
 
 const getPaginationRange = (currentPage: number, totalPages: number) => {
     const delta = 2;
@@ -415,6 +385,7 @@ export default function ListaPreciosPage() {
     const [sortBy, setSortBy] = useState<"price-asc" | "price-desc" | "id-asc" | "id-desc" | "none">("none");
     const [showOutOfStock, setShowOutOfStock] = useState(false);
     const [isCartOpen, setIsCartOpen] = useState(false);
+    const [openItemDiscount, setOpenItemDiscount] = useState<string | null>(null);
     const [customerName, setCustomerName] = useState("");
     const [orderSuccess, setOrderSuccess] = useState(false);
     const [currentPage, setCurrentPage] = useState(1);
@@ -1135,363 +1106,395 @@ export default function ListaPreciosPage() {
             )}
 
             {/* Modal de Ver Pedido / Carrito (isCartOpen) */}
-            {isCartOpen && (
-                <div className="fixed inset-0 z-[300] flex justify-end bg-black/60 backdrop-blur-md animate-in fade-in duration-300">
-                    <div className="bg-white dark:bg-[#242723] w-full max-w-lg h-full shadow-2xl border-l border-[#E6DFD5] dark:border-[#353B33] animate-in slide-in-from-right duration-300 flex flex-col">
-                        {/* Header */}
-                        <div className="p-6 border-b border-[#E6DFD5] dark:border-[#353B33] flex justify-between items-center bg-[#F9F6F0] dark:bg-[#1B1D1A] shrink-0">
-                            <div className="flex items-center gap-3">
-                                <div className="p-2.5 rounded-xl bg-[#7D9878]/10 text-[#7D9878]">
-                                    <ShoppingBag className="w-6 h-6" />
+            {isCartOpen && (() => {
+                const closeCart = () => {
+                    setIsCartOpen(false);
+                    setOrderSuccess(false);
+                    setOpenItemDiscount(null);
+                };
+                const fmt = (n: number) => Intl.NumberFormat("es-AR").format(Math.round(n));
+                const hasItems = cartFiltered.length > 0 && !orderSuccess;
+                const chip = (active: boolean) =>
+                    `px-2.5 py-1 rounded-lg text-[11px] font-bold border transition-all ${active
+                        ? "bg-[#7D9878] text-white border-[#7D9878]"
+                        : "bg-white dark:bg-[#242723] text-[#2C2C2C]/70 dark:text-[#F4EFEA]/70 border-[#E6DFD5] dark:border-[#353B33] hover:border-[#7D9878]"}`;
+
+                // Portal al body: así el panel queda por encima de la barra de navegación.
+                return createPortal(
+                    <div
+                        className="fixed inset-0 z-[300] flex justify-end bg-black/60 backdrop-blur-sm animate-in fade-in duration-300"
+                        onClick={closeCart}
+                    >
+                        <div
+                            className={`bg-[#F9F6F0] dark:bg-[#1B1D1A] w-full h-full shadow-2xl border-l border-[#E6DFD5] dark:border-[#353B33] animate-in slide-in-from-right duration-300 flex flex-col ${hasItems ? "max-w-lg lg:max-w-5xl" : "max-w-lg"}`}
+                            onClick={e => e.stopPropagation()}
+                        >
+                            {/* Encabezado */}
+                            <div className="px-5 py-4 border-b border-[#E6DFD5] dark:border-[#353B33] bg-white dark:bg-[#242723] flex items-center gap-3 shrink-0">
+                                <div className="p-2 rounded-xl bg-[#7D9878]/10 text-[#7D9878] dark:text-[#A3B69B]">
+                                    <ShoppingBag className="w-5 h-5" />
                                 </div>
-                                <div>
+                                <div className="flex-1 min-w-0">
                                     <span className="text-[10px] font-black uppercase tracking-widest text-[#7D9878] dark:text-[#A3B69B]">
                                         Pedido {isMinorista ? "Minorista" : "Mayorista"}
+                                        {hasItems && ` · ${cartFiltered.reduce((acc, i) => acc + i.quantity, 0)} unidades`}
                                     </span>
-                                    <h3 className="text-xl font-extrabold text-[#2C2C2C] dark:text-[#F4EFEA] font-brand">
+                                    <h3 className="text-lg font-extrabold text-[#2C2C2C] dark:text-[#F4EFEA] font-brand leading-tight">
                                         Resumen de Pedido
                                     </h3>
                                 </div>
-                            </div>
-                            <button
-                                onClick={() => {
-                                    setIsCartOpen(false);
-                                    setOrderSuccess(false);
-                                }}
-                                className="p-2.5 rounded-full bg-[#1B1D1A] text-white hover:bg-rose-600 transition-all border border-[#353B33]"
-                                title="Cerrar"
-                            >
-                                <X className="w-5 h-5" />
-                            </button>
-                        </div>
-
-                        {/* Cart Items or Success state */}
-                        <div className="p-6 space-y-4 overflow-y-auto flex-1 custom-scrollbar">
-                            {/* Button to close and keep adding products */}
-                            {!orderSuccess && (
+                                {!orderSuccess && (
+                                    <button
+                                        type="button"
+                                        onClick={closeCart}
+                                        className="hidden sm:flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-[#7D9878] dark:text-[#A3B69B] hover:bg-[#7D9878]/10 transition-all"
+                                    >
+                                        <ChevronLeft className="w-4 h-4" />
+                                        Seguir agregando
+                                    </button>
+                                )}
                                 <button
-                                    type="button"
-                                    onClick={() => setIsCartOpen(false)}
-                                    className="w-full py-2.5 px-4 rounded-2xl bg-[#7D9878]/10 text-[#7D9878] dark:text-[#A3B69B] border border-[#7D9878]/20 hover:bg-[#7D9878]/20 transition-all font-bold text-xs flex items-center justify-center gap-2"
+                                    onClick={closeCart}
+                                    className="p-2 rounded-full text-[#2C2C2C]/70 dark:text-[#F4EFEA]/70 hover:bg-rose-500/10 hover:text-rose-500 transition-all"
+                                    title="Cerrar"
                                 >
-                                    <ChevronLeft className="w-4 h-4" />
-                                    Seguir agregando productos
+                                    <X className="w-5 h-5" />
                                 </button>
-                            )}
+                            </div>
 
                             {orderSuccess ? (
-                                <div className="p-6 rounded-3xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 text-center space-y-3">
-                                    <CheckCircle2 className="w-12 h-12 text-emerald-500 mx-auto animate-bounce" />
-                                    <h4 className="text-lg font-extrabold text-emerald-700 dark:text-emerald-400 font-brand">
-                                        ¡Venta Registrada con Éxito!
-                                    </h4>
-                                    <p className="text-xs font-bold text-[#2C2C2C]/70 dark:text-[#F4EFEA]/70">
-                                        La venta fue ingresada en el sistema y el cobro se registró automáticamente en <strong>Caja</strong>.
-                                    </p>
+                                <div className="flex-1 p-6">
+                                    <div className="p-6 rounded-3xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 text-center space-y-3">
+                                        <CheckCircle2 className="w-12 h-12 text-emerald-500 mx-auto animate-bounce" />
+                                        <h4 className="text-lg font-extrabold text-emerald-700 dark:text-emerald-400 font-brand">
+                                            ¡Venta Registrada con Éxito!
+                                        </h4>
+                                        <p className="text-xs font-bold text-[#2C2C2C]/70 dark:text-[#F4EFEA]/70">
+                                            La venta fue ingresada en el sistema y el cobro se registró automáticamente en <strong>Caja</strong>.
+                                        </p>
+                                    </div>
                                 </div>
                             ) : cartFiltered.length === 0 ? (
-                                <div className="py-16 text-center space-y-4">
-                                    <ShoppingCart className="w-16 h-16 text-[#7D9878]/40 mx-auto" />
+                                <div className="flex-1 flex flex-col items-center justify-center text-center gap-3 p-6">
+                                    <ShoppingCart className="w-14 h-14 text-[#7D9878]/40" />
                                     <h4 className="text-base font-bold text-[#2C2C2C] dark:text-[#F4EFEA]">
                                         Tu pedido está vacío
                                     </h4>
-                                    <p className="text-xs text-[#2C2C2C]/60 dark:text-[#F4EFEA]/60 max-w-xs mx-auto font-medium">
+                                    <p className="text-xs text-[#2C2C2C]/60 dark:text-[#F4EFEA]/60 max-w-xs font-medium">
                                         Hacé clic en <strong>+ Agregar</strong> en la lista de precios para sumar productos.
                                     </p>
+                                    <button
+                                        type="button"
+                                        onClick={closeCart}
+                                        className="mt-2 px-4 py-2.5 rounded-xl bg-[#7D9878] text-white text-xs font-bold"
+                                    >
+                                        Ir a la lista de precios
+                                    </button>
                                 </div>
                             ) : (
-                                <div className="space-y-4">
-                                    {/* Massive / Global Discount Option */}
-                                    <div className="p-4 rounded-2xl bg-[#F9F6F0] dark:bg-[#1B1D1A] border border-[#E6DFD5] dark:border-[#353B33] space-y-3">
-                                        <div className="flex justify-between items-center">
-                                            <label className="text-[10px] font-black uppercase tracking-widest text-[#2C2C2C]/70 dark:text-[#F4EFEA]/70 flex items-center gap-1">
-                                                <Percent className="w-3.5 h-3.5 text-[#7D9878]" /> Descuento Masivo a Todos los Productos
-                                            </label>
-                                            <div className="flex gap-1 bg-white dark:bg-[#242723] p-1 rounded-xl border border-[#E6DFD5] dark:border-[#353B33]">
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setGlobalDiscountType("percent")}
-                                                    className={`px-2.5 py-1 text-[10px] font-black rounded-lg transition-all ${globalDiscountType === "percent" ? "bg-[#7D9878] text-white" : "text-[#2C2C2C]/60 dark:text-[#F4EFEA]/60"}`}
-                                                >
-                                                    % Porcentaje
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setGlobalDiscountType("fixed")}
-                                                    className={`px-2.5 py-1 text-[10px] font-black rounded-lg transition-all ${globalDiscountType === "fixed" ? "bg-[#7D9878] text-white" : "text-[#2C2C2C]/60 dark:text-[#F4EFEA]/60"}`}
-                                                >
-                                                    $ Monto Fijo
-                                                </button>
-                                            </div>
-                                        </div>
+                                <>
+                                    {/* Cuerpo: en pantallas grandes, productos a la izquierda y resumen a la derecha */}
+                                    <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar lg:overflow-hidden lg:grid lg:grid-cols-[minmax(0,1fr)_380px]">
+                                        {/* Productos */}
+                                        <section className="p-4 sm:p-5 space-y-2.5 lg:overflow-y-auto custom-scrollbar">
+                                            <h4 className="text-[10px] font-black uppercase tracking-widest text-[#2C2C2C]/50 dark:text-[#F4EFEA]/50 px-1">
+                                                Productos ({cartFiltered.length})
+                                            </h4>
+                                            {cartFiltered.map(item => {
+                                                const pricing = getItemPricing(item);
+                                                const discountOpen = openItemDiscount === pricing.key;
+                                                const hasDiscount = pricing.disc.value > 0;
 
-                                        <div className="flex items-center gap-2">
-                                            <input
-                                                type="number"
-                                                min="0"
-                                                max={globalDiscountType === "percent" ? "100" : undefined}
-                                                value={globalDiscountValue || ""}
-                                                onChange={e => {
-                                                    const val = parseFloat(e.target.value) || 0;
-                                                    setGlobalDiscountValue(val);
-                                                    handleApplyGlobalDiscount(globalDiscountType, val);
-                                                }}
-                                                placeholder={globalDiscountType === "percent" ? "Ej: 10 (aplica 10% a cada producto)" : "Ej: 2000 (descuento $ a cada producto)"}
-                                                className="w-full px-4 py-2.5 rounded-xl bg-white dark:bg-[#242723] border border-[#E6DFD5] dark:border-[#353B33] text-xs font-bold text-[#2C2C2C] dark:text-[#F4EFEA] focus:outline-none focus:border-[#7D9878]"
-                                            />
-                                        </div>
+                                                return (
+                                                    <div
+                                                        key={item.producto.id}
+                                                        className="rounded-2xl bg-white dark:bg-[#242723] border border-[#E6DFD5] dark:border-[#353B33] p-3.5"
+                                                    >
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="min-w-0 flex-1">
+                                                                {item.producto.category && (
+                                                                    <span className="text-[9px] font-black text-[#7D9878] dark:text-[#A3B69B] uppercase tracking-widest block">
+                                                                        {item.producto.category}
+                                                                    </span>
+                                                                )}
+                                                                <h5 className="text-sm font-bold text-[#2C2C2C] dark:text-[#F4EFEA] leading-snug line-clamp-2">
+                                                                    {item.producto.name}
+                                                                </h5>
+                                                                <p className="text-xs font-semibold text-[#2C2C2C]/60 dark:text-[#F4EFEA]/60 mt-0.5">
+                                                                    {hasDiscount ? (
+                                                                        <>
+                                                                            <span className="line-through mr-1.5">${fmt(pricing.baseUnitPrice)}</span>
+                                                                            <span className="text-[#2C2C2C] dark:text-[#F4EFEA]">${fmt(pricing.effectiveUnitPrice)} c/u</span>
+                                                                        </>
+                                                                    ) : (
+                                                                        <>${fmt(pricing.baseUnitPrice)} c/u</>
+                                                                    )}
+                                                                </p>
+                                                            </div>
 
-                                        {/* Presets to apply to all items */}
-                                        <div className="flex flex-wrap gap-1.5 pt-1">
-                                            {[
-                                                { label: "Sin Descuento", val: 0 },
-                                                { label: "-5%", val: 5 },
-                                                { label: "-10%", val: 10 },
-                                                { label: "-15%", val: 15 },
-                                                { label: "-20%", val: 20 },
-                                                { label: "2do 50% Off (-25%)", val: 25 },
-                                            ].map(preset => (
-                                                <button
-                                                    key={preset.label}
-                                                    type="button"
-                                                    onClick={() => {
-                                                        setGlobalDiscountType("percent");
-                                                        setGlobalDiscountValue(preset.val);
-                                                        handleApplyGlobalDiscount("percent", preset.val);
-                                                    }}
-                                                    className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border transition-all ${globalDiscountType === "percent" && globalDiscountValue === preset.val ? "bg-[#7D9878] text-white border-[#7D9878]" : "bg-white dark:bg-[#242723] text-[#2C2C2C]/70 dark:text-[#F4EFEA]/70 border-[#E6DFD5] dark:border-[#353B33] hover:border-[#7D9878]"}`}
-                                                >
-                                                    {preset.label}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    </div>
+                                                            {/* Cantidad */}
+                                                            <div className="flex items-center bg-[#F9F6F0] dark:bg-[#1B1D1A] border border-[#E6DFD5] dark:border-[#353B33] rounded-xl shrink-0">
+                                                                <button
+                                                                    onClick={() => updateCartQuantity(item.producto.id, item.priceType, item.quantity - 1)}
+                                                                    className="w-8 h-8 flex items-center justify-center text-sm font-black rounded-lg hover:bg-[#7D9878]/10 text-[#2C2C2C] dark:text-[#F4EFEA]"
+                                                                    aria-label="Quitar uno"
+                                                                >
+                                                                    −
+                                                                </button>
+                                                                <span className="w-7 text-center text-sm font-extrabold text-[#2C2C2C] dark:text-[#F4EFEA]">
+                                                                    {item.quantity}
+                                                                </span>
+                                                                <button
+                                                                    onClick={() => updateCartQuantity(item.producto.id, item.priceType, item.quantity + 1)}
+                                                                    className="w-8 h-8 flex items-center justify-center text-sm font-black rounded-lg hover:bg-[#7D9878]/10 text-[#2C2C2C] dark:text-[#F4EFEA]"
+                                                                    aria-label="Agregar uno"
+                                                                >
+                                                                    +
+                                                                </button>
+                                                            </div>
 
-                                    {/* Per-Item Cards */}
-                                    <div className="space-y-3">
-                                        {cartFiltered.map(item => {
-                                            const pricing = getItemPricing(item);
-
-                                            return (
-                                                <div
-                                                    key={item.producto.id}
-                                                    className="p-4 rounded-2xl bg-[#F9F6F0] dark:bg-[#1B1D1A] border border-[#E6DFD5] dark:border-[#353B33] space-y-3"
-                                                >
-                                                    {/* Product Header & Quantity */}
-                                                    <div className="flex items-center justify-between gap-3">
-                                                        <div className="min-w-0 flex-1">
-                                                            <span className="text-[9px] font-black text-[#7D9878] dark:text-[#A3B69B] uppercase tracking-widest block">
-                                                                {item.producto.category}
+                                                            <span className="hidden sm:block w-24 text-right text-sm font-black text-[#2C2C2C] dark:text-[#F4EFEA] shrink-0">
+                                                                ${fmt(pricing.itemFinalTotal)}
                                                             </span>
-                                                            <h5 className="text-sm font-bold text-[#2C2C2C] dark:text-[#F4EFEA] truncate">
-                                                                {item.producto.name}
-                                                            </h5>
-                                                            <p className="text-xs font-bold text-[#2C2C2C]/60 dark:text-[#F4EFEA]/60 mt-0.5">
-                                                                Precio Lista: ${Intl.NumberFormat("es-AR").format(pricing.baseUnitPrice)} c/u
-                                                            </p>
-                                                        </div>
 
-                                                        {/* Quantity Controls */}
-                                                        <div className="flex items-center gap-2 bg-white dark:bg-[#242723] border border-[#E6DFD5] dark:border-[#353B33] rounded-xl p-1">
                                                             <button
-                                                                onClick={() => updateCartQuantity(item.producto.id, item.priceType, item.quantity - 1)}
-                                                                className="w-7 h-7 flex items-center justify-center text-xs font-black rounded-lg hover:bg-[#7D9878]/10 text-[#2C2C2C] dark:text-[#F4EFEA]"
+                                                                onClick={() => updateCartQuantity(item.producto.id, item.priceType, 0)}
+                                                                className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-500/10 transition-colors shrink-0"
+                                                                title="Eliminar producto"
                                                             >
-                                                                -
-                                                            </button>
-                                                            <span className="w-6 text-center text-xs font-extrabold text-[#2C2C2C] dark:text-[#F4EFEA]">
-                                                                {item.quantity}
-                                                            </span>
-                                                            <button
-                                                                onClick={() => updateCartQuantity(item.producto.id, item.priceType, item.quantity + 1)}
-                                                                className="w-7 h-7 flex items-center justify-center text-xs font-black rounded-lg hover:bg-[#7D9878]/10 text-[#2C2C2C] dark:text-[#F4EFEA]"
-                                                            >
-                                                                +
+                                                                <Trash2 className="w-4 h-4" />
                                                             </button>
                                                         </div>
 
-                                                        <button
-                                                            onClick={() => updateCartQuantity(item.producto.id, item.priceType, 0)}
-                                                            className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-500/10 transition-colors"
-                                                            title="Eliminar producto"
-                                                        >
-                                                            <Trash2 className="w-4 h-4" />
-                                                        </button>
-                                                    </div>
-
-                                                    {/* Per-Product Discount Input */}
-                                                    <div className="p-3 rounded-xl bg-white dark:bg-[#242723] border border-[#E6DFD5] dark:border-[#353B33] space-y-2">
-                                                        <div className="flex items-center justify-between gap-2">
-                                                            <span className="text-[10px] font-black uppercase tracking-wider text-[#2C2C2C]/70 dark:text-[#F4EFEA]/70 flex items-center gap-1">
-                                                                <Percent className="w-3 h-3 text-[#7D9878]" /> Descuento este producto:
+                                                        {/* Línea secundaria: ganancia, descuento y subtotal (móvil) */}
+                                                        <div className="flex items-center justify-between gap-2 mt-2.5 pt-2.5 border-t border-[#E6DFD5]/70 dark:border-[#353B33]/70 text-[11px]">
+                                                            <span className="font-bold text-[#2C2C2C]/50 dark:text-[#F4EFEA]/50">
+                                                                Ganancia:{" "}
+                                                                <span className={pricing.itemNetProfit !== null && pricing.itemNetProfit > 0 ? "font-black text-[#7D9878] dark:text-[#A3B69B]" : "font-bold text-[#DAC4AA]"}>
+                                                                    {pricing.itemNetProfit !== null
+                                                                        ? `+$${fmt(pricing.itemNetProfit)}${pricing.itemMarginPercent !== null ? ` (+${Math.round(pricing.itemMarginPercent)}%)` : ""}`
+                                                                        : "Consultar"}
+                                                                </span>
                                                             </span>
-                                                            <div className="flex items-center gap-1.5">
-                                                                <input
-                                                                    type="number"
-                                                                    min="0"
-                                                                    max={pricing.disc.type === "percent" ? "100" : undefined}
-                                                                    value={pricing.disc.value || ""}
-                                                                    onChange={e => {
-                                                                        const val = parseFloat(e.target.value) || 0;
-                                                                        setItemDiscounts(prev => ({
-                                                                            ...prev,
-                                                                            [pricing.key]: { type: pricing.disc.type, value: val }
-                                                                        }));
-                                                                    }}
-                                                                    placeholder={pricing.disc.type === "percent" ? "% Dto" : "$ Dto"}
-                                                                    className="w-20 px-2.5 py-1 rounded-lg bg-[#F9F6F0] dark:bg-[#1B1D1A] border border-[#E6DFD5] dark:border-[#353B33] text-xs font-bold text-center text-[#2C2C2C] dark:text-[#F4EFEA] focus:outline-none focus:border-[#7D9878]"
-                                                                />
+                                                            <div className="flex items-center gap-2">
                                                                 <button
                                                                     type="button"
-                                                                    onClick={() => {
-                                                                        const nextType = pricing.disc.type === "percent" ? "fixed" : "percent";
-                                                                        setItemDiscounts(prev => ({
-                                                                            ...prev,
-                                                                            [pricing.key]: { type: nextType, value: pricing.disc.value }
-                                                                        }));
-                                                                    }}
-                                                                    className="px-2 py-1 text-[10px] font-black rounded-lg bg-[#7D9878]/10 text-[#7D9878] dark:text-[#A3B69B] border border-[#7D9878]/20"
+                                                                    onClick={() => setOpenItemDiscount(discountOpen ? null : pricing.key)}
+                                                                    className={`flex items-center gap-1 px-2 py-1 rounded-lg font-bold border transition-all ${hasDiscount
+                                                                        ? "bg-[#C9866F]/10 text-[#B5735C] dark:text-[#D29680] border-[#C9866F]/30"
+                                                                        : "text-[#2C2C2C]/60 dark:text-[#F4EFEA]/60 border-[#E6DFD5] dark:border-[#353B33] hover:border-[#7D9878]"}`}
                                                                 >
-                                                                    {pricing.disc.type === "percent" ? "%" : "$"}
+                                                                    <Percent className="w-3 h-3" />
+                                                                    {hasDiscount
+                                                                        ? (pricing.disc.type === "percent" ? `-${pricing.disc.value}%` : `-$${fmt(pricing.disc.value)}`)
+                                                                        : "Descuento"}
+                                                                    <ChevronDown className={`w-3 h-3 transition-transform ${discountOpen ? "rotate-180" : ""}`} />
                                                                 </button>
+                                                                <span className="sm:hidden font-black text-sm text-[#2C2C2C] dark:text-[#F4EFEA]">
+                                                                    ${fmt(pricing.itemFinalTotal)}
+                                                                </span>
                                                             </div>
                                                         </div>
 
-                                                        {/* Individual Item Presets */}
-                                                        <div className="flex flex-wrap items-center gap-1 pt-0.5">
-                                                            {[
-                                                                { label: "Sin dto", val: 0 },
-                                                                { label: "-10%", val: 10 },
-                                                                { label: "-20%", val: 20 },
-                                                                { label: "2do 50% Off (-25%)", val: 25 },
-                                                                { label: "-50%", val: 50 },
-                                                            ].map(preset => (
-                                                                <button
-                                                                    key={preset.label}
-                                                                    type="button"
-                                                                    onClick={() => {
-                                                                        setItemDiscounts(prev => ({
-                                                                            ...prev,
-                                                                            [pricing.key]: { type: "percent", value: preset.val }
-                                                                        }));
-                                                                    }}
-                                                                    className={`px-2 py-0.5 rounded-md text-[9px] font-bold border transition-all ${pricing.disc.type === "percent" && pricing.disc.value === preset.val ? "bg-[#7D9878] text-white border-[#7D9878]" : "bg-[#F9F6F0] dark:bg-[#1B1D1A] text-[#2C2C2C]/70 dark:text-[#F4EFEA]/70 border-[#E6DFD5] dark:border-[#353B33] hover:border-[#7D9878]"}`}
-                                                                >
-                                                                    {preset.label}
-                                                                </button>
-                                                            ))}
-                                                        </div>
+                                                        {/* Editor de descuento del producto (se abre a pedido) */}
+                                                        {discountOpen && (
+                                                            <div className="mt-2.5 p-3 rounded-xl bg-[#F9F6F0] dark:bg-[#1B1D1A] border border-[#E6DFD5] dark:border-[#353B33] space-y-2.5">
+                                                                <div className="flex items-center gap-2">
+                                                                    <input
+                                                                        type="number"
+                                                                        min="0"
+                                                                        max={pricing.disc.type === "percent" ? "100" : undefined}
+                                                                        value={pricing.disc.value || ""}
+                                                                        onChange={e => {
+                                                                            const val = parseFloat(e.target.value) || 0;
+                                                                            setItemDiscounts(prev => ({
+                                                                                ...prev,
+                                                                                [pricing.key]: { type: pricing.disc.type, value: val }
+                                                                            }));
+                                                                        }}
+                                                                        placeholder={pricing.disc.type === "percent" ? "Descuento en %" : "Descuento en $ por unidad"}
+                                                                        className="flex-1 min-w-0 px-3 py-2 rounded-lg bg-white dark:bg-[#242723] border border-[#E6DFD5] dark:border-[#353B33] text-xs font-bold text-[#2C2C2C] dark:text-[#F4EFEA] focus:outline-none focus:border-[#7D9878]"
+                                                                    />
+                                                                    <div className="flex bg-white dark:bg-[#242723] p-0.5 rounded-lg border border-[#E6DFD5] dark:border-[#353B33] shrink-0">
+                                                                        {(["percent", "fixed"] as const).map(t => (
+                                                                            <button
+                                                                                key={t}
+                                                                                type="button"
+                                                                                onClick={() => setItemDiscounts(prev => ({
+                                                                                    ...prev,
+                                                                                    [pricing.key]: { type: t, value: pricing.disc.value }
+                                                                                }))}
+                                                                                className={`px-2.5 py-1 text-[11px] font-black rounded-md ${pricing.disc.type === t ? "bg-[#7D9878] text-white" : "text-[#2C2C2C]/60 dark:text-[#F4EFEA]/60"}`}
+                                                                            >
+                                                                                {t === "percent" ? "%" : "$"}
+                                                                            </button>
+                                                                        ))}
+                                                                    </div>
+                                                                </div>
+                                                                <div className="flex flex-wrap gap-1.5">
+                                                                    {[
+                                                                        { label: "Sin dto", val: 0 },
+                                                                        { label: "-10%", val: 10 },
+                                                                        { label: "-20%", val: 20 },
+                                                                        { label: "2do al 50% (-25%)", val: 25 },
+                                                                        { label: "-50%", val: 50 },
+                                                                    ].map(preset => (
+                                                                        <button
+                                                                            key={preset.label}
+                                                                            type="button"
+                                                                            onClick={() => setItemDiscounts(prev => ({
+                                                                                ...prev,
+                                                                                [pricing.key]: { type: "percent", value: preset.val }
+                                                                            }))}
+                                                                            className={chip(pricing.disc.type === "percent" && pricing.disc.value === preset.val)}
+                                                                        >
+                                                                            {preset.label}
+                                                                        </button>
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+                                                        )}
                                                     </div>
+                                                );
+                                            })}
+                                        </section>
 
-                                                    {/* Item Price & Profit Margin Breakdown */}
-                                                    <div className="flex items-center justify-between text-xs pt-1 border-t border-[#E6DFD5]/60 dark:border-[#353B33]/60">
-                                                        <div>
-                                                            <span className="text-[10px] font-bold text-[#2C2C2C]/50 dark:text-[#F4EFEA]/50 block">Ganancia en pesos:</span>
-                                                            <span className={pricing.itemNetProfit !== null && pricing.itemNetProfit > 0 ? "font-black text-[#7D9878] dark:text-[#A3B69B]" : "font-bold text-[#DAC4AA]"}>
-                                                                {pricing.itemNetProfit !== null
-                                                                    ? `+$${Intl.NumberFormat("es-AR").format(Math.round(pricing.itemNetProfit))} ${pricing.itemMarginPercent !== null ? `(+${Math.round(pricing.itemMarginPercent)}%)` : ""}`
-                                                                    : "Consultar"}
-                                                            </span>
-                                                        </div>
-                                                        <div className="text-right">
-                                                            <span className="text-[10px] font-bold text-[#2C2C2C]/50 dark:text-[#F4EFEA]/50 block">Subtotal Item:</span>
-                                                            <span className="font-black text-[#2C2C2C] dark:text-[#F4EFEA] text-sm">
-                                                                ${Intl.NumberFormat("es-AR").format(pricing.itemFinalTotal)}
-                                                            </span>
-                                                        </div>
+                                        {/* Resumen y datos de la venta */}
+                                        <aside className="p-4 sm:p-5 space-y-4 border-t lg:border-t-0 lg:border-l border-[#E6DFD5] dark:border-[#353B33] lg:overflow-y-auto custom-scrollbar lg:bg-white/50 lg:dark:bg-[#242723]/40">
+                                            {isAdmin && (
+                                                <div className="space-y-1.5">
+                                                    <label className="text-[10px] font-black uppercase tracking-widest text-[#2C2C2C]/50 dark:text-[#F4EFEA]/50 block px-1">
+                                                        Cliente / Destinatario
+                                                    </label>
+                                                    <input
+                                                        type="text"
+                                                        value={customerName}
+                                                        onChange={e => setCustomerName(e.target.value)}
+                                                        placeholder="Nombre del cliente"
+                                                        className="w-full px-4 py-2.5 rounded-xl bg-white dark:bg-[#242723] border border-[#E6DFD5] dark:border-[#353B33] text-sm font-bold text-[#2C2C2C] dark:text-[#F4EFEA] focus:outline-none focus:border-[#7D9878]"
+                                                    />
+                                                </div>
+                                            )}
+
+                                            {/* Descuento general */}
+                                            <div className="space-y-2">
+                                                <label className="text-[10px] font-black uppercase tracking-widest text-[#2C2C2C]/50 dark:text-[#F4EFEA]/50 flex items-center gap-1 px-1">
+                                                    <Percent className="w-3 h-3" /> Descuento a todo el pedido
+                                                </label>
+                                                <div className="flex items-center gap-2">
+                                                    <input
+                                                        type="number"
+                                                        min="0"
+                                                        max={globalDiscountType === "percent" ? "100" : undefined}
+                                                        value={globalDiscountValue || ""}
+                                                        onChange={e => {
+                                                            const val = parseFloat(e.target.value) || 0;
+                                                            setGlobalDiscountValue(val);
+                                                            handleApplyGlobalDiscount(globalDiscountType, val);
+                                                        }}
+                                                        placeholder={globalDiscountType === "percent" ? "Ej: 10" : "Ej: 2000 por producto"}
+                                                        className="flex-1 min-w-0 px-3 py-2.5 rounded-xl bg-white dark:bg-[#242723] border border-[#E6DFD5] dark:border-[#353B33] text-sm font-bold text-[#2C2C2C] dark:text-[#F4EFEA] focus:outline-none focus:border-[#7D9878]"
+                                                    />
+                                                    <div className="flex bg-white dark:bg-[#242723] p-0.5 rounded-xl border border-[#E6DFD5] dark:border-[#353B33] shrink-0">
+                                                        {(["percent", "fixed"] as const).map(t => (
+                                                            <button
+                                                                key={t}
+                                                                type="button"
+                                                                onClick={() => setGlobalDiscountType(t)}
+                                                                className={`px-3 py-1.5 text-xs font-black rounded-lg ${globalDiscountType === t ? "bg-[#7D9878] text-white" : "text-[#2C2C2C]/60 dark:text-[#F4EFEA]/60"}`}
+                                                            >
+                                                                {t === "percent" ? "%" : "$"}
+                                                            </button>
+                                                        ))}
                                                     </div>
                                                 </div>
-                                            );
-                                        })}
+                                                <div className="flex flex-wrap gap-1.5">
+                                                    {[
+                                                        { label: "Sin dto", val: 0 },
+                                                        { label: "-5%", val: 5 },
+                                                        { label: "-10%", val: 10 },
+                                                        { label: "-15%", val: 15 },
+                                                        { label: "-20%", val: 20 },
+                                                        { label: "2do al 50% (-25%)", val: 25 },
+                                                    ].map(preset => (
+                                                        <button
+                                                            key={preset.label}
+                                                            type="button"
+                                                            onClick={() => {
+                                                                setGlobalDiscountType("percent");
+                                                                setGlobalDiscountValue(preset.val);
+                                                                handleApplyGlobalDiscount("percent", preset.val);
+                                                            }}
+                                                            className={chip(globalDiscountType === "percent" && globalDiscountValue === preset.val)}
+                                                        >
+                                                            {preset.label}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
+
+                                            {/* Números del pedido */}
+                                            <div className="rounded-2xl bg-white dark:bg-[#242723] border border-[#E6DFD5] dark:border-[#353B33] p-4 space-y-2 text-xs font-bold">
+                                                <div className="flex justify-between text-[#2C2C2C]/70 dark:text-[#F4EFEA]/70">
+                                                    <span>Subtotal lista</span>
+                                                    <span>${fmt(cartSummary.baseSubtotal)}</span>
+                                                </div>
+                                                {cartSummary.totalDiscount > 0 && (
+                                                    <div className="flex justify-between text-[#B5735C] dark:text-[#D29680]">
+                                                        <span>Descuentos</span>
+                                                        <span>-${fmt(cartSummary.totalDiscount)}</span>
+                                                    </div>
+                                                )}
+                                                <div className="flex justify-between text-[#2C2C2C]/50 dark:text-[#F4EFEA]/50">
+                                                    <span>Costo de fabricación</span>
+                                                    <span>{!cartSummary.hasAnyInvalidCost ? `$${fmt(cartSummary.totalCost)}` : "Consultar"}</span>
+                                                </div>
+                                                <div className="flex justify-between items-center pt-2 border-t border-[#E6DFD5] dark:border-[#353B33]">
+                                                    <span className="flex items-center gap-1.5 text-[#2C2C2C] dark:text-[#F4EFEA]">
+                                                        <TrendingUp className="w-3.5 h-3.5 text-[#7D9878]" /> Ganancia
+                                                    </span>
+                                                    <span className={cartSummary.netProfit !== null && cartSummary.netProfit > 0 ? "font-black text-[#7D9878] dark:text-[#A3B69B] text-sm" : "text-[#DAC4AA]"}>
+                                                        {cartSummary.netProfit !== null
+                                                            ? `+$${fmt(cartSummary.netProfit)}${cartSummary.marginPercent !== null ? ` (+${Math.round(cartSummary.marginPercent)}%)` : ""}`
+                                                            : "Consultar"}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </aside>
                                     </div>
-                                </div>
+
+                                    {/* Barra fija: total y acciones */}
+                                    <div className="px-4 sm:px-5 py-3.5 border-t border-[#E6DFD5] dark:border-[#353B33] bg-white dark:bg-[#242723] flex items-center gap-3 shrink-0">
+                                        <div className="flex-1 min-w-0">
+                                            <span className="text-[10px] font-black uppercase tracking-widest text-[#2C2C2C]/50 dark:text-[#F4EFEA]/50 block">
+                                                Total a cobrar
+                                            </span>
+                                            <span className="text-2xl font-black text-[#7D9878] dark:text-[#A3B69B] font-brand leading-none">
+                                                ${fmt(cartSummary.totalFinal)}
+                                            </span>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={handleClearCart}
+                                            className="px-4 py-3 rounded-xl border border-[#E6DFD5] dark:border-[#353B33] text-rose-500 font-bold text-xs hover:bg-rose-500/10 transition-all"
+                                        >
+                                            Vaciar
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={handleVender}
+                                            className="px-6 py-3 rounded-xl bg-[#7D9878] hover:bg-[#6b8566] text-white font-black text-sm transition-all shadow-md active:scale-95 flex items-center gap-2"
+                                        >
+                                            <CheckCircle2 className="w-4 h-4" />
+                                            Vender
+                                        </button>
+                                    </div>
+                                </>
                             )}
                         </div>
-
-                        {/* Footer Checkout Form */}
-                        {cartFiltered.length > 0 && !orderSuccess && (
-                            <div className="p-6 border-t border-[#E6DFD5] dark:border-[#353B33] bg-[#F9F6F0] dark:bg-[#1B1D1A] space-y-4 shrink-0">
-                                {isAdmin && (
-                                    <div>
-                                        <label className="text-[10px] font-black uppercase tracking-widest text-[#2C2C2C]/60 dark:text-[#F4EFEA]/60 block mb-1">
-                                            Nombre del Cliente / Destinatario
-                                        </label>
-                                        <input
-                                            type="text"
-                                            value={customerName}
-                                            onChange={e => setCustomerName(e.target.value)}
-                                            placeholder="Ingresá el nombre del cliente..."
-                                            className="w-full px-4 py-2.5 rounded-xl bg-white dark:bg-[#242723] border border-[#E6DFD5] dark:border-[#353B33] text-xs font-bold text-[#2C2C2C] dark:text-[#F4EFEA] focus:outline-none focus:border-[#7D9878]"
-                                        />
-                                    </div>
-                                )}
-
-                                <div className="space-y-2 pt-1">
-                                    <div className="flex justify-between items-center text-xs font-bold text-[#2C2C2C]/70 dark:text-[#F4EFEA]/70">
-                                        <span>Subtotal Lista:</span>
-                                        <span>${Intl.NumberFormat("es-AR").format(cartSummary.baseSubtotal)}</span>
-                                    </div>
-                                    {cartSummary.totalDiscount > 0 && (
-                                        <div className="flex justify-between items-center text-xs font-bold text-rose-500">
-                                            <span>Descuentos aplicados:</span>
-                                            <span>-${Intl.NumberFormat("es-AR").format(cartSummary.totalDiscount)}</span>
-                                        </div>
-                                    )}
-
-                                    {/* Financial Breakdown (Cost & Net Profit in Pesos) */}
-                                    <div className="p-3 rounded-2xl bg-white dark:bg-[#242723] border border-[#E6DFD5] dark:border-[#353B33] space-y-1.5 my-2">
-                                        <div className="flex justify-between items-center text-xs font-bold text-[#2C2C2C]/60 dark:text-[#F4EFEA]/60">
-                                            <span>Costo Total Estimado de Fabricación:</span>
-                                            <span>
-                                                {!cartSummary.hasAnyInvalidCost
-                                                    ? `$${Intl.NumberFormat("es-AR").format(Math.round(cartSummary.totalCost))}`
-                                                    : "Consultar"}
-                                            </span>
-                                        </div>
-                                        <div className="flex justify-between items-center text-xs font-black pt-1.5 border-t border-[#E6DFD5]/60 dark:border-[#353B33]/60">
-                                            <span className="text-[#2C2C2C] dark:text-[#F4EFEA] flex items-center gap-1.5">
-                                                <TrendingUp className="w-3.5 h-3.5 text-[#7D9878]" /> Margen de Ganancia Real Total:
-                                            </span>
-                                            <span className={cartSummary.netProfit !== null && cartSummary.netProfit > 0 ? "text-[#7D9878] dark:text-[#A3B69B] text-sm" : "text-[#DAC4AA]"}>
-                                                {cartSummary.netProfit !== null
-                                                    ? `+$${Intl.NumberFormat("es-AR").format(Math.round(cartSummary.netProfit))} ${cartSummary.marginPercent !== null ? `(+${Math.round(cartSummary.marginPercent)}%)` : ""}`
-                                                    : "Consultar"}
-                                            </span>
-                                        </div>
-                                    </div>
-
-                                    <div className="flex justify-between items-center pt-1.5 border-t border-[#E6DFD5] dark:border-[#353B33]">
-                                        <span className="text-sm font-extrabold text-[#2C2C2C] dark:text-[#F4EFEA]">
-                                            Total a Cobrar:
-                                        </span>
-                                        <span className="text-2xl font-black text-[#7D9878] dark:text-[#A3B69B] font-brand">
-                                            ${Intl.NumberFormat("es-AR").format(cartSummary.totalFinal)}
-                                        </span>
-                                    </div>
-                                </div>
-
-                                <div className="flex gap-2">
-                                    <button
-                                        type="button"
-                                        onClick={handleClearCart}
-                                        className="px-4 py-3 rounded-xl bg-white dark:bg-[#242723] border border-[#E6DFD5] dark:border-[#353B33] text-rose-500 font-bold text-xs hover:bg-rose-500/10 transition-all"
-                                    >
-                                        Vaciar
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={handleVender}
-                                        className="flex-1 py-3.5 rounded-xl bg-[#7D9878] hover:bg-[#6b8566] text-white font-black text-xs transition-all shadow-md active:scale-95 text-center flex items-center justify-center gap-2"
-                                    >
-                                        <CheckCircle2 className="w-4 h-4" />
-                                        Vender (${Intl.NumberFormat("es-AR").format(cartSummary.totalFinal)})
-                                    </button>
-                                </div>
-                            </div>
-                        )}
                     </div>
-                </div>
-            )}
+                , document.body);
+            })()}
         </div>
     );
 }
