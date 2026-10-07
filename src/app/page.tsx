@@ -2,30 +2,23 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useAppContext } from "@/context/AppContext";
 import { Loader2 } from "lucide-react";
 
+// Puerta de entrada del sitio: quien tiene sesión iniciada va al sistema interno;
+// cualquier otra persona (un posible comprador) va al catálogo público.
+// No usa AppContext a propósito: así no espera a que cargue toda la base.
 export default function HomePage() {
-    const { currentUser, mounted } = useAppContext();
     const router = useRouter();
 
     useEffect(() => {
-        if (!mounted) return;
-        if (currentUser) {
-            router.replace("/lista-precios");
-        } else {
-            router.replace("/login");
-        }
-    }, [currentUser, mounted, router]);
+        let tieneSesion = false;
+        try { tieneSesion = !!localStorage.getItem("mockUser"); } catch { }
+        router.replace(tieneSesion ? "/lista-precios" : "/catalogo");
+    }, [router]);
 
     return (
         <div className="min-h-screen flex items-center justify-center bg-[#F9F6F0] dark:bg-[#1B1D1A]">
-            <div className="text-center space-y-4">
-                <Loader2 className="w-10 h-10 text-[#7D9878] animate-spin mx-auto" />
-                <p className="text-xs font-black text-[#7D9878] dark:text-[#A3B69B] uppercase tracking-widest animate-pulse font-brand">
-                    Accediendo a Scenta...
-                </p>
-            </div>
+            <Loader2 className="w-8 h-8 text-[#7D9878] animate-spin" />
         </div>
     );
 }

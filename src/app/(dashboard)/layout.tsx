@@ -1,19 +1,38 @@
 "use client";
 
-import { ReactNode, useEffect, useState } from "react";
+import { ReactNode, useEffect, useRef, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import TopNav from "@/components/TopNav";
 import { useAppContext } from "@/context/AppContext";
+import { puedeVer } from "@/lib/permisos";
 import { CheckCircle2, Loader2 } from "lucide-react";
 
 function DashboardContent({ children }: { children: ReactNode }) {
-    const { mounted } = useAppContext();
+    const { mounted, currentUser, logout } = useAppContext();
+    const pathname = usePathname() ?? "";
+    const router = useRouter();
     const [isAuthorized, setIsAuthorized] = useState(false);
 
+    // El sistema interno es solo para administradores. Sin sesión -> login; una sesión vieja
+    // de cliente (ya no existen cuentas de clientes) se cierra y va al catálogo.
+    // Ojo: esto protege las pantallas, no la base (las server actions siguen abiertas, ver pendientes de seguridad).
+    const expulsado = useRef(false);
     useEffect(() => {
-        if (mounted) {
+        // Al cerrar la sesión del cliente, currentUser pasa a null y este efecto vuelve a correr:
+        // sin esta marca lo mandaría al login en vez de al catálogo.
+        if (!mounted || expulsado.current) return;
+        if (!currentUser) {
+            setIsAuthorized(false);
+            router.replace("/login");
+        } else if (!puedeVer(currentUser.role, pathname)) {
+            setIsAuthorized(false);
+            expulsado.current = true;
+            logout();
+            router.replace("/catalogo");
+        } else {
             setIsAuthorized(true);
         }
-    }, [mounted]);
+    }, [mounted, currentUser, pathname, router]); // eslint-disable-line react-hooks/exhaustive-deps
 
     if (!mounted || !isAuthorized) {
         return (

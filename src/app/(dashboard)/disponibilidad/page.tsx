@@ -61,10 +61,10 @@ const ProductRow = memo(({ prod, isSelected, localChange, onSelect, onStatusChan
                 <div className="inline-flex items-center p-1 bg-[#F9F6F0] dark:bg-[#1B1D1A] rounded-xl border border-[#E6DFD5] dark:border-[#353B33] gap-1">
                     <button
                         onClick={() => onStatusChange(prod.id, "disponible")}
-                        className={`px-3 py-2 rounded-lg flex items-center gap-1.5 font-black text-[9px] uppercase tracking-widest transition-all ${
+                        className={`px-3 py-2 rounded-lg flex items-center gap-1.5 font-black text-[10px] uppercase tracking-widest transition-all ${
                             state.status === "disponible" 
                             ? "bg-[#7D9878] text-white shadow-md shadow-[#7D9878]/20" 
-                            : "text-[#2C2C2C]/40 hover:text-[#2C2C2C] dark:hover:text-[#F4EFEA]"
+                            : "text-[#2C2C2C]/50 dark:text-[#F4EFEA]/55 hover:text-[#2C2C2C] dark:hover:text-[#F4EFEA] hover:bg-[#E6DFD5]/60 dark:hover:bg-[#353B33]"
                         }`}
                     >
                         <CheckCircle2 className="w-3 h-3" />
@@ -72,10 +72,10 @@ const ProductRow = memo(({ prod, isSelected, localChange, onSelect, onStatusChan
                     </button>
                     <button
                         onClick={() => onStatusChange(prod.id, "demora")}
-                        className={`px-3 py-2 rounded-lg flex items-center gap-1.5 font-black text-[9px] uppercase tracking-widest transition-all ${
+                        className={`px-3 py-2 rounded-lg flex items-center gap-1.5 font-black text-[10px] uppercase tracking-widest transition-all ${
                             state.status === "demora" 
                             ? "bg-[#C9866F] text-white shadow-md shadow-[#C9866F]/20" 
-                            : "text-[#2C2C2C]/40 hover:text-[#2C2C2C] dark:hover:text-[#F4EFEA]"
+                            : "text-[#2C2C2C]/50 dark:text-[#F4EFEA]/55 hover:text-[#2C2C2C] dark:hover:text-[#F4EFEA] hover:bg-[#E6DFD5]/60 dark:hover:bg-[#353B33]"
                         }`}
                     >
                         <Clock className="w-3 h-3" />
@@ -83,10 +83,10 @@ const ProductRow = memo(({ prod, isSelected, localChange, onSelect, onStatusChan
                     </button>
                     <button
                         onClick={() => onStatusChange(prod.id, "no-disponible")}
-                        className={`px-3 py-2 rounded-lg flex items-center gap-1.5 font-black text-[9px] uppercase tracking-widest transition-all ${
+                        className={`px-3 py-2 rounded-lg flex items-center gap-1.5 font-black text-[10px] uppercase tracking-widest transition-all ${
                             state.status === "no-disponible" 
                             ? "bg-rose-500 text-white shadow-md shadow-rose-500/20" 
-                            : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                            : "text-[#2C2C2C]/50 dark:text-[#F4EFEA]/55 hover:text-[#2C2C2C] dark:hover:text-[#F4EFEA] hover:bg-[#E6DFD5]/60 dark:hover:bg-[#353B33]"
                         }`}
                     >
                         <XCircle className="w-3 h-3" />

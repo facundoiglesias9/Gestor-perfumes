@@ -14,6 +14,8 @@ const isLocal = /@(localhost|127\.0\.0\.1)(:|\/)/.test(connectionString);
 
 const sql = postgres(connectionString, {
   ssl: isLocal ? false : 'require',
+  // Solo para pruebas con una base local que acepta una conexión a la vez (DB_POOL_MAX=1).
+  ...(process.env.DB_POOL_MAX ? { max: Number(process.env.DB_POOL_MAX) } : {}),
   onnotice: () => {},
   transform: {
     undefined: null

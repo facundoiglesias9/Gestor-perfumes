@@ -257,6 +257,11 @@ interface AppContextProps {
     updateCartItemPrice: (productId: string, priceType: "mayorista" | "minorista", customPrice: number | undefined) => void;
     clearCart: () => void;
     createOrder: (customerName: string, paymentMethod?: "qr" | "transferencia" | "efectivo" | "otro", cartType?: "mayorista" | "minorista") => void;
+    registrarVenta: (venta: {
+        items: { producto: Producto; quantity: number; priceType: "mayorista" | "minorista"; unitPrice: number }[];
+        customerName: string;
+        paymentMethod?: Order["paymentMethod"];
+    }) => Promise<{ ok: boolean; orderId?: string; total?: number }>;
     updateOrderStatus: (orderId: string, status: OrderStatus) => Promise<void>;
     updateOrderPaymentStatus: (orderId: string, status: Order["paymentStatus"]) => Promise<void>;
     cancelOrder: (orderId: string, reason: string) => Promise<void>;
@@ -331,6 +336,17 @@ const initialGlobalPermissions: Record<UserRole, CategoryPermissions> = {
 // ─── Helper: generate a short unique ID ──────────────────────────
 function genId(prefix = "") {
     return prefix + Math.random().toString(36).substr(2, 9).toUpperCase();
+}
+
+// Mismo nombre ignorando mayúsculas y espacios de los bordes: "vainilla" = "Vainilla",
+// pero "Vainilla" ≠ "Vainilla y Chocolate".
+const mismoNombre = (a?: string, b?: string) =>
+    (a ?? "").trim().toLowerCase() === (b ?? "").trim().toLowerCase();
+
+// Ítem de stock (esencia o insumo) que usa un componente de receta: primero por código, si no por nombre exacto.
+function buscarIndiceStock<T extends { id: string; name: string }>(lista: T[], comp: { id: string; name: string }) {
+    const porId = lista.findIndex(x => x.id === comp.id);
+    return porId !== -1 ? porId : lista.findIndex(x => mismoNombre(x.name, comp.name));
 }
 
 function getNextSequenceId(items: any[], prefix: string) {
@@ -1531,6 +1547,116 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         }
     };
 
+    // Venta hecha por el admin: queda terminada en el momento (entregada y pagada),
+    // con el precio final de cada ítem (descuentos incluidos), descuento de stock e ingreso en Caja.
+    const registrarVenta: AppContextProps["registrarVenta"] = async ({ items, customerName, paymentMethod = "efectivo" }) => {
+        if (items.length === 0) return { ok: false };
+
+        // Total en pesos enteros; el QR de Mercado Pago suma 10% (igual que lo que muestra el panel del pedido).
+        const subtotal = Math.round(items.reduce((acc, i) => acc + i.unitPrice * i.quantity, 0));
+        const total = subtotal + (paymentMethod === "qr" ? Math.round(subtotal * 0.1) : 0);
+
+        const orderId = genId("ORD-");
+        const cliente = customerName.trim() || "Venta directa";
+        const order: Order = {
+            id: orderId,
+            items: items.map(i => ({ producto: i.producto, quantity: i.quantity, priceType: i.priceType, customPrice: i.unitPrice })),
+            total,
+            status: "entregado",
+            customerName: cliente,
+            date: new Date().toISOString(),
+            paymentMethod,
+            paymentStatus: "pagado",
+        };
+
+        // 1. Guardar la venta. Si falla, no se toca ni stock ni caja.
+        const { error } = await upsertRecord("orders", {
+            id: order.id,
+            items: order.items,
+            total: order.total,
+            customer_name: cliente,
+            status: order.status,
+            date: order.date,
+            payment_method: order.paymentMethod,
+            payment_status: order.paymentStatus,
+        });
+        if (error) {
+            toast.error("No se pudo registrar la venta", { description: "No se descontó stock ni se anotó en Caja. Probá de nuevo." });
+            addSystemLog("error", "Error al registrar venta", { orderId, error });
+            return { ok: false };
+        }
+        setOrders(prev => [order, ...prev]);
+
+        // 2. Descontar stock: se junta lo que usa cada receta y se resta una sola vez por ítem.
+        const usoEsencias = new Map<string, number>();
+        const usoInsumos = new Map<string, number>();
+        const noEncontrados = new Set<string>();
+        for (const item of items) {
+            for (const comp of item.producto.components || []) {
+                const esEsencia = comp.type === "Esencia";
+                const lista: { id: string; name: string }[] = esEsencia ? esencias : insumos;
+                const idx = buscarIndiceStock(lista, comp);
+                if (idx === -1) { noEncontrados.add(comp.name); continue; }
+                const uso = esEsencia ? usoEsencias : usoInsumos;
+                const idStock = lista[idx].id;
+                uso.set(idStock, (uso.get(idStock) || 0) + comp.qty * item.quantity);
+            }
+        }
+        const sinStock: string[] = [];
+        usoEsencias.forEach((cant, id) => { const e = esencias.find(x => x.id === id); if (e && Number(e.qty || 0) < cant) sinStock.push(e.name); });
+        usoInsumos.forEach((cant, id) => { const i = insumos.find(x => x.id === id); if (i && Number(i.stock || 0) < cant) sinStock.push(i.name); });
+
+        if (usoEsencias.size > 0) {
+            _setEsencias(prev => prev.map(e => usoEsencias.has(e.id)
+                ? { ...e, qty: Math.max(0, Number(e.qty || 0) - usoEsencias.get(e.id)!) }
+                : e));
+        }
+        if (usoInsumos.size > 0) {
+            _setInsumos(prev => prev.map(i => usoInsumos.has(i.id)
+                ? { ...i, stock: Math.max(0, Number(i.stock || 0) - usoInsumos.get(i.id)!) }
+                : i));
+        }
+
+        // 3. Ingreso en Caja.
+        const transaccion: Transaccion = {
+            id: getNextSequenceId(transacciones, "T-SALE-"),
+            type: "Ingreso",
+            amount: total,
+            description: `Venta: ${items.map(i => `${i.quantity}x ${i.producto.name}`).join(", ")} - Cliente: ${cliente}`,
+            date: new Date().toLocaleDateString("es-AR"),
+        };
+        setTransacciones(prev => [transaccion, ...prev]);
+        const { error: cajaError } = await upsertRecord("transacciones", {
+            id: transaccion.id,
+            type: transaccion.type,
+            amount: transaccion.amount,
+            description: transaccion.description,
+            date: transaccion.date,
+        });
+        if (cajaError) {
+            toast.error("La venta se guardó, pero no se pudo anotar en Caja", { description: `Cargá el ingreso a mano: $${Math.round(total).toLocaleString("es-AR")}` });
+            addSystemLog("error", "Error al anotar venta en Caja", { orderId, error: cajaError });
+        }
+
+        // 4. Sacar del carrito lo que se vendió.
+        setCart(prev => prev.filter(c => !items.some(i => i.producto.id === c.producto.id && i.priceType === c.priceType)));
+
+        addSystemLog("info", `Venta ${orderId} registrada`, { total, items: items.length, cliente });
+        if (noEncontrados.size > 0) {
+            toast.warning("No se descontó stock de algunos componentes", {
+                description: `No existen como esencia o insumo con ese nombre: ${[...noEncontrados].join(", ")}`,
+                duration: 12000,
+            });
+        }
+        if (sinStock.length > 0) {
+            toast.warning("Stock insuficiente", {
+                description: `Quedaron en 0: ${sinStock.join(", ")}`,
+                duration: 12000,
+            });
+        }
+        return { ok: true, orderId, total };
+    };
+
     const updateOrderStatus = async (orderId: string, status: OrderStatus) => {
         const order = orders.find(o => o.id === orderId);
         if (!order) return;
@@ -1574,7 +1700,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                     cartItem.producto.components.forEach(comp => {
                         if (comp.type === "Esencia") {
                             const totalToDeduct = comp.qty * cartItem.quantity;
-                            const idx = updated.findIndex(e => e.id === comp.id || e.name.toLowerCase().includes(comp.name.toLowerCase()) || comp.name.toLowerCase().includes(e.name.toLowerCase()));
+                            const idx = buscarIndiceStock(updated, comp);
                             if (idx !== -1) {
                                 updated[idx] = {
                                     ...updated[idx],
@@ -1594,7 +1720,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                     cartItem.producto.components.forEach(comp => {
                         if (comp.type === "Insumo") {
                             const totalToDeduct = comp.qty * cartItem.quantity;
-                            const idx = updated.findIndex(i => i.id === comp.id || i.name.toLowerCase().includes(comp.name.toLowerCase()) || comp.name.toLowerCase().includes(i.name.toLowerCase()));
+                            const idx = buscarIndiceStock(updated, comp);
                             if (idx !== -1) {
                                 updated[idx] = {
                                     ...updated[idx],
@@ -2071,7 +2197,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                 _setInventario(invPrev => {
                     let changed = false;
                     const nextInv = invPrev.map(invItem => {
-                        const matchingNext = (next as Esencia[]).find(e => e.id === invItem.id || (invItem.type === "Esencia" && (e.name.toLowerCase().includes(invItem.name.toLowerCase()) || invItem.name.toLowerCase().includes(e.name.toLowerCase()))));
+                        const matchingNext = (next as Esencia[]).find(e => e.id === invItem.id || (invItem.type === "Esencia" && mismoNombre(e.name, invItem.name)));
                         if (matchingNext) {
                           if (invItem.qty !== matchingNext.qty || invItem.name !== matchingNext.name) {
                             changed = true;
@@ -2106,7 +2232,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                 _setInventario(invPrev => {
                     let changed = false;
                     const nextInv = invPrev.map(invItem => {
-                        const matchingNext = (next as Insumo[]).find(i => i.id === invItem.id || (invItem.type === "Insumo" && (i.name.toLowerCase().includes(invItem.name.toLowerCase()) || invItem.name.toLowerCase().includes(i.name.toLowerCase()))));
+                        const matchingNext = (next as Insumo[]).find(i => i.id === invItem.id || (invItem.type === "Insumo" && mismoNombre(i.name, invItem.name)));
                         if (matchingNext) {
                             if (invItem.qty !== matchingNext.stock || invItem.name !== matchingNext.name) {
                                 changed = true;
@@ -2308,6 +2434,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         updateCartItemPrice,
         clearCart,
         createOrder,
+        registrarVenta,
         updateOrderStatus,
         updateOrderPaymentStatus,
         cancelOrder,

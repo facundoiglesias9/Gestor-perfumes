@@ -7,6 +7,9 @@ import { fetchTable } from "@/lib/db-actions";
 import { useAppContext } from "@/context/AppContext";
 import ThemeToggle from "@/components/ThemeToggle";
 
+// Ya no hay cuentas de clientes: el sistema interno es solo para administradores.
+const SOLO_EQUIPO = "Este acceso es solo para el equipo de Scenta. Para comprar, mirá nuestro catálogo.";
+
 export default function LoginPage() {
     const { login, usuarios, addSystemLog, updateUsuario, currentUser, mounted } = useAppContext();
     const [email, setEmail] = useState("");
@@ -37,6 +40,11 @@ export default function LoginPage() {
             if (foundUser) {
                 if (foundUser.status === "Inactivo") {
                     setError("Tu cuenta está inactiva. Contactá al administrador.");
+                    setLoading(false);
+                    return;
+                }
+                if (foundUser.role !== "admin") {
+                    setError(SOLO_EQUIPO);
                     setLoading(false);
                     return;
                 }
@@ -84,6 +92,11 @@ export default function LoginPage() {
             if (!dbError && dbUser) {
                 if (dbUser.status === "Inactivo") {
                     setError("Tu cuenta está inactiva. Contactá al administrador.");
+                    setLoading(false);
+                    return;
+                }
+                if (dbUser.role !== "admin") {
+                    setError(SOLO_EQUIPO);
                     setLoading(false);
                     return;
                 }
@@ -201,7 +214,13 @@ export default function LoginPage() {
                     </button>
                 </form>
 
-                <div className="pt-2 text-center">
+                <div className="pt-2 text-center space-y-3">
+                    <a
+                        href="/catalogo"
+                        className="inline-block text-xs font-bold text-[#7D9878] dark:text-[#A3B69B] hover:underline"
+                    >
+                        ¿Querés comprar? Mirá nuestro catálogo →
+                    </a>
                     <p className="text-[#2C2C2C]/40 dark:text-[#F4EFEA]/40 text-[10px] font-black uppercase tracking-widest">
                         Acceso Exclusivo • Scenta System v1.0
                     </p>

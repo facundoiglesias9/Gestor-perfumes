@@ -348,10 +348,8 @@ export default function ListaPreciosPage() {
         deleteProducto,
         addToCart,
         cart,
-        createOrder,
-        updateOrderPaymentStatus,
+        registrarVenta,
         updateCartQuantity,
-        updateCartItemPrice,
         currentUser,
         generos,
         promotions,
@@ -364,6 +362,7 @@ export default function ListaPreciosPage() {
     const [itemDiscounts, setItemDiscounts] = useState<Record<string, { type: "percent" | "fixed"; value: number }>>({});
     const [globalDiscountType, setGlobalDiscountType] = useState<"percent" | "fixed">("percent");
     const [globalDiscountValue, setGlobalDiscountValue] = useState<number>(0);
+    const [isSelling, setIsSelling] = useState(false);
 
     const isAdmin = currentUser?.role === "admin";
 
@@ -391,7 +390,7 @@ export default function ListaPreciosPage() {
     const [currentPage, setCurrentPage] = useState(1);
     const [showConsult, setShowConsult] = useState(false);
     const [isRestored, setIsRestored] = useState(false);
-    const [paymentMethod, setPaymentMethod] = useState<'qr' | 'transferencia' | 'efectivo'>('qr');
+    const [paymentMethod, setPaymentMethod] = useState<'qr' | 'transferencia' | 'efectivo'>('efectivo');
     const [paymentLink, setPaymentLink] = useState<string>("");
     const [isGeneratingQR, setIsGeneratingQR] = useState(false);
     const [copiedField, setCopiedField] = useState<string | null>(null);
@@ -558,26 +557,30 @@ export default function ListaPreciosPage() {
 
     const handleVender = async (e: React.FormEvent) => {
         e.preventDefault();
-        const finalName = (!isAdmin && currentUser) ? currentUser.username : customerName;
-        if (cartFiltered.length === 0) return;
+        if (cartFiltered.length === 0 || isSelling) return;
 
-        // Apply individual item discounted effective unit prices before creating order
-        cartFiltered.forEach(item => {
-            const pricing = getItemPricing(item);
-            updateCartItemPrice(item.producto.id, item.priceType, pricing.effectiveUnitPrice);
-        });
+        // El precio final de cada ítem (con su descuento) se calcula acá y se manda tal cual:
+        // antes se guardaba en el carrito y la venta se registraba con el precio de lista.
+        const items = cartFiltered.map(item => ({
+            producto: item.producto,
+            quantity: item.quantity,
+            priceType: item.priceType,
+            unitPrice: getItemPricing(item).effectiveUnitPrice,
+        }));
 
-        // 1. Create Order
-        await createOrder(finalName || "Venta Directa", paymentMethod, isMinorista ? "minorista" : "mayorista");
+        const enCero = items.filter(i => !(i.unitPrice > 0));
+        if (enCero.length > 0 && !window.confirm(
+            `Estos productos quedan en $0: ${enCero.map(i => i.producto.name).join(", ")}.\n\n¿Registrar la venta igual?`
+        )) return;
 
-        // 2. Automatically register in Caja as paid income (Ingreso)
-        const lastOrderId = localStorage.getItem("lastCreatedOrderId");
-        if (lastOrderId) {
-            await updateOrderPaymentStatus(lastOrderId, "pagado");
-        }
+        setIsSelling(true);
+        const resultado = await registrarVenta({ items, customerName, paymentMethod });
+        setIsSelling(false);
+        if (!resultado.ok) return;
 
-        if (isAdmin) setCustomerName("");
+        setCustomerName("");
         setItemDiscounts({});
+        setGlobalDiscountValue(0);
         setOrderSuccess(true);
         setTimeout(() => {
             setIsCartOpen(false);
@@ -1113,6 +1116,9 @@ export default function ListaPreciosPage() {
                     setOpenItemDiscount(null);
                 };
                 const fmt = (n: number) => Intl.NumberFormat("es-AR").format(Math.round(n));
+                // Misma cuenta que registrarVenta: lo que se ve acá es exactamente lo que se guarda.
+                const recargoQR = paymentMethod === "qr" ? Math.round(cartSummary.totalFinal * 0.1) : 0;
+                const totalACobrar = cartSummary.totalFinal + recargoQR;
                 const hasItems = cartFiltered.length > 0 && !orderSuccess;
                 const chip = (active: boolean) =>
                     `px-2.5 py-1 rounded-lg text-[11px] font-bold border transition-all ${active
@@ -1170,7 +1176,7 @@ export default function ListaPreciosPage() {
                                             ¡Venta Registrada con Éxito!
                                         </h4>
                                         <p className="text-xs font-bold text-[#2C2C2C]/70 dark:text-[#F4EFEA]/70">
-                                            La venta fue ingresada en el sistema y el cobro se registró automáticamente en <strong>Caja</strong>.
+                                            La venta quedó registrada como entregada y pagada, se descontó el stock de esencias e insumos y el cobro se anotó en <strong>Caja</strong>.
                                         </p>
                                     </div>
                                 </div>
@@ -1433,6 +1439,29 @@ export default function ListaPreciosPage() {
                                                 </div>
                                             </div>
 
+                                            {/* Forma de pago (QR de Mercado Pago lleva 10% de recargo) */}
+                                            <div className="space-y-2">
+                                                <label className="text-[10px] font-black uppercase tracking-widest text-[#2C2C2C]/50 dark:text-[#F4EFEA]/50 block px-1">
+                                                    Forma de pago
+                                                </label>
+                                                <div className="flex flex-wrap gap-1.5">
+                                                    {([
+                                                        { value: "efectivo", label: "Efectivo" },
+                                                        { value: "transferencia", label: "Transferencia" },
+                                                        { value: "qr", label: "QR (+10%)" },
+                                                    ] as const).map(op => (
+                                                        <button
+                                                            key={op.value}
+                                                            type="button"
+                                                            onClick={() => setPaymentMethod(op.value)}
+                                                            className={chip(paymentMethod === op.value)}
+                                                        >
+                                                            {op.label}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
+
                                             {/* Números del pedido */}
                                             <div className="rounded-2xl bg-white dark:bg-[#242723] border border-[#E6DFD5] dark:border-[#353B33] p-4 space-y-2 text-xs font-bold">
                                                 <div className="flex justify-between text-[#2C2C2C]/70 dark:text-[#F4EFEA]/70">
@@ -1443,6 +1472,12 @@ export default function ListaPreciosPage() {
                                                     <div className="flex justify-between text-[#B5735C] dark:text-[#D29680]">
                                                         <span>Descuentos</span>
                                                         <span>-${fmt(cartSummary.totalDiscount)}</span>
+                                                    </div>
+                                                )}
+                                                {recargoQR > 0 && (
+                                                    <div className="flex justify-between text-[#2C2C2C]/70 dark:text-[#F4EFEA]/70">
+                                                        <span>Recargo QR (10%)</span>
+                                                        <span>+${fmt(recargoQR)}</span>
                                                     </div>
                                                 )}
                                                 <div className="flex justify-between text-[#2C2C2C]/50 dark:text-[#F4EFEA]/50">
@@ -1470,7 +1505,7 @@ export default function ListaPreciosPage() {
                                                 Total a cobrar
                                             </span>
                                             <span className="text-2xl font-black text-[#7D9878] dark:text-[#A3B69B] font-brand leading-none">
-                                                ${fmt(cartSummary.totalFinal)}
+                                                ${fmt(totalACobrar)}
                                             </span>
                                         </div>
                                         <button
@@ -1483,10 +1518,11 @@ export default function ListaPreciosPage() {
                                         <button
                                             type="button"
                                             onClick={handleVender}
-                                            className="px-6 py-3 rounded-xl bg-[#7D9878] hover:bg-[#6b8566] text-white font-black text-sm transition-all shadow-md active:scale-95 flex items-center gap-2"
+                                            disabled={isSelling}
+                                            className="px-6 py-3 rounded-xl bg-[#7D9878] hover:bg-[#6b8566] text-white font-black text-sm transition-all shadow-md active:scale-95 flex items-center gap-2 disabled:opacity-60 disabled:cursor-wait"
                                         >
-                                            <CheckCircle2 className="w-4 h-4" />
-                                            Vender
+                                            {isSelling ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+                                            {isSelling ? "Registrando..." : "Vender"}
                                         </button>
                                     </div>
                                 </>

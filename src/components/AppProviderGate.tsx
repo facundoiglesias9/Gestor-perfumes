@@ -10,7 +10,8 @@ const PUBLIC_PREFIXES = ["/catalogo"];
 
 export default function AppProviderGate({ children }: { children: ReactNode }) {
     const pathname = usePathname() ?? "";
-    const isPublic = PUBLIC_PREFIXES.some(p => pathname === p || pathname.startsWith(`${p}/`));
+    // "/" solo redirige (al catálogo o al sistema), no necesita los datos.
+    const isPublic = pathname === "/" || PUBLIC_PREFIXES.some(p => pathname === p || pathname.startsWith(`${p}/`));
 
     if (isPublic) return <>{children}</>;
     return <AppProvider>{children}</AppProvider>;

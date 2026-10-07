@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import ThemeToggle from "@/components/ThemeToggle";
 import { useAppContext } from "@/context/AppContext";
+import { puedeVer } from "@/lib/permisos";
 
 export default function TopNav() {
     const pathname = usePathname();
@@ -36,14 +37,16 @@ export default function TopNav() {
         setIsMobileMenuOpen(false);
     }, [pathname]);
 
-    const directItems = [
+    const role = currentUser?.role;
+
+    const allDirectItems = [
         { href: "/lista-precios", label: "Precios", icon: Tags },
         { href: "/disponibilidad", label: "Disponibilidad", icon: Truck },
         { href: "/caja", label: "Caja", icon: Wallet },
         { href: "/notas", label: "Notas", icon: StickyNote },
     ];
 
-    const menuSections = [
+    const allMenuSections = [
         {
             title: "Comercial",
             key: "comercial",
@@ -71,6 +74,13 @@ export default function TopNav() {
             ]
         },
     ];
+
+    // Cada usuario ve solo lo que puede abrir (mismas reglas que el control de acceso del layout).
+    const directItems = allDirectItems.filter(i => puedeVer(role, i.href));
+    const menuSections = allMenuSections
+        .map(s => ({ ...s, items: s.items.filter(i => puedeVer(role, i.href)) }))
+        .filter(s => s.items.length > 0);
+    const showPedidos = puedeVer(role, "/pedidos");
 
     return (
         <header className="sticky top-0 z-50 bg-white/95 dark:bg-[#1B1D1A]/95 backdrop-blur-xl border-b border-[#E6DFD5] dark:border-[#353B33] transition-colors duration-300 print:hidden">
@@ -168,7 +178,7 @@ export default function TopNav() {
                     {/* RIGHT: Carrito Pedidos, Rate Badge, Theme */}
                     <div className="hidden xl:flex items-center justify-end gap-2 min-[1800px]:gap-3 shrink-0">
                         {/* Shopping Cart / Pedidos Mayoristas Button */}
-                        <Link
+                        {showPedidos && <Link
                             href="/pedidos"
                             className={`flex items-center gap-2.5 px-3 min-[1800px]:px-4 py-2 rounded-xl font-bold text-sm whitespace-nowrap transition-all relative ${
                                 pathname === "/pedidos"
@@ -186,7 +196,7 @@ export default function TopNav() {
                                 )}
                             </div>
                             <span className="hidden min-[1800px]:inline font-extrabold">Pedidos</span>
-                        </Link>
+                        </Link>}
 
                         {/* USD Blue Rate Indicator */}
                         <div
@@ -244,7 +254,7 @@ export default function TopNav() {
                 <div className="xl:hidden border-t border-[#E6DFD5] dark:border-[#353B33] bg-white dark:bg-[#242723] p-6 space-y-6 max-h-[calc(100vh-5rem)] overflow-y-auto">
                     {/* Accesos rápidos que en escritorio están a la derecha */}
                     <div className="flex flex-wrap items-center gap-2">
-                        <Link
+                        {showPedidos && <Link
                             href="/pedidos"
                             className="flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-sm bg-[#7D9878]/10 dark:bg-[#A3B69B]/15 text-[#7D9878] dark:text-[#A3B69B] border border-[#7D9878]/20 dark:border-[#A3B69B]/30"
                         >
@@ -255,7 +265,7 @@ export default function TopNav() {
                                     {pendingOrdersCount}
                                 </span>
                             )}
-                        </Link>
+                        </Link>}
                         <div className="flex items-center gap-2 bg-emerald-50 dark:bg-emerald-500/10 px-3.5 py-2.5 rounded-xl border border-emerald-200/50 dark:border-emerald-500/20 text-emerald-700 dark:text-emerald-400 text-sm font-bold">
                             <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
                             USD ${usdRate?.toLocaleString('es-AR') || "---"}

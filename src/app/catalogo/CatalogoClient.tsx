@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { Search, Plus, Minus, ShoppingBag, X, MessageCircle, Clock, Trash2 } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Search, Plus, Minus, ShoppingBag, X, MessageCircle, Clock, Trash2, Check, ChevronLeft, ChevronRight } from "lucide-react";
 import { formatNumber } from "@/lib/format-utils";
 import { extractBrand } from "@/lib/product-utils";
 
@@ -18,7 +18,20 @@ export type CatalogoProducto = {
 
 const WHATSAPP_NUMBER = "5491123529147";
 const STORAGE_KEY = "catalogo_consulta";
-const PAGE_SIZE = 48;
+const PAGE_SIZE = 10;
+
+// "Frascos de 50 ML" -> "50 ML", "Frascos Difusores" -> "Difusores": más corto para los botones de filtro.
+const etiquetaCategoria = (c: string) => c.replace(/^frascos\s+(de\s+)?/i, "");
+
+// Números de página a mostrar: siempre la primera y la última, y dos a cada lado de la actual.
+function paginasVisibles(actual: number, total: number): (number | "…")[] {
+    const out: (number | "…")[] = [];
+    for (let i = 1; i <= total; i++) {
+        if (i === 1 || i === total || Math.abs(i - actual) <= 1) out.push(i);
+        else if (out[out.length - 1] !== "…") out.push("…");
+    }
+    return out;
+}
 
 type Consulta = Record<string, number>; // id de producto -> cantidad
 
@@ -28,7 +41,8 @@ export default function CatalogoClient({ productos }: { productos: CatalogoProdu
     const [search, setSearch] = useState("");
     const [gender, setGender] = useState("Todos");
     const [category, setCategory] = useState("Todas");
-    const [visible, setVisible] = useState(PAGE_SIZE);
+    const [page, setPage] = useState(1);
+    const gridRef = useRef<HTMLDivElement>(null);
     const [consulta, setConsulta] = useState<Consulta>({});
     const [drawerOpen, setDrawerOpen] = useState(false);
 
@@ -61,19 +75,52 @@ export default function CatalogoClient({ productos }: { productos: CatalogoProdu
 
     const categories = useMemo(() => {
         const set = new Set(lista.map(p => p.category).filter(Boolean));
-        return ["Todas", ...Array.from(set).sort()];
+        // Ordenadas por la etiqueta que se ve: 30 ML, 50 ML, Auto, Difusores.
+        return ["Todas", ...Array.from(set).sort((a, b) =>
+            etiquetaCategoria(a).localeCompare(etiquetaCategoria(b), "es", { numeric: true }))];
     }, [lista]);
 
-    const filtered = useMemo(() => {
-        const q = search.trim().toLowerCase();
-        return lista.filter(p =>
-            (gender === "Todos" || p.gender === gender) &&
-            (category === "Todas" || p.category === category) &&
-            (!q || p.name.toLowerCase().includes(q) || p.description.toLowerCase().includes(q))
-        );
-    }, [lista, search, gender, category]);
+    const q = search.trim().toLowerCase();
+    const coincideBusqueda = (p: CatalogoProducto) =>
+        !q || p.name.toLowerCase().includes(q) || p.description.toLowerCase().includes(q);
 
-    useEffect(() => { setVisible(PAGE_SIZE); }, [search, gender, category]);
+    const filtered = useMemo(() => lista.filter(p =>
+        (gender === "Todos" || p.gender === gender) &&
+        (category === "Todas" || p.category === category) &&
+        coincideBusqueda(p)
+    ), [lista, q, gender, category]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    // Cantidad de productos que quedarían al tocar cada botón (respetando el otro filtro y la búsqueda).
+    const cuentaGenero = useMemo(() => {
+        const base = lista.filter(p => (category === "Todas" || p.category === category) && coincideBusqueda(p));
+        const c: Record<string, number> = { Todos: base.length };
+        for (const p of base) c[p.gender] = (c[p.gender] ?? 0) + 1;
+        return c;
+    }, [lista, q, category]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    const cuentaCategoria = useMemo(() => {
+        const base = lista.filter(p => (gender === "Todos" || p.gender === gender) && coincideBusqueda(p));
+        const c: Record<string, number> = { Todas: base.length };
+        for (const p of base) c[p.category] = (c[p.category] ?? 0) + 1;
+        return c;
+    }, [lista, q, gender]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+    const pageItems = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+    const hayFiltros = gender !== "Todos" || category !== "Todas" || q !== "";
+
+    useEffect(() => { setPage(1); }, [search, gender, category]);
+
+    const irAPagina = (n: number) => {
+        setPage(Math.min(Math.max(1, n), totalPages));
+        gridRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    };
+
+    const limpiarFiltros = () => {
+        setSearch("");
+        setGender("Todos");
+        setCategory("Todas");
+    };
 
     // Solo cuenta productos que siguen en el catálogo (por si alguno se dio de baja).
     const items = useMemo(
@@ -111,8 +158,10 @@ export default function CatalogoClient({ productos }: { productos: CatalogoProdu
         <div className="min-h-screen bg-[#F9F6F0] dark:bg-[#1B1D1A] text-[#2C2C2C] dark:text-[#F4EFEA] font-sans">
             {/* Encabezado */}
             <header className="border-b border-[#E6DFD5] dark:border-[#353B33] bg-white/70 dark:bg-[#242723]/70 backdrop-blur-md sticky top-0 z-30">
-                <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between gap-4">
-                    <div>
+                {/* Tres columnas: la del medio centra el título aunque el botón ocupe lugar a la derecha */}
+                <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4 grid grid-cols-[1fr_auto_1fr] items-center gap-4">
+                    <div />
+                    <div className="text-center">
                         <h1 className="font-brand text-2xl sm:text-3xl font-bold tracking-wide">
                             Scenta <span className="text-[#7D9878] dark:text-[#A3B69B]">Catálogo</span>
                         </h1>
@@ -120,7 +169,7 @@ export default function CatalogoClient({ productos }: { productos: CatalogoProdu
                     </div>
                     <button
                         onClick={() => setDrawerOpen(true)}
-                        className="relative flex items-center gap-2 rounded-full bg-[#7D9878] hover:bg-[#6B8566] text-white px-4 py-2.5 text-sm font-bold transition-colors"
+                        className="relative justify-self-end flex items-center gap-2 rounded-full bg-[#7D9878] hover:bg-[#6B8566] text-white px-4 py-2.5 text-sm font-bold transition-colors"
                         aria-label="Ver mi pedido"
                     >
                         <ShoppingBag className="w-4 h-4" />
@@ -144,7 +193,7 @@ export default function CatalogoClient({ productos }: { productos: CatalogoProdu
                 ) : (
                     <>
                         {/* Filtros */}
-                        <div className="space-y-3 mb-6">
+                        <section className="mb-6 rounded-3xl border border-[#E6DFD5] dark:border-[#353B33] bg-white dark:bg-[#242723] p-4 sm:p-5 space-y-4">
                             <div className="relative">
                                 <Search className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-[#2C2C2C]/40 dark:text-[#F4EFEA]/40" />
                                 <input
@@ -152,38 +201,51 @@ export default function CatalogoClient({ productos }: { productos: CatalogoProdu
                                     value={search}
                                     onChange={e => setSearch(e.target.value)}
                                     placeholder="Buscar perfume, aroma o marca..."
-                                    className="w-full rounded-2xl border border-[#E6DFD5] dark:border-[#353B33] bg-white dark:bg-[#242723] pl-11 pr-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#7D9878]/40"
+                                    className="w-full rounded-2xl border border-[#E6DFD5] dark:border-[#353B33] bg-[#F9F6F0] dark:bg-[#1B1D1A] pl-11 pr-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#7D9878]/40"
                                 />
                             </div>
-                            <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
-                                <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
-                                    {genders.map(g => (
-                                        <button
-                                            key={g}
-                                            onClick={() => setGender(g)}
-                                            className={`shrink-0 rounded-full px-4 py-1.5 text-xs font-bold border transition-colors ${gender === g
-                                                ? "bg-[#7D9878] border-[#7D9878] text-white"
-                                                : "bg-white dark:bg-[#242723] border-[#E6DFD5] dark:border-[#353B33] hover:border-[#7D9878]"}`}
-                                        >
-                                            {g}
-                                        </button>
-                                    ))}
-                                </div>
-                                {categories.length > 2 && (
-                                    <select
-                                        value={category}
-                                        onChange={e => setCategory(e.target.value)}
-                                        className="sm:ml-auto rounded-full border border-[#E6DFD5] dark:border-[#353B33] bg-white dark:bg-[#242723] px-4 py-1.5 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-[#7D9878]/40"
-                                        aria-label="Categoría"
+
+                            <FilaFiltro titulo="Género">
+                                {genders.map(g => (
+                                    <ChipFiltro
+                                        key={g}
+                                        activo={gender === g}
+                                        cantidad={cuentaGenero[g] ?? 0}
+                                        onClick={() => setGender(g)}
                                     >
-                                        {categories.map(c => <option key={c} value={c}>{c === "Todas" ? "Todas las categorías" : c}</option>)}
-                                    </select>
+                                        {g}
+                                    </ChipFiltro>
+                                ))}
+                            </FilaFiltro>
+
+                            {categories.length > 2 && (
+                                <FilaFiltro titulo="Categoría">
+                                    {categories.map(c => (
+                                        <ChipFiltro
+                                            key={c}
+                                            activo={category === c}
+                                            cantidad={cuentaCategoria[c] ?? 0}
+                                            onClick={() => setCategory(c)}
+                                        >
+                                            {c === "Todas" ? "Todas" : etiquetaCategoria(c)}
+                                        </ChipFiltro>
+                                    ))}
+                                </FilaFiltro>
+                            )}
+
+                            <div className="flex items-center justify-between gap-3 pt-3 border-t border-[#E6DFD5] dark:border-[#353B33] text-xs">
+                                <p className="text-[#2C2C2C]/60 dark:text-[#F4EFEA]/60">
+                                    {filtered.length === 0
+                                        ? "Sin resultados"
+                                        : `Mostrando ${(page - 1) * PAGE_SIZE + 1}–${Math.min(page * PAGE_SIZE, filtered.length)} de ${filtered.length} productos`}
+                                </p>
+                                {hayFiltros && (
+                                    <button onClick={limpiarFiltros} className="font-bold text-[#7D9878] dark:text-[#A3B69B] hover:underline">
+                                        Limpiar filtros
+                                    </button>
                                 )}
                             </div>
-                            <p className="text-xs text-[#2C2C2C]/50 dark:text-[#F4EFEA]/50">
-                                {filtered.length} {filtered.length === 1 ? "producto" : "productos"}
-                            </p>
-                        </div>
+                        </section>
 
                         {filtered.length === 0 ? (
                             <EstadoVacio
@@ -193,8 +255,8 @@ export default function CatalogoClient({ productos }: { productos: CatalogoProdu
                             />
                         ) : (
                             <>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                                    {filtered.slice(0, visible).map(p => (
+                                <div ref={gridRef} className="scroll-mt-28 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                                    {pageItems.map(p => (
                                         <TarjetaProducto
                                             key={p.id}
                                             producto={p}
@@ -203,20 +265,51 @@ export default function CatalogoClient({ productos }: { productos: CatalogoProdu
                                         />
                                     ))}
                                 </div>
-                                {visible < filtered.length && (
-                                    <div className="flex justify-center mt-8">
+                                {totalPages > 1 && (
+                                    <nav className="flex items-center justify-center gap-1.5 mt-8" aria-label="Páginas">
                                         <button
-                                            onClick={() => setVisible(v => v + PAGE_SIZE)}
-                                            className="rounded-full border border-[#E6DFD5] dark:border-[#353B33] bg-white dark:bg-[#242723] px-6 py-2.5 text-sm font-bold hover:border-[#7D9878] transition-colors"
+                                            onClick={() => irAPagina(page - 1)}
+                                            disabled={page === 1}
+                                            className="flex items-center gap-1 rounded-full px-3 h-10 text-sm font-bold border border-[#E6DFD5] dark:border-[#353B33] bg-white dark:bg-[#242723] hover:border-[#7D9878] disabled:opacity-40 disabled:hover:border-[#E6DFD5] transition-colors"
+                                            aria-label="Página anterior"
                                         >
-                                            Ver más productos ({filtered.length - visible} restantes)
+                                            <ChevronLeft className="w-4 h-4" />
+                                            <span className="hidden sm:inline">Anterior</span>
                                         </button>
-                                    </div>
+                                        {paginasVisibles(page, totalPages).map((n, i) => n === "…" ? (
+                                            <span key={`e${i}`} className="w-8 text-center text-[#2C2C2C]/40 dark:text-[#F4EFEA]/40">…</span>
+                                        ) : (
+                                            <button
+                                                key={n}
+                                                onClick={() => irAPagina(n)}
+                                                aria-current={n === page ? "page" : undefined}
+                                                className={`min-w-10 h-10 rounded-full text-sm font-bold transition-colors ${n === page
+                                                    ? "bg-[#7D9878] text-white"
+                                                    : "border border-[#E6DFD5] dark:border-[#353B33] bg-white dark:bg-[#242723] hover:border-[#7D9878]"}`}
+                                            >
+                                                {n}
+                                            </button>
+                                        ))}
+                                        <button
+                                            onClick={() => irAPagina(page + 1)}
+                                            disabled={page === totalPages}
+                                            className="flex items-center gap-1 rounded-full px-3 h-10 text-sm font-bold border border-[#E6DFD5] dark:border-[#353B33] bg-white dark:bg-[#242723] hover:border-[#7D9878] disabled:opacity-40 disabled:hover:border-[#E6DFD5] transition-colors"
+                                            aria-label="Página siguiente"
+                                        >
+                                            <span className="hidden sm:inline">Siguiente</span>
+                                            <ChevronRight className="w-4 h-4" />
+                                        </button>
+                                    </nav>
                                 )}
                             </>
                         )}
                     </>
                 )}
+                <footer className="mt-16 pt-6 border-t border-[#E6DFD5] dark:border-[#353B33] text-center">
+                    <a href="/login" className="text-[11px] text-[#2C2C2C]/40 dark:text-[#F4EFEA]/40 hover:text-[#7D9878] transition-colors">
+                        Acceso para el equipo
+                    </a>
+                </footer>
             </main>
 
             {/* Barra inferior con el resumen del pedido */}
@@ -296,6 +389,38 @@ export default function CatalogoClient({ productos }: { productos: CatalogoProdu
                 </div>
             )}
         </div>
+    );
+}
+
+function FilaFiltro({ titulo, children }: { titulo: string; children: React.ReactNode }) {
+    return (
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+            <span className="sm:w-24 shrink-0 text-[10px] font-black uppercase tracking-widest text-[#2C2C2C]/50 dark:text-[#F4EFEA]/50">
+                {titulo}
+            </span>
+            <div className="flex flex-wrap gap-2">{children}</div>
+        </div>
+    );
+}
+
+function ChipFiltro({ activo, cantidad, onClick, children }: { activo: boolean; cantidad: number; onClick: () => void; children: React.ReactNode }) {
+    return (
+        <button
+            onClick={onClick}
+            disabled={!activo && cantidad === 0}
+            aria-pressed={activo}
+            className={`inline-flex items-center gap-1.5 rounded-full pl-3 pr-2 py-1.5 text-xs font-bold border transition-all disabled:opacity-35 disabled:cursor-not-allowed ${activo
+                ? "bg-[#7D9878] border-[#7D9878] text-white shadow-sm shadow-[#7D9878]/30"
+                : "bg-[#F9F6F0] dark:bg-[#1B1D1A] border-[#E6DFD5] dark:border-[#353B33] hover:border-[#7D9878] hover:text-[#7D9878] dark:hover:text-[#A3B69B]"}`}
+        >
+            {activo && <Check className="w-3.5 h-3.5 -ml-0.5" />}
+            {children}
+            <span className={`min-w-5 px-1.5 rounded-full text-[10px] font-black text-center ${activo
+                ? "bg-white/25 text-white"
+                : "bg-[#E6DFD5] dark:bg-[#353B33] text-[#2C2C2C]/60 dark:text-[#F4EFEA]/60"}`}>
+                {cantidad}
+            </span>
+        </button>
     );
 }
 
