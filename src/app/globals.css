@@ -188,4 +188,15 @@
   .custom-scrollbar::-webkit-scrollbar-thumb:hover {
     @apply bg-slate-400/40 dark:bg-slate-700/60;
   }
+
+  /* Logs: un registro que llega con la página abierta se marca y se apaga solo */
+  .log-nuevo {
+    animation: log-nuevo 2.4s cubic-bezier(0.23, 1, 0.32, 1);
+  }
+}
+
+@keyframes log-nuevo {
+  from {
+    background-color: rgb(125 152 120 / 0.18);
+  }
 }

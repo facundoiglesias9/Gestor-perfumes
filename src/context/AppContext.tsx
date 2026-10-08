@@ -707,6 +707,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const addSystemLog = (type: "info" | "error" | "db" | "auth" | "warn", message: string, details?: any) => {
         const newLog = {
             id: Math.random().toString(36).substr(2, 9),
+            ts: Date.now(),
             timestamp: new Date().toLocaleString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' }),
             type,
             message,
@@ -837,8 +838,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                     if (lastUpdateRow) setUsdLastUpdate(lastUpdateRow.value);
                 }
 
-                // Diagnostic log for results array
-                addSystemLog("info", "Sincronización inicial completada", {
+                // Solo se anota si algo falló: anotarla en cada recarga llenaba los logs
+                // (se guardan 100) y tapaba las ventas y los pedidos.
+                const erroresCarga = results.filter(r => r?.error).map(r => r?.error?.message);
+                if (erroresCarga.length > 0) addSystemLog("warn", "Sincronización inicial con errores", {
                     tablas_cargadas: {
                         categorias: catResult?.data?.length || 0,
                         productos: prodResult?.data?.length || 0,
@@ -851,7 +854,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                         usuarios: usersResult?.data?.length || 0,
                         pedidos: ordersResult?.data?.length || 0
                     },
-                    errores: results.filter(r => r?.error).map(r => r?.error?.message),
+                    errores: erroresCarga,
                     contexto_admin: isAdmin
                 });
 
@@ -1532,7 +1535,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             setOrders(prev => prev.filter(o => o.id !== newId));
             addSystemLog("error", "Error crítico al guardar pedido", { orderId: newId, error });
         } else {
-            addSystemLog("info", `Pedido ${newId} guardado correctamente en Xata`);
+            addSystemLog("info", `Pedido ${newId} guardado correctamente`);
             
             // Notificar por EmailJS
             sendOrderNotification(newOrder, insumos, esencias, addSystemLog);
@@ -2146,9 +2149,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                         table
                     });
 
-                    addSystemLog("error", `Error guardando en ${table} (chunk ${i})`, {
+                    addSystemLog("error", `Error guardando en ${table}`, {
                         error,
-                        table
+                        table,
+                        desde: i + 1
                     });
                 }
             }
