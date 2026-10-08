@@ -18,7 +18,7 @@ export type CatalogoProducto = {
 
 const WHATSAPP_NUMBER = "5491123529147";
 const STORAGE_KEY = "catalogo_consulta";
-const PAGE_SIZE = 10;
+const PAGE_SIZE = 12; // múltiplo de 2 y de 3: las filas quedan completas en celular, tablet y compu
 
 // "Frascos de 50 ML" -> "50 ML", "Frascos Difusores" -> "Difusores": más corto para los botones de filtro.
 const etiquetaCategoria = (c: string) => c.replace(/^frascos\s+(de\s+)?/i, "");
