@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
     Tags, Truck, Wallet, ChevronDown, Layers, Plus, ShoppingCart, Archive,
     FlaskConical, ListTree, Percent, Terminal, StickyNote, Menu, X,
-    LogOut, Store, Boxes, Settings2, type LucideIcon
+    LogOut, Store, Boxes, Settings2, PieChart, type LucideIcon
 } from "lucide-react";
 import ThemeToggle from "@/components/ThemeToggle";
 import { useAppContext } from "@/context/AppContext";
@@ -68,6 +68,7 @@ export default function TopNav() {
     const role = currentUser?.role;
 
     const allDirectItems: NavItem[] = [
+        { href: "/resumen", label: "Resumen", icon: PieChart },
         { href: "/lista-precios", label: "Precios", icon: Tags },
         { href: "/disponibilidad", label: "Disponibilidad", icon: Truck },
         { href: "/caja", label: "Caja", icon: Wallet },
