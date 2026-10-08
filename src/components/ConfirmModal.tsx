@@ -1,6 +1,7 @@
 "use client";
 
 import { AlertTriangle, X } from "lucide-react";
+import Ventana from "@/components/Ventana";
 
 interface ConfirmModalProps {
     isOpen: boolean;
@@ -11,11 +12,9 @@ interface ConfirmModalProps {
 }
 
 export default function ConfirmModal({ isOpen, title, message, onConfirm, onCancel }: ConfirmModalProps) {
-    if (!isOpen) return null;
-
     return (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center pt-24 pb-8 px-4 sm:px-6 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200 overflow-y-auto">
-            <div className="bg-white dark:bg-[#242723] rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden border border-[#E6DFD5] dark:border-[#353B33] animate-in zoom-in-95 duration-300 my-auto relative">
+        <Ventana abierta={isOpen} onCerrar={onCancel}>
+            <div className="bg-white dark:bg-[#242723] rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden border border-[#E6DFD5] dark:border-[#353B33] relative">
                 <button
                     onClick={onCancel}
                     className="absolute top-4 right-4 p-2.5 rounded-full bg-[#1B1D1A] text-white hover:bg-rose-600 hover:text-white hover:rotate-90 hover:scale-110 active:scale-95 transition-all duration-300 shadow-sm border border-[#353B33] flex items-center justify-center shrink-0 cursor-pointer"
@@ -48,6 +47,6 @@ export default function ConfirmModal({ isOpen, title, message, onConfirm, onCanc
                     </button>
                 </div>
             </div>
-        </div>
+        </Ventana>
     );
 }

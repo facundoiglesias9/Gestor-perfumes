@@ -3,6 +3,7 @@
 import { ShoppingCart, Plus, CheckCircle2, Package, Search, X, FlaskConical, Filter, ChevronDown } from "lucide-react";
 import { useState, useMemo } from "react";
 import { useAppContext } from "@/context/AppContext";
+import Ventana from "@/components/Ventana";
 
 export default function PedidosPage() {
     const { esencias, insumos, inventario, setInventario, transacciones, setTransacciones, getNextId, categorias, proveedores, generos } = useAppContext();
@@ -329,9 +330,9 @@ export default function PedidosPage() {
             </div>
 
             {/* Modal de Búsqueda de Esencias */}
+            <Ventana abierta={isEsenciaModalOpen} onCerrar={() => setIsEsenciaModalOpen(false)}>
             {isEsenciaModalOpen && (
-                <div className="fixed inset-0 z-[200] flex items-center justify-center pt-24 pb-8 px-4 sm:px-6 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200 overflow-y-auto">
-                    <div className="bg-white dark:bg-[#242723] rounded-[2rem] shadow-2xl w-full max-w-2xl max-h-[calc(100vh-8rem)] flex flex-col overflow-hidden border border-[#E6DFD5] dark:border-[#353B33] my-auto">
+                    <div className="bg-white dark:bg-[#242723] rounded-[2rem] shadow-2xl w-full max-w-2xl max-h-[calc(100vh-8rem)] flex flex-col overflow-hidden border border-[#E6DFD5] dark:border-[#353B33]">
                         {/* Header */}
                         <div className="p-5 border-b border-[#E6DFD5] dark:border-[#353B33] flex justify-between items-center shrink-0 bg-[#F9F6F0] dark:bg-[#1B1D1A]">
                             <h2 className="text-xl font-black text-[#2C2C2C] dark:text-[#F4EFEA] flex items-center gap-2 font-brand">
@@ -451,8 +452,8 @@ export default function PedidosPage() {
                             })}
                         </div>
                     </div>
-                </div>
             )}
+            </Ventana>
         </div>
     );
 }

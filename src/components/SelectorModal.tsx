@@ -3,6 +3,7 @@
 import { X, Search, FlaskConical, Package, Plus, Filter, ChevronDown } from "lucide-react";
 import { useState, useMemo } from "react";
 import { useAppContext } from "@/context/AppContext";
+import Ventana from "@/components/Ventana";
 
 interface SelectorModalProps {
     isOpen: boolean;
@@ -42,8 +43,6 @@ export default function SelectorModal({ isOpen, onClose, title, items, type, onS
         });
     }, [items, searchTerm, type, esenciaTab, genderFilter, providerFilter, categoryFilter]);
 
-    if (!isOpen) return null;
-
     const handleTabChange = (tab: "Perfumería" | "Limpia Pisos") => {
         setEsenciaTab(tab);
         setGenderFilter("Todos");
@@ -52,8 +51,8 @@ export default function SelectorModal({ isOpen, onClose, title, items, type, onS
     };
 
     return (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center pt-24 pb-8 px-4 sm:px-6 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200 overflow-y-auto">
-            <div className="bg-white dark:bg-[#242723] rounded-[2rem] shadow-2xl w-full max-w-2xl max-h-[calc(100vh-8rem)] flex flex-col overflow-hidden border border-[#E6DFD5] dark:border-[#353B33] animate-in zoom-in-95 duration-300 my-auto">
+        <Ventana abierta={isOpen} onCerrar={onClose}>
+            <div className="bg-white dark:bg-[#242723] rounded-[2rem] shadow-2xl w-full max-w-2xl max-h-[calc(100vh-8rem)] flex flex-col overflow-hidden border border-[#E6DFD5] dark:border-[#353B33]">
                 {/* Header */}
                 <div className="p-5 border-b border-[#E6DFD5] dark:border-[#353B33] flex justify-between items-center shrink-0 bg-[#F9F6F0] dark:bg-[#1B1D1A]">
                     <h2 className="text-xl font-black text-[#2C2C2C] dark:text-[#F4EFEA] flex items-center gap-2 font-brand">
@@ -193,6 +192,6 @@ export default function SelectorModal({ isOpen, onClose, title, items, type, onS
                     )}
                 </div>
             </div>
-        </div>
+        </Ventana>
     );
 }

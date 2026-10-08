@@ -4,6 +4,7 @@ import { Search, Filter, Plus, Archive, MoveUpRight, AlertCircle, Trash2, X, Fla
 import { useState, useMemo, useEffect } from "react";
 import { useAppContext } from "@/context/AppContext";
 import ConfirmModal from "@/components/ConfirmModal";
+import Ventana from "@/components/Ventana";
 
 export default function InventarioPage() {
     const { inventario, esencias, insumos, productos, categorias, getNextId, addInventarioItem, deleteInventarioItem, updateInventarioItem, clearAllInventario } = useAppContext();
@@ -459,9 +460,9 @@ export default function InventarioPage() {
             />
 
             {/* Modal Editar Alerta */}
+            <Ventana abierta={isAlertModalOpen} onCerrar={() => setIsAlertModalOpen(false)}>
             {isAlertModalOpen && (
-                <div className="fixed inset-0 z-[200] flex items-center justify-center pt-24 pb-8 px-4 sm:px-6 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200 overflow-y-auto">
-                    <div className="bg-white dark:bg-[#242723] rounded-[2rem] shadow-2xl w-full max-w-sm overflow-hidden border border-[#E6DFD5] dark:border-[#353B33] animate-in zoom-in-95 duration-300 my-auto">
+                    <div className="bg-white dark:bg-[#242723] rounded-[2rem] shadow-2xl w-full max-w-sm overflow-hidden border border-[#E6DFD5] dark:border-[#353B33]">
                         <div className="p-6 pb-4 border-b border-[#E6DFD5] dark:border-[#353B33] flex justify-between items-center bg-[#F9F6F0] dark:bg-[#1B1D1A]">
                             <div>
                                 <h2 className="text-lg font-black text-[#2C2C2C] dark:text-[#F4EFEA] flex items-center gap-2 font-brand">
@@ -502,12 +503,12 @@ export default function InventarioPage() {
                             </button>
                         </form>
                     </div>
-                </div>
             )}
+            </Ventana>
 
+            <Ventana abierta={isAddModalOpen} onCerrar={() => setIsAddModalOpen(false)} cerrarAlTocarFondo={false}>
             {isAddModalOpen && (
-                <div className="fixed inset-0 z-[200] flex items-center justify-center pt-24 pb-8 px-4 sm:px-6 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200 overflow-y-auto">
-                    <div className="bg-white dark:bg-[#242723] rounded-[2rem] shadow-2xl w-full max-w-md overflow-hidden border border-[#E6DFD5] dark:border-[#353B33] my-auto">
+                    <div className="bg-white dark:bg-[#242723] rounded-[2rem] shadow-2xl w-full max-w-md overflow-hidden border border-[#E6DFD5] dark:border-[#353B33]">
                         <div className="p-6 pb-4 border-b border-[#E6DFD5] dark:border-[#353B33] flex justify-between items-center bg-[#F9F6F0] dark:bg-[#1B1D1A]">
                             <div>
                                 <h2 className="text-xl font-black text-[#2C2C2C] dark:text-[#F4EFEA] font-brand">Ingresar Stock</h2>
@@ -688,13 +689,13 @@ export default function InventarioPage() {
                             </button>
                         </form>
                     </div>
-                </div>
             )}
+            </Ventana>
 
             {/* Modal de Búsqueda de Esencias (Igual que en Pedidos) */}
+            <Ventana abierta={isEsenciaSearchOpen} onCerrar={() => setIsEsenciaSearchOpen(false)} z={210}>
             {isEsenciaSearchOpen && (
-                <div className="fixed inset-0 z-[210] flex items-center justify-center pt-24 pb-8 px-4 sm:px-6 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200 overflow-y-auto">
-                    <div className="bg-white dark:bg-[#242723] rounded-[2rem] shadow-2xl w-full max-w-2xl max-h-[calc(100vh-8rem)] flex flex-col overflow-hidden border border-[#E6DFD5] dark:border-[#353B33] my-auto">
+                    <div className="bg-white dark:bg-[#242723] rounded-[2rem] shadow-2xl w-full max-w-2xl max-h-[calc(100vh-8rem)] flex flex-col overflow-hidden border border-[#E6DFD5] dark:border-[#353B33]">
                         <div className="p-6 border-b border-[#E6DFD5] dark:border-[#353B33] flex justify-between items-center bg-[#F9F6F0] dark:bg-[#1B1D1A]">
                             <div>
                                 <h2 className="text-xl font-black text-[#2C2C2C] dark:text-[#F4EFEA] flex items-center gap-2 font-brand">
@@ -768,13 +769,13 @@ export default function InventarioPage() {
                             )}
                         </div>
                     </div>
-                </div>
             )}
+            </Ventana>
 
             {/* Modal Editar Cantidad (Lápiz) */}
+            <Ventana abierta={isEditModalOpen} onCerrar={() => setIsEditModalOpen(false)} cerrarAlTocarFondo={false}>
             {isEditModalOpen && (
-                <div className="fixed inset-0 z-[200] flex items-center justify-center pt-24 pb-8 px-4 sm:px-6 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200 overflow-y-auto">
-                    <div className="bg-white dark:bg-[#242723] rounded-[2rem] shadow-2xl w-full max-w-sm overflow-hidden border border-[#E6DFD5] dark:border-[#353B33] my-auto">
+                    <div className="bg-white dark:bg-[#242723] rounded-[2rem] shadow-2xl w-full max-w-sm overflow-hidden border border-[#E6DFD5] dark:border-[#353B33]">
                         <div className="p-6 pb-4 border-b border-[#E6DFD5] dark:border-[#353B33] flex justify-between items-center bg-[#F9F6F0] dark:bg-[#1B1D1A]">
                             <div>
                                 <h2 className="text-lg font-black text-[#2C2C2C] dark:text-[#F4EFEA] font-brand">Ajustar Stock</h2>
@@ -813,8 +814,8 @@ export default function InventarioPage() {
                             </button>
                         </form>
                     </div>
-                </div>
             )}
+            </Ventana>
         </div>
     );
 }

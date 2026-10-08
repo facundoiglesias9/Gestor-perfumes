@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { AnimatePresence, MotionConfig, motion } from "framer-motion";
 import { Search, Plus, Minus, ShoppingBag, X, MessageCircle, Clock, Trash2, Check, ChevronLeft, ChevronRight, Car, Wind, SprayCan, Sparkles } from "lucide-react";
 import { formatNumber } from "@/lib/format-utils";
 import { extractBrand } from "@/lib/product-utils";
@@ -62,7 +63,13 @@ export default function CatalogoClient({ productos }: { productos: CatalogoProdu
 
     useEffect(() => {
         document.body.style.overflow = drawerOpen ? "hidden" : "";
-        return () => { document.body.style.overflow = ""; };
+        // Escape cierra el panel del pedido
+        const alTeclear = (e: KeyboardEvent) => { if (e.key === "Escape") setDrawerOpen(false); };
+        if (drawerOpen) document.addEventListener("keydown", alTeclear);
+        return () => {
+            document.body.style.overflow = "";
+            document.removeEventListener("keydown", alTeclear);
+        };
     }, [drawerOpen]);
 
     const lista = productos ?? [];
@@ -357,11 +364,24 @@ export default function CatalogoClient({ productos }: { productos: CatalogoProdu
                 </div>
             )}
 
-            {/* Panel del pedido */}
+            {/* Panel del pedido: entra desde la derecha con la curva de los paneles de iOS */}
+            <MotionConfig reducedMotion="user">
+            <AnimatePresence>
             {drawerOpen && (
-                <div className="fixed inset-0 z-40 flex justify-end" role="dialog" aria-modal="true" aria-label="Mi pedido">
-                    <div className="absolute inset-0 bg-black/40" onClick={() => setDrawerOpen(false)} />
-                    <aside className="relative w-full max-w-md h-full bg-[#F9F6F0] dark:bg-[#1B1D1A] flex flex-col shadow-2xl">
+                <div key="panel-pedido" className="fixed inset-0 z-40 flex justify-end" role="dialog" aria-modal="true" aria-label="Mi pedido">
+                    <motion.div
+                        className="absolute inset-0 bg-black/40 backdrop-blur-[2px]"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1, transition: { duration: 0.25 } }}
+                        exit={{ opacity: 0, transition: { duration: 0.2 } }}
+                        onClick={() => setDrawerOpen(false)}
+                    />
+                    <motion.aside
+                        className="relative w-full max-w-md h-full bg-[#F9F6F0] dark:bg-[#1B1D1A] flex flex-col shadow-2xl"
+                        initial={{ transform: "translateX(100%)" }}
+                        animate={{ transform: "translateX(0%)", transition: { duration: 0.42, ease: [0.32, 0.72, 0, 1] } }}
+                        exit={{ transform: "translateX(100%)", transition: { duration: 0.24, ease: [0.23, 1, 0.32, 1] } }}
+                    >
                         <div className="flex items-center justify-between px-5 py-4 border-b border-[#E6DFD5] dark:border-[#353B33]">
                             <h2 className="font-brand text-xl font-bold">Mi pedido</h2>
                             <button onClick={() => setDrawerOpen(false)} className="p-2 rounded-full hover:bg-[#E6DFD5] dark:hover:bg-[#353B33]" aria-label="Cerrar">
@@ -414,9 +434,11 @@ export default function CatalogoClient({ productos }: { productos: CatalogoProdu
                                 </div>
                             </>
                         )}
-                    </aside>
+                    </motion.aside>
                 </div>
             )}
+            </AnimatePresence>
+            </MotionConfig>
         </div>
     );
 }

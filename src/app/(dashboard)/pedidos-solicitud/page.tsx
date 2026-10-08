@@ -5,6 +5,7 @@ import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { useAppContext, OrderStatus, Order, Transaccion, InventarioItem } from "@/context/AppContext";
 import ConfirmModal from "@/components/ConfirmModal";
+import Ventana from "@/components/Ventana";
 
 const Toast = ({ message, onClose, type = "success" }: { message: string, onClose: () => void, type?: "success" | "info" | "error" }) => (
     <div className="fixed bottom-8 right-8 z-[100] animate-in slide-in-from-right-full duration-500">
@@ -295,9 +296,9 @@ function PedidosSolicitudContent() {
             </div>
             {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
 
+            <Ventana abierta={!!itemToCancel} onCerrar={() => { setItemToCancel(null); setCancelReason(""); }} cerrarAlTocarFondo={false}>
             {itemToCancel && (
-                <div className="fixed inset-0 z-[200] flex items-center justify-center pt-24 pb-8 px-4 sm:px-6 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300 overflow-y-auto">
-                    <div className="bg-white dark:bg-[#242723] rounded-[2.5rem] p-8 md:p-10 w-full max-w-lg shadow-2xl border border-[#E6DFD5] dark:border-[#353B33] animate-in zoom-in-95 duration-300 my-auto relative">
+                    <div className="bg-white dark:bg-[#242723] rounded-[2.5rem] p-8 md:p-10 w-full max-w-lg shadow-2xl border border-[#E6DFD5] dark:border-[#353B33] relative">
                         <button
                             onClick={() => { setItemToCancel(null); setCancelReason(""); }}
                             className="absolute top-6 right-6 p-2.5 rounded-full bg-[#1B1D1A] text-white hover:bg-rose-600 hover:text-white hover:rotate-90 hover:scale-110 active:scale-95 transition-all duration-300 shadow-sm border border-[#353B33] flex items-center justify-center shrink-0 cursor-pointer"
@@ -343,8 +344,8 @@ function PedidosSolicitudContent() {
                             </div>
                         </div>
                     </div>
-                </div>
             )}
+            </Ventana>
         </div>
     );
 }

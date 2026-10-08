@@ -195,6 +195,20 @@
   }
 }
 
+/* Caja: la fila del movimiento recién cargado se tiñe y se apaga sola */
+.fila-nueva-ingreso {
+  animation: anim-entrada 360ms cubic-bezier(0.23, 1, 0.32, 1) backwards, fila-nueva-ingreso 2.6s cubic-bezier(0.23, 1, 0.32, 1);
+}
+.fila-nueva-egreso {
+  animation: anim-entrada 360ms cubic-bezier(0.23, 1, 0.32, 1) backwards, fila-nueva-egreso 2.6s cubic-bezier(0.23, 1, 0.32, 1);
+}
+@keyframes fila-nueva-ingreso {
+  from { background-color: rgb(27 175 122 / 0.2); }
+}
+@keyframes fila-nueva-egreso {
+  from { background-color: rgb(235 104 52 / 0.18); }
+}
+
 @keyframes log-nuevo {
   from {
     background-color: rgb(125 152 120 / 0.18);
@@ -206,10 +220,10 @@
    transform, así no traban aunque la página esté cargando datos). */
 @layer utilities {
   .anim-entrada {
-    animation: anim-entrada 420ms cubic-bezier(0.23, 1, 0.32, 1) both;
+    animation: anim-entrada 420ms cubic-bezier(0.23, 1, 0.32, 1) backwards;
   }
   .anim-fila {
-    animation: anim-entrada 260ms cubic-bezier(0.23, 1, 0.32, 1) both;
+    animation: anim-entrada 260ms cubic-bezier(0.23, 1, 0.32, 1) backwards;
   }
   /* Contador que cambia (pedido, carrito): un pequeño salto para que se note */
   .anim-pop {
@@ -241,11 +255,43 @@
 /* Quien pidió menos movimiento ve los cambios sin desplazamientos */
 @media (prefers-reduced-motion: reduce) {
   .anim-entrada,
-  .anim-fila {
+  .anim-fila,
+  .animate-in {
     animation-name: anim-aparecer;
   }
   .anim-pop {
     animation: none;
+  }
+}
+
+/* Panel de <Ventana>: lo que pone cada pantalla recibe los clics; el resto deja pasar al fondo */
+.ventana-panel > * {
+  pointer-events: auto;
+}
+
+/* ── animate-in, fade-in, zoom-in-95, slide-in-from-… ─────────────────
+   Muchas pantallas usaban estas clases (de una librería que no estaba instalada),
+   así que no hacían nada. Acá están: la duración sale de duration-XXX. */
+@layer utilities {
+  .animate-in {
+    animation: tw-enter var(--tw-duration, 200ms) cubic-bezier(0.23, 1, 0.32, 1) backwards;
+  }
+  .fade-in { --tw-enter-opacity: 0; }
+  .zoom-in-50 { --tw-enter-scale: 0.5; }
+  .zoom-in-95 { --tw-enter-scale: 0.95; }
+  .slide-in-from-top-1 { --tw-enter-translate-y: -0.25rem; }
+  .slide-in-from-top-2 { --tw-enter-translate-y: -0.5rem; }
+  .slide-in-from-bottom-4 { --tw-enter-translate-y: 1rem; }
+  .slide-in-from-bottom-5 { --tw-enter-translate-y: 1.25rem; }
+  .slide-in-from-bottom-10 { --tw-enter-translate-y: 2.5rem; }
+  .slide-in-from-right { --tw-enter-translate-x: 100%; }
+}
+
+@keyframes tw-enter {
+  from {
+    opacity: var(--tw-enter-opacity, 1);
+    transform: translate3d(var(--tw-enter-translate-x, 0), var(--tw-enter-translate-y, 0), 0)
+      scale(var(--tw-enter-scale, 1));
   }
 }
 

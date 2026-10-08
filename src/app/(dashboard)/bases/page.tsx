@@ -4,6 +4,7 @@ import { Search, Plus, Layers, Trash2, X, Edit2, FlaskConical, Package, Sparkles
 import { useState, useCallback, useMemo } from "react";
 import { useAppContext, Base, BaseComponent } from "@/context/AppContext";
 import ConfirmModal from "@/components/ConfirmModal";
+import Ventana from "@/components/Ventana";
 
 export default function BasesPage() {
     const { bases, setBases, insumos, esencias, categorias, generateProductsFromBase, removeDuplicateProducts, clearAllProductos, generos, getNextId } = useAppContext();
@@ -337,9 +338,9 @@ export default function BasesPage() {
             </div>
 
             {/* Modal de Agregar / Editar Base */}
+            <Ventana abierta={isAddModalOpen} onCerrar={handleCloseModal} cerrarAlTocarFondo={false}>
             {isAddModalOpen && (
-                <div className="fixed inset-0 z-[200] flex items-center justify-center pt-24 pb-8 px-4 sm:px-6 bg-black/60 backdrop-blur-md animate-in fade-in duration-300 overflow-y-auto">
-                    <div className="bg-white dark:bg-[#242723] rounded-[2.5rem] shadow-2xl w-full max-w-3xl overflow-hidden border border-[#E6DFD5] dark:border-[#353B33] animate-in zoom-in-95 duration-300 my-auto flex flex-col max-h-[calc(100vh-8rem)]">
+                    <div className="bg-white dark:bg-[#242723] rounded-[2.5rem] shadow-2xl w-full max-w-3xl overflow-hidden border border-[#E6DFD5] dark:border-[#353B33] flex flex-col max-h-[calc(100vh-8rem)]">
                         
                         {/* Modal Header */}
                         <div className="px-8 py-6 border-b border-[#E6DFD5] dark:border-[#353B33] flex justify-between items-center shrink-0 bg-[#F9F6F0] dark:bg-[#1B1D1A]">
@@ -666,8 +667,8 @@ export default function BasesPage() {
                             )}
                         </div>
                     </div>
-                </div>
             )}
+            </Ventana>
 
             <ConfirmModal
                 isOpen={!!itemToDelete}
@@ -678,9 +679,9 @@ export default function BasesPage() {
             />
 
             {/* Generation Modal */}
+            <Ventana abierta={!!isGeneratingModalOpen} onCerrar={() => { if (!isGenerating) setIsGeneratingModalOpen(null); }} z={110}>
             {isGeneratingModalOpen && (
-                <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-300 overflow-y-auto py-6">
-                    <div className="bg-white dark:bg-[#242723] rounded-[2.5rem] shadow-2xl w-full max-w-md overflow-hidden border border-[#E6DFD5] dark:border-[#353B33] animate-in zoom-in-95 duration-500 max-h-[85vh] flex flex-col">
+                    <div className="bg-white dark:bg-[#242723] rounded-[2.5rem] shadow-2xl w-full max-w-md overflow-hidden border border-[#E6DFD5] dark:border-[#353B33] max-h-[85vh] flex flex-col">
                         <div className="p-8 border-b border-[#E6DFD5] dark:border-[#353B33] flex justify-between items-center bg-[#F9F6F0] dark:bg-[#1B1D1A]">
                             <div>
                                 <h3 className="text-2xl font-black text-[#2C2C2C] dark:text-[#F4EFEA] flex items-center gap-3 font-brand">
@@ -746,13 +747,13 @@ export default function BasesPage() {
                             </button>
                         </div>
                     </div>
-                </div>
             )}
+            </Ventana>
 
             {/* Generation Success Modal */}
+            <Ventana abierta={!!generationResult} onCerrar={() => setGenerationResult(null)} z={120}>
             {generationResult && (
-                <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-300 overflow-y-auto py-6">
-                    <div className="bg-white dark:bg-[#242723] rounded-[2.5rem] shadow-2xl w-full max-w-md overflow-hidden border border-[#E6DFD5] dark:border-[#353B33] animate-in zoom-in-95 duration-500 max-h-[85vh] flex flex-col">
+                    <div className="bg-white dark:bg-[#242723] rounded-[2.5rem] shadow-2xl w-full max-w-md overflow-hidden border border-[#E6DFD5] dark:border-[#353B33] max-h-[85vh] flex flex-col">
                         <div className="p-8 border-b border-[#E6DFD5] dark:border-[#353B33] flex justify-between items-center text-center bg-[#F9F6F0] dark:bg-[#1B1D1A]">
                             <h3 className="text-2xl font-black text-[#2C2C2C] dark:text-[#F4EFEA] flex items-center justify-center gap-3 w-full font-brand">
                                 <Sparkles className="w-6 h-6 text-[#7D9878]" />
@@ -778,8 +779,8 @@ export default function BasesPage() {
                             </button>
                         </div>
                     </div>
-                </div>
             )}
+            </Ventana>
         </div>
     );
 }

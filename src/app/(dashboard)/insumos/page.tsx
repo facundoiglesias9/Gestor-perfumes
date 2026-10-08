@@ -5,6 +5,7 @@ import { useState } from "react";
 import { useAppContext } from "@/context/AppContext";
 import ConfirmModal from "@/components/ConfirmModal";
 import { exportToExcel } from "@/lib/export-utils";
+import Ventana from "@/components/Ventana";
 
 export default function InsumosPage() {
     const { insumos, setInsumos, categorias, proveedores, bases, setBases, productos, setProductos, getNextId } = useAppContext();
@@ -300,9 +301,9 @@ export default function InsumosPage() {
                 onCancel={() => setItemToDelete(null)}
             />
 
+            <Ventana abierta={isAddModalOpen} onCerrar={handleCloseModal} cerrarAlTocarFondo={false}>
             {isAddModalOpen && (
-                <div className="fixed inset-0 z-[200] flex items-center justify-center pt-24 pb-8 px-4 sm:px-6 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200 overflow-y-auto">
-                    <div className="bg-white dark:bg-[#242723] rounded-[2.5rem] shadow-2xl w-full max-w-lg overflow-hidden border border-[#E6DFD5] dark:border-[#353B33] animate-in zoom-in-95 duration-300 my-auto flex flex-col max-h-[calc(100vh-8rem)]">
+                    <div className="bg-white dark:bg-[#242723] rounded-[2.5rem] shadow-2xl w-full max-w-lg overflow-hidden border border-[#E6DFD5] dark:border-[#353B33] flex flex-col max-h-[calc(100vh-8rem)]">
                         <div className="p-6 sm:p-8 pb-6 border-b border-[#E6DFD5] dark:border-[#353B33] flex justify-between items-center bg-[#F9F6F0] dark:bg-[#1B1D1A] shrink-0">
                             <div>
                                 <h2 className="text-2xl font-extrabold text-[#2C2C2C] dark:text-[#F4EFEA] font-brand">{editingId ? "Editar Insumo" : "Nuevo Insumo"}</h2>
@@ -419,8 +420,8 @@ export default function InsumosPage() {
                             </button>
                         </form>
                     </div>
-                </div>
             )}
+            </Ventana>
         </div>
     );
 }

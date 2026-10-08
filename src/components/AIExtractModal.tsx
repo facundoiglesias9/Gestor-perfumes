@@ -3,6 +3,7 @@
 import { X, Upload, FileText, Camera, Loader2, Save, Trash2, CheckCircle2 } from "lucide-react";
 import { useState, useRef } from "react";
 import { Esencia, useAppContext } from "@/context/AppContext";
+import Ventana from "@/components/Ventana";
 
 interface AIExtractModalProps {
     isOpen: boolean;
@@ -16,8 +17,6 @@ export default function AIExtractModal({ isOpen, onClose, onConfirm }: AIExtract
     const [extractedData, setExtractedData] = useState<Esencia[]>([]);
     const [dragActive, setDragActive] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
-
-    if (!isOpen) return null;
 
     const handleDrag = (e: React.DragEvent) => {
         e.preventDefault();
@@ -106,8 +105,8 @@ export default function AIExtractModal({ isOpen, onClose, onConfirm }: AIExtract
     };
 
     return (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center pt-24 pb-8 px-4 sm:px-6 bg-black/60 backdrop-blur-md animate-in fade-in duration-300 overflow-y-auto">
-            <div className="bg-white dark:bg-[#242723] rounded-[3rem] shadow-2xl w-full max-w-5xl max-h-[calc(100vh-8rem)] flex flex-col overflow-hidden border border-[#E6DFD5] dark:border-[#353B33] animate-in zoom-in-95 duration-500 my-auto">
+        <Ventana abierta={isOpen} onCerrar={onClose} cerrarAlTocarFondo={false}>
+            <div className="bg-white dark:bg-[#242723] rounded-[3rem] shadow-2xl w-full max-w-5xl max-h-[calc(100vh-8rem)] flex flex-col overflow-hidden border border-[#E6DFD5] dark:border-[#353B33]">
 
                 {/* Header */}
                 <div className="p-8 border-b border-[#E6DFD5] dark:border-[#353B33] flex justify-between items-center bg-[#F9F6F0] dark:bg-[#1B1D1A]">
@@ -277,7 +276,7 @@ export default function AIExtractModal({ isOpen, onClose, onConfirm }: AIExtract
                     )}
                 </div>
             </div>
-        </div>
+        </Ventana>
     );
 }
 

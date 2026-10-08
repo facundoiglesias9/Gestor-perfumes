@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useEffect } from "react";
 import { useAppContext } from "@/context/AppContext";
+import Ventana from "@/components/Ventana";
 import { ClipboardList, TrendingUp, DollarSign, Package, PlusCircle, History, X, Check, Trash2, Receipt, Wallet, MinusCircle } from "lucide-react";
 
 type SaleRecord = {
@@ -393,11 +394,9 @@ export default function HistorialComprasPage() {
             </div>
 
             {/* Selling Modal */}
+            <Ventana abierta={!!sellingItem} onCerrar={() => setSellingItem(null)}>
             {sellingItem && (
-                <div className="fixed inset-0 z-[200] flex items-center justify-center pt-24 pb-8 px-4 sm:px-6 animate-in fade-in duration-200 overflow-y-auto">
-                    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setSellingItem(null)} />
-
-                    <div className="relative w-full max-w-lg bg-white dark:bg-[#242723] rounded-[2.5rem] shadow-2xl border border-[#E6DFD5] dark:border-[#353B33] p-8 sm:p-10 animate-in zoom-in-95 duration-300 my-auto max-h-[calc(100vh-8rem)] overflow-y-auto custom-scrollbar">
+                    <div className="relative w-full max-w-lg bg-white dark:bg-[#242723] rounded-[2.5rem] shadow-2xl border border-[#E6DFD5] dark:border-[#353B33] p-8 sm:p-10 max-h-[calc(100vh-8rem)] overflow-y-auto custom-scrollbar">
                         <button
                             onClick={() => setSellingItem(null)}
                             className="absolute top-6 right-6 p-2.5 rounded-full bg-[#1B1D1A] text-white hover:bg-rose-600 hover:text-white hover:rotate-90 hover:scale-110 active:scale-95 transition-all duration-300 shadow-sm border border-[#353B33] flex items-center justify-center shrink-0 cursor-pointer"
@@ -463,8 +462,8 @@ export default function HistorialComprasPage() {
                             </button>
                         </div>
                     </div>
-                </div>
             )}
+            </Ventana>
         </div>
     );
 }

@@ -4,6 +4,7 @@ import { useState, useMemo } from "react";
 import { Search, Plus, Trash2, X, Edit2, Users as UsersIcon, ListTree, Sparkles, Droplets, Car, Wind, Package, User, UserCheck, Users } from "lucide-react";
 import { useAppContext } from "@/context/AppContext";
 import ConfirmModal from "@/components/ConfirmModal";
+import Ventana from "@/components/Ventana";
 
 type TabType = "proveedores" | "categorias" | "generos";
 
@@ -393,9 +394,9 @@ export default function ParametrosPage() {
             )}
 
             {/* Modal de Crear / Editar */}
+            <Ventana abierta={isAddModalOpen} onCerrar={handleCloseModal} cerrarAlTocarFondo={false}>
             {isAddModalOpen && (
-                <div className="fixed inset-0 z-[200] flex items-center justify-center pt-24 pb-8 px-4 sm:px-6 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200 overflow-y-auto">
-                    <div className="bg-white dark:bg-[#242723] border border-[#E6DFD5] dark:border-[#353B33] rounded-3xl p-8 max-w-md w-full shadow-2xl space-y-6 my-auto max-h-[calc(100vh-8rem)] flex flex-col overflow-y-auto custom-scrollbar">
+                    <div className="bg-white dark:bg-[#242723] border border-[#E6DFD5] dark:border-[#353B33] rounded-3xl p-8 max-w-md w-full shadow-2xl space-y-6 max-h-[calc(100vh-8rem)] flex flex-col overflow-y-auto custom-scrollbar">
                         <div className="flex items-center justify-between border-b border-[#E6DFD5] dark:border-[#353B33] pb-4 bg-[#F9F6F0] dark:bg-[#1B1D1A] -mx-8 -mt-8 p-6 rounded-t-3xl">
                             <h3 className="text-xl font-extrabold text-[#2C2C2C] dark:text-[#F4EFEA] font-brand">
                                 {editingId !== null ? "Editar" : "Nuevo"} {activeTab === "proveedores" ? "Proveedor" : activeTab === "categorias" ? "Categoría" : "Género"}
@@ -450,8 +451,8 @@ export default function ParametrosPage() {
                             </div>
                         </form>
                     </div>
-                </div>
             )}
+            </Ventana>
 
             {/* Modal de Confirmación de Borrado */}
             <ConfirmModal

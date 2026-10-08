@@ -3,6 +3,7 @@
 import { X, Check, FileSpreadsheet, FileText, Filter, CheckCircle2 } from "lucide-react";
 import { useState, useMemo, useEffect } from "react";
 import { Producto } from "@/context/AppContext";
+import Ventana from "@/components/Ventana";
 
 interface ExportModalProps {
     isOpen: boolean;
@@ -128,8 +129,6 @@ export default function ExportModal({
         });
     }, [productos, selectedCategories, selectedGenders, includeOutOfStock]);
 
-    if (!isOpen) return null;
-
     const toggleCategory = (cat: string) => {
         setSelectedCategories(prev => 
             prev.includes(cat) ? prev.filter(c => c !== cat) : [...prev, cat]
@@ -148,8 +147,8 @@ export default function ExportModal({
     const deselectAllGenders = () => setSelectedGenders([]);
 
     return (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center pt-24 pb-8 px-4 sm:px-6 bg-black/60 backdrop-blur-md animate-in fade-in duration-300 overflow-y-auto">
-            <div className="bg-white dark:bg-[#242723] rounded-[2.5rem] shadow-2xl w-full max-w-2xl overflow-hidden border border-[#E6DFD5] dark:border-[#353B33] animate-in zoom-in-95 duration-500 my-auto flex flex-col max-h-[calc(100vh-8rem)]">
+        <Ventana abierta={isOpen} onCerrar={onClose}>
+            <div className="bg-white dark:bg-[#242723] rounded-[2.5rem] shadow-2xl w-full max-w-2xl overflow-hidden border border-[#E6DFD5] dark:border-[#353B33] flex flex-col max-h-[calc(100vh-8rem)]">
                 {/* Header */}
                 <div className="p-8 border-b border-[#E6DFD5] dark:border-[#353B33] flex justify-between items-center bg-[#F9F6F0] dark:bg-[#1B1D1A]">
                     <div>
@@ -271,6 +270,6 @@ export default function ExportModal({
                     </button>
                 </div>
             </div>
-        </div>
+        </Ventana>
     );
 }
