@@ -41,12 +41,14 @@ import {
     TrendingUp,
     Coins,
     Info,
-    FlaskConical
+    FlaskConical,
+    ArrowRight,
+    type LucideIcon
 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import Image from "next/image";
 import { getOptimizedImageUrl } from "@/lib/image-optimizer";
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useMemo, useEffect, useCallback, useRef, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { useAppContext, Producto } from "@/context/AppContext";
 import { motion, AnimatePresence } from "framer-motion";
@@ -56,6 +58,49 @@ import { extractBrand } from "@/lib/product-utils";
 import ExportModal from "@/components/ExportModal";
 import ListSelectorToggle from "@/components/ListSelectorToggle";
 import PaginationControls from "@/components/PaginationControls";
+
+// ── Animaciones ─────────────────────────────────────────────────────
+const EASE_OUT = [0.23, 1, 0.32, 1] as const;
+const EASE_CAJON = [0.32, 0.72, 0, 1] as const; // como el panel lateral de iOS
+
+const fondoModal = {
+    initial: { opacity: 0 },
+    animate: { opacity: 1, transition: { duration: 0.2 } },
+    exit: { opacity: 0, transition: { duration: 0.15 } },
+};
+const panelModal = {
+    initial: { opacity: 0, scale: 0.96, y: 8 },
+    animate: { opacity: 1, scale: 1, y: 0, transition: { duration: 0.24, ease: EASE_OUT } },
+    exit: { opacity: 0, scale: 0.98, transition: { duration: 0.12 } },
+};
+
+// Desplegable de filtro con el mismo alto y estilo que el buscador; se marca cuando está en uso.
+function FiltroSelect({ icon: Icon, label, value, activo, onChange, children }: {
+    icon: LucideIcon;
+    label: string;
+    value: string;
+    activo: boolean;
+    onChange: (value: string) => void;
+    children: ReactNode;
+}) {
+    return (
+        <label className={`relative flex items-center h-11 rounded-xl border transition-colors duration-150 focus-within:ring-2 focus-within:ring-[#7D9878]/25 ${activo
+            ? "border-[#7D9878]/60 bg-[#7D9878]/[0.08] dark:bg-[#A3B69B]/10"
+            : "border-[#E6DFD5] dark:border-[#353B33] bg-[#F9F6F0] dark:bg-[#1B1D1A] hover:border-[#D3CBBF] dark:hover:border-[#474C44]"}`}
+        >
+            <span className="sr-only">{label}</span>
+            <Icon className={`absolute left-3.5 w-4 h-4 pointer-events-none ${activo ? "text-[#7D9878] dark:text-[#A3B69B]" : "text-[#2C2C2C]/45 dark:text-[#F4EFEA]/45"}`} />
+            <select
+                value={value}
+                onChange={(e) => onChange(e.target.value)}
+                className="appearance-none w-full h-full bg-transparent pl-10 pr-10 text-sm font-semibold text-[#2C2C2C] dark:text-[#F4EFEA] focus:outline-none cursor-pointer dark:[&_option]:bg-[#242723]"
+            >
+                {children}
+            </select>
+            <ChevronDown className="absolute right-3.5 w-4 h-4 pointer-events-none text-[#2C2C2C]/45 dark:text-[#F4EFEA]/45" />
+        </label>
+    );
+}
 
 const getPaginationRange = (currentPage: number, totalPages: number) => {
     const delta = 2;
@@ -92,7 +137,7 @@ const getCategoryBadge = (category: string) => {
     // 50 ML
     if (c.includes("50") || c.includes("50ml") || c.includes("50 ml")) {
         return (
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-200/50 dark:border-emerald-500/30 rounded-full text-[10px] font-black uppercase tracking-wider">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-200/50 dark:border-emerald-500/30 rounded-full text-xs font-semibold whitespace-nowrap">
                 <Package className="w-3 h-3 text-emerald-500" />
                 {category}
             </span>
@@ -102,7 +147,7 @@ const getCategoryBadge = (category: string) => {
     // 30 ML
     if (c.includes("30") || c.includes("30ml") || c.includes("30 ml")) {
         return (
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-cyan-50 dark:bg-cyan-500/10 text-cyan-700 dark:text-cyan-400 border border-cyan-200/50 dark:border-cyan-500/30 rounded-full text-[10px] font-black uppercase tracking-wider">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-cyan-50 dark:bg-cyan-500/10 text-cyan-700 dark:text-cyan-400 border border-cyan-200/50 dark:border-cyan-500/30 rounded-full text-xs font-semibold whitespace-nowrap">
                 <Package className="w-3 h-3 text-cyan-500" />
                 {category}
             </span>
@@ -112,7 +157,7 @@ const getCategoryBadge = (category: string) => {
     // 100 ML
     if (c.includes("100") || c.includes("100ml") || c.includes("100 ml")) {
         return (
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 border border-indigo-200/50 dark:border-indigo-500/30 rounded-full text-[10px] font-black uppercase tracking-wider">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 border border-indigo-200/50 dark:border-indigo-500/30 rounded-full text-xs font-semibold whitespace-nowrap">
                 <Package className="w-3 h-3 text-indigo-500" />
                 {category}
             </span>
@@ -122,7 +167,7 @@ const getCategoryBadge = (category: string) => {
     // Difusores / Ambiente / Textil
     if (c.includes("difusor") || c.includes("textil") || c.includes("ambiente")) {
         return (
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-teal-50 dark:bg-teal-500/10 text-teal-700 dark:text-teal-400 border border-teal-200/50 dark:border-teal-500/30 rounded-full text-[10px] font-black uppercase tracking-wider">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-teal-50 dark:bg-teal-500/10 text-teal-700 dark:text-teal-400 border border-teal-200/50 dark:border-teal-500/30 rounded-full text-xs font-semibold whitespace-nowrap">
                 <Wind className="w-3 h-3 text-teal-500" />
                 {category}
             </span>
@@ -132,7 +177,7 @@ const getCategoryBadge = (category: string) => {
     // Auto
     if (c.includes("auto")) {
         return (
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-200/50 dark:border-amber-500/30 rounded-full text-[10px] font-black uppercase tracking-wider">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-200/50 dark:border-amber-500/30 rounded-full text-xs font-semibold whitespace-nowrap">
                 <Car className="w-3 h-3 text-amber-500" />
                 {category}
             </span>
@@ -142,7 +187,7 @@ const getCategoryBadge = (category: string) => {
     // Limpieza / Pisos
     if (c.includes("piso") || c.includes("limp")) {
         return (
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-sky-50 dark:bg-sky-500/10 text-sky-700 dark:text-sky-400 border border-sky-200/50 dark:border-sky-500/30 rounded-full text-[10px] font-black uppercase tracking-wider">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-sky-50 dark:bg-sky-500/10 text-sky-700 dark:text-sky-400 border border-sky-200/50 dark:border-sky-500/30 rounded-full text-xs font-semibold whitespace-nowrap">
                 <Droplets className="w-3 h-3 text-sky-500" />
                 {category}
             </span>
@@ -152,7 +197,7 @@ const getCategoryBadge = (category: string) => {
     // Perfumería Fina / Perfume
     if (c.includes("fina") || c.includes("perfume")) {
         return (
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-purple-50 dark:bg-purple-500/10 text-purple-700 dark:text-purple-400 border border-purple-200/50 dark:border-purple-500/30 rounded-full text-[10px] font-black uppercase tracking-wider">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-purple-50 dark:bg-purple-500/10 text-purple-700 dark:text-purple-400 border border-purple-200/50 dark:border-purple-500/30 rounded-full text-xs font-semibold whitespace-nowrap">
                 <Sparkles className="w-3 h-3 text-purple-500" />
                 {category}
             </span>
@@ -177,7 +222,7 @@ const getCategoryBadge = (category: string) => {
     const theme = palettes[colorIdx];
 
     return (
-        <span className={`inline-flex items-center gap-1.5 px-3 py-1 ${theme.bg} ${theme.text} border ${theme.border} rounded-full text-[10px] font-black uppercase tracking-wider`}>
+        <span className={`inline-flex items-center gap-1.5 px-3 py-1 ${theme.bg} ${theme.text} border ${theme.border} rounded-full text-xs font-semibold whitespace-nowrap`}>
             <Package className={`w-3 h-3 ${theme.icon}`} />
             {category || "General"}
         </span>
@@ -188,7 +233,7 @@ const getGenderBadge = (gender: string) => {
     const g = (gender || "").toLowerCase();
     if (g.includes("fem") || g.includes("mujer")) {
         return (
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-pink-50 dark:bg-pink-500/10 text-pink-700 dark:text-pink-400 border border-pink-200/50 dark:border-pink-500/20 rounded-full text-xs font-extrabold">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-pink-50 dark:bg-pink-500/10 text-pink-700 dark:text-pink-400 border border-pink-200/50 dark:border-pink-500/20 rounded-full text-xs font-semibold whitespace-nowrap">
                 <span className="w-1.5 h-1.5 rounded-full bg-pink-500"></span>
                 Femenino
             </span>
@@ -196,7 +241,7 @@ const getGenderBadge = (gender: string) => {
     }
     if (g.includes("masc") || g.includes("hombre")) {
         return (
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 border border-blue-200/50 dark:border-blue-500/20 rounded-full text-xs font-extrabold">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 border border-blue-200/50 dark:border-blue-500/20 rounded-full text-xs font-semibold whitespace-nowrap">
                 <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
                 Masculino
             </span>
@@ -204,7 +249,7 @@ const getGenderBadge = (gender: string) => {
     }
     if (g.includes("unisex")) {
         return (
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-purple-50 dark:bg-purple-500/10 text-purple-700 dark:text-purple-400 border border-purple-200/50 dark:border-purple-500/20 rounded-full text-xs font-extrabold">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-purple-50 dark:bg-purple-500/10 text-purple-700 dark:text-purple-400 border border-purple-200/50 dark:border-purple-500/20 rounded-full text-xs font-semibold whitespace-nowrap">
                 <span className="w-1.5 h-1.5 rounded-full bg-purple-500"></span>
                 Unisex
             </span>
@@ -212,7 +257,7 @@ const getGenderBadge = (gender: string) => {
     }
     if (g.includes("ambiente") || g.includes("difusor")) {
         return (
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-teal-50 dark:bg-teal-500/10 text-teal-700 dark:text-teal-400 border border-teal-200/50 dark:border-teal-500/20 rounded-full text-xs font-extrabold">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-teal-50 dark:bg-teal-500/10 text-teal-700 dark:text-teal-400 border border-teal-200/50 dark:border-teal-500/20 rounded-full text-xs font-semibold whitespace-nowrap">
                 <Wind className="w-3 h-3 text-teal-500" />
                 Ambiente
             </span>
@@ -220,14 +265,14 @@ const getGenderBadge = (gender: string) => {
     }
     if (g.includes("muestrario") || g.includes("muestra")) {
         return (
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-200/50 dark:border-amber-500/20 rounded-full text-xs font-extrabold">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-200/50 dark:border-amber-500/20 rounded-full text-xs font-semibold whitespace-nowrap">
                 <Package className="w-3 h-3 text-amber-500" />
                 Muestrario
             </span>
         );
     }
     return (
-        <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700 rounded-full text-xs font-extrabold">
+        <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700 rounded-full text-xs font-semibold whitespace-nowrap">
             {gender || "—"}
         </span>
     );
@@ -396,6 +441,29 @@ export default function ListaPreciosPage() {
     const [copiedField, setCopiedField] = useState<string | null>(null);
     const [exportFormat, setExportFormat] = useState<"excel" | "pdf" | null>(null);
     const itemsPerPage = 10;
+
+    // "Agregar" se convierte un momento en "Agregado" para confirmar el clic
+    const [recienAgregado, setRecienAgregado] = useState<string | null>(null);
+    const agregadoTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const agregarAlPedido = (producto: Producto) => {
+        addToCart(producto, isMinorista ? "minorista" : "mayorista");
+        setRecienAgregado(producto.id);
+        if (agregadoTimer.current) clearTimeout(agregadoTimer.current);
+        agregadoTimer.current = setTimeout(() => setRecienAgregado(null), 1400);
+    };
+    useEffect(() => () => { if (agregadoTimer.current) clearTimeout(agregadoTimer.current); }, []);
+
+    // Escape cierra la ventana que esté abierta
+    useEffect(() => {
+        const onKey = (e: KeyboardEvent) => {
+            if (e.key !== "Escape") return;
+            setProfitModalProduct(null);
+            setInfoModalProduct(null);
+            setIsCartOpen(false);
+        };
+        document.addEventListener("keydown", onKey);
+        return () => document.removeEventListener("keydown", onKey);
+    }, []);
 
     const handleCopy = (text: string, field: string) => {
         if (!text) return;
@@ -624,173 +692,231 @@ export default function ListaPreciosPage() {
         setExportFormat(null);
     };
 
-    return (
-        <div className="space-y-8 pb-12 animate-in fade-in duration">
-            <header className="bg-white dark:bg-[#242723] rounded-[2.5rem] p-8 md:p-10 border border-[#E6DFD5] dark:border-[#353B33] shadow-sm relative overflow-hidden transition-colors duration-300">
-                <div className="flex flex-col items-center text-center gap-6 relative z-10">
-                    <div className="flex flex-col items-center space-y-3 max-w-2xl mx-auto">
-                        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#7D9878]/10 text-[#7D9878] dark:text-[#A3B69B] border border-[#7D9878]/20 text-xs font-bold tracking-widest uppercase">
-                            <span className="w-2 h-2 rounded-full animate-pulse bg-[#7D9878]"></span>
-                            {isMinorista ? "Venta al Público" : "Comercialización Mayorista"}
-                        </div>
-                        <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight text-[#2C2C2C] dark:text-[#F4EFEA] transition-colors font-brand">
-                            {isMinorista ? "Lista Minorista" : "Lista Mayorista"}
-                        </h1>
-                        <p className="text-[#2C2C2C]/70 dark:text-[#F4EFEA]/70 text-lg leading-relaxed font-medium transition-colors">
-                            {isMinorista
-                                ? "Precios sugeridos para el consumidor final con margen minorista."
-                                : "Gestioná tus precios mayoristas y prepará pedidos rápidamente."}
-                        </p>
-                        <div className="mt-2 px-4 py-2 border border-[#E6DFD5] dark:border-[#353B33] rounded-xl inline-flex items-center gap-3 bg-[#F9F6F0] dark:bg-[#1B1D1A] text-[#2C2C2C] dark:text-[#F4EFEA]">
-                            <div className="w-2 h-2 rounded-full animate-pulse bg-[#7D9878]"></div>
-                            <p className="text-sm font-bold">
-                                Todos los productos de Perfumería Fina son de 50 ML
-                            </p>
-                        </div>
-                    </div>
+    const unidadesCarrito = cartFiltered.reduce((acc, i) => acc + i.quantity, 0);
+    const hayFiltros = search !== "" || categoryFilter !== "Todas" || genderFilter !== "Todos" || sortBy !== "none";
+    const limpiarFiltros = () => {
+        setSearch("");
+        setCategoryFilter("Todas");
+        setGenderFilter("Todos");
+        setSortBy("none");
+        setCurrentPage(1);
+    };
 
-                    <div className="flex items-center justify-center gap-3">
+    return (
+        <div className={`space-y-6 ${cartFiltered.length > 0 ? "pb-28" : "pb-12"}`}>
+            {/* Encabezado: qué lista es, selector y acciones, todo centrado */}
+            <header className="anim-entrada relative overflow-hidden bg-white dark:bg-[#242723] rounded-[2rem] px-6 py-9 md:px-10 md:py-11 border border-[#E6DFD5] dark:border-[#353B33] shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.2)]">
+                {/* Luz suave detrás del título */}
+                <div aria-hidden className="pointer-events-none absolute left-1/2 -translate-x-1/2 -top-36 w-[760px] max-w-full h-72 rounded-full bg-[#7D9878]/[0.14] dark:bg-[#A3B69B]/[0.07] blur-3xl" />
+
+                <div className="relative flex flex-col items-center text-center">
+                    {/* Al cambiar de lista, el texto se funde de una a otra */}
+                    <AnimatePresence mode="wait" initial={false}>
+                        <motion.div
+                            key={mode}
+                            initial={{ opacity: 0, y: 4, filter: "blur(3px)" }}
+                            animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+                            exit={{ opacity: 0, y: -4, filter: "blur(3px)" }}
+                            transition={{ duration: 0.18, ease: EASE_OUT }}
+                            className="flex flex-col items-center"
+                        >
+                            <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#7D9878]/10 text-[#5A7356] dark:text-[#A3B69B] border border-[#7D9878]/20 text-[11px] font-bold tracking-widest uppercase">
+                                {isMinorista ? <ShoppingBag className="w-3.5 h-3.5" /> : <Store className="w-3.5 h-3.5" />}
+                                {isMinorista ? "Venta al público" : "Venta mayorista"}
+                            </span>
+                            <h1 className="mt-4 text-4xl md:text-5xl font-extrabold tracking-tight text-[#2C2C2C] dark:text-[#F4EFEA] font-brand">
+                                {isMinorista ? "Lista Minorista" : "Lista Mayorista"}
+                            </h1>
+                            <p className="mt-3 max-w-xl text-base md:text-lg text-[#2C2C2C]/65 dark:text-[#F4EFEA]/60 leading-relaxed">
+                                {isMinorista
+                                    ? "Precios sugeridos para el consumidor final con margen minorista."
+                                    : "Gestioná tus precios mayoristas y prepará pedidos rápidamente."}
+                            </p>
+                            <p className="mt-2 inline-flex items-center gap-1.5 text-sm text-[#2C2C2C]/55 dark:text-[#F4EFEA]/50">
+                                <Info className="w-4 h-4 text-[#7D9878] dark:text-[#A3B69B]" />
+                                Todos los productos de Perfumería Fina son de 50 ml.
+                            </p>
+                        </motion.div>
+                    </AnimatePresence>
+
+                    <div className="mt-7 flex flex-wrap items-center justify-center gap-3">
+                        <ListSelectorToggle
+                            activeMode={mode}
+                            onSelectMode={(newMode) => {
+                                setMode(newMode);
+                                setCurrentPage(1);
+                            }}
+                        />
+
+                        <span className="hidden sm:block w-px h-7 bg-[#E6DFD5] dark:bg-[#353B33]" aria-hidden />
+
                         <button
                             onClick={() => setIsCartOpen(true)}
-                            className="relative flex items-center gap-2.5 px-7 py-3.5 rounded-2xl bg-[#7D9878] text-white font-bold hover:bg-[#6b8566] active:scale-95 transition-all shadow-lg shadow-[#7D9878]/20"
+                            className="flex items-center gap-2 h-11 pl-4 pr-3 rounded-xl bg-[#7D9878] text-white text-sm font-semibold shadow-md shadow-[#7D9878]/25 hover:bg-[#6B8566] active:scale-[0.97] transition-[background-color,transform] duration-150"
                         >
-                            <ShoppingBag className="w-5 h-5" strokeWidth={2.5} />
-                            Ver Pedido
-                            {cartFiltered.length > 0 && (
-                                <span className="absolute -top-2 -right-2 w-6 h-6 bg-[#C9866F] text-white text-[10px] flex items-center justify-center rounded-full border-2 border-white font-black">
-                                    {cartFiltered.length}
-                                </span>
-                            )}
+                            <ShoppingBag className="w-4 h-4" />
+                            Ver pedido
+                            <span
+                                key={cartFiltered.length}
+                                className={`min-w-6 h-6 px-1.5 rounded-lg text-xs font-bold tabular-nums flex items-center justify-center ${cartFiltered.length > 0 ? "anim-pop bg-white text-[#5A7356]" : "bg-white/20"}`}
+                            >
+                                {cartFiltered.length}
+                            </span>
                         </button>
 
-                        <div className="flex gap-2">
-                            <button
-                                onClick={() => setExportFormat("excel")}
-                                className="p-3.5 rounded-2xl bg-[#F9F6F0] dark:bg-[#1B1D1A] text-[#7D9878] dark:text-[#A3B69B] hover:bg-[#7D9878]/10 border border-[#E6DFD5] dark:border-[#353B33] transition-all"
-                                title="Exportar a Excel"
-                            >
-                                <FileSpreadsheet className="w-5 h-5" />
-                            </button>
-                            <button
-                                onClick={() => setExportFormat("pdf")}
-                                className="p-3.5 rounded-2xl bg-[#F9F6F0] dark:bg-[#1B1D1A] text-[#C9866F] hover:bg-[#C9866F]/10 border border-[#E6DFD5] dark:border-[#353B33] transition-all"
-                                title="Exportar a PDF"
-                            >
-                                <FileText className="w-5 h-5" />
-                            </button>
+                        <div className="flex items-center gap-3">
+                        <button
+                            onClick={() => setExportFormat("excel")}
+                            className="flex items-center gap-2 h-11 px-3.5 rounded-xl bg-white dark:bg-[#1B1D1A] border border-[#E6DFD5] dark:border-[#353B33] text-sm font-semibold text-[#2C2C2C]/75 dark:text-[#F4EFEA]/75 hover:text-[#2C2C2C] dark:hover:text-[#F4EFEA] hover:border-[#7D9878]/50 active:scale-[0.97] transition-[border-color,color,transform] duration-150"
+                            title="Exportar a Excel"
+                        >
+                            <FileSpreadsheet className="w-4 h-4 text-[#7D9878] dark:text-[#A3B69B]" />
+                            Excel
+                        </button>
+                        <button
+                            onClick={() => setExportFormat("pdf")}
+                            className="flex items-center gap-2 h-11 px-3.5 rounded-xl bg-white dark:bg-[#1B1D1A] border border-[#E6DFD5] dark:border-[#353B33] text-sm font-semibold text-[#2C2C2C]/75 dark:text-[#F4EFEA]/75 hover:text-[#2C2C2C] dark:hover:text-[#F4EFEA] hover:border-[#C9866F]/50 active:scale-[0.97] transition-[border-color,color,transform] duration-150"
+                            title="Exportar a PDF"
+                        >
+                            <FileText className="w-4 h-4 text-[#C9866F]" />
+                            PDF
+                        </button>
                         </div>
                     </div>
                 </div>
             </header>
 
-            {/* CENTERED DUAL SELECTOR (Located between Header and Filters) */}
-            <div className="flex justify-center w-full py-2">
-                <ListSelectorToggle
-                    activeMode={mode}
-                    onSelectMode={(newMode) => {
-                        setMode(newMode);
-                        setCurrentPage(1);
-                    }}
-                />
-            </div>
-
-            {/* Filter and Control Bar */}
-
-            {/* Filter and Control Bar */}
-            <div className="bg-white dark:bg-[#242723] p-6 rounded-3xl border border-[#E6DFD5] dark:border-[#353B33] shadow-sm space-y-4">
-                <div className="flex flex-col lg:flex-row gap-4 justify-between items-center">
-                    {/* Search */}
-                    <div className="relative w-full lg:w-96">
-                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[#2C2C2C]/60 dark:text-[#F4EFEA]/60" />
-                        <input
-                            type="text"
-                            placeholder="Buscar por nombre o ID..."
-                            value={search}
-                            onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }}
-                            className="w-full pl-12 pr-4 py-3 bg-[#F9F6F0] dark:bg-[#1B1D1A] border border-[#E6DFD5] dark:border-[#353B33] rounded-2xl text-[#2C2C2C] dark:text-[#F4EFEA] placeholder:text-[#2C2C2C]/50 dark:placeholder:text-[#F4EFEA]/60 focus:outline-none focus:border-[#7D9878] font-semibold transition-all"
-                        />
-                        {search && (
-                            <button
-                                onClick={() => setSearch("")}
-                                className="absolute right-4 top-1/2 -translate-y-1/2 text-[#2C2C2C]/40 hover:text-[#2C2C2C] dark:hover:text-[#F4EFEA]"
-                            >
-                                <X className="w-4 h-4" />
-                            </button>
-                        )}
-                    </div>
-
-                    {/* Filter Dropdowns */}
-                    <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto">
-                        <select
-                            value={categoryFilter}
-                            onChange={(e) => { setCategoryFilter(e.target.value); setCurrentPage(1); }}
-                            className="px-4 py-3 bg-[#F9F6F0] dark:bg-[#1B1D1A] border border-[#E6DFD5] dark:border-[#353B33] rounded-2xl text-sm font-bold text-[#2C2C2C] dark:text-[#F4EFEA] focus:outline-none focus:ring-2 focus:ring-[#7D9878]/30"
+            {/* Buscador y filtros en una sola barra pareja */}
+            <div className="anim-entrada [animation-delay:60ms] bg-white dark:bg-[#242723] p-3 rounded-2xl border border-[#E6DFD5] dark:border-[#353B33] shadow-sm flex flex-col lg:flex-row gap-3">
+                <div className="relative flex-1 min-w-0">
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#2C2C2C]/45 dark:text-[#F4EFEA]/45 pointer-events-none" />
+                    <input
+                        type="search"
+                        aria-label="Buscar productos"
+                        placeholder="Buscar por nombre o código…"
+                        value={search}
+                        onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }}
+                        className="w-full h-11 pl-11 pr-10 bg-[#F9F6F0] dark:bg-[#1B1D1A] border border-[#E6DFD5] dark:border-[#353B33] rounded-xl text-sm font-medium text-[#2C2C2C] dark:text-[#F4EFEA] placeholder:text-[#2C2C2C]/45 dark:placeholder:text-[#F4EFEA]/40 focus:outline-none focus:border-[#7D9878] focus:ring-2 focus:ring-[#7D9878]/20 transition-[border-color,box-shadow] duration-150 [&::-webkit-search-cancel-button]:hidden"
+                    />
+                    {search && (
+                        <button
+                            onClick={() => { setSearch(""); setCurrentPage(1); }}
+                            aria-label="Borrar búsqueda"
+                            className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-lg flex items-center justify-center text-[#2C2C2C]/50 dark:text-[#F4EFEA]/50 hover:text-[#2C2C2C] dark:hover:text-[#F4EFEA] hover:bg-[#E6DFD5]/60 dark:hover:bg-[#353B33]"
                         >
-                            <option value="Todas">Todas las Categorías</option>
-                            {categorias.map(cat => (
-                                <option key={cat.id} value={cat.name}>{cat.name}</option>
-                            ))}
-                        </select>
-
-                        <select
-                            value={genderFilter}
-                            onChange={(e) => { setGenderFilter(e.target.value); setCurrentPage(1); }}
-                            className="px-4 py-3 bg-[#F9F6F0] dark:bg-[#1B1D1A] border border-[#E6DFD5] dark:border-[#353B33] rounded-2xl text-sm font-bold text-[#2C2C2C] dark:text-[#F4EFEA] focus:outline-none focus:ring-2 focus:ring-[#7D9878]/30"
-                        >
-                            <option value="Todos">Todos los Géneros</option>
-                            {generos.map(g => (
-                                <option key={typeof g === 'string' ? g : (g as any).id} value={typeof g === 'string' ? g : (g as any).name}>
-                                    {typeof g === 'string' ? g : (g as any).name}
-                                </option>
-                            ))}
-                        </select>
-
-                        <select
-                            value={sortBy}
-                            onChange={(e) => setSortBy(e.target.value as any)}
-                            className="px-4 py-3 bg-[#F9F6F0] dark:bg-[#1B1D1A] border border-[#E6DFD5] dark:border-[#353B33] rounded-2xl text-sm font-bold text-[#2C2C2C] dark:text-[#F4EFEA] focus:outline-none focus:ring-2 focus:ring-[#7D9878]/30"
-                        >
-                            <option value="none">Sin Ordenar</option>
-                            <option value="price-asc">Precio: Menor a Mayor</option>
-                            <option value="price-desc">Precio: Mayor a Menor</option>
-                            <option value="id-asc">ID: Menor a Mayor</option>
-                            <option value="id-desc">ID: Mayor a Menor</option>
-                        </select>
-                    </div>
+                            <X className="w-4 h-4" />
+                        </button>
+                    )}
                 </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 lg:flex gap-3">
+                    <FiltroSelect
+                        icon={Tags}
+                        label="Categoría"
+                        value={categoryFilter}
+                        activo={categoryFilter !== "Todas"}
+                        onChange={(v) => { setCategoryFilter(v); setCurrentPage(1); }}
+                    >
+                        <option value="Todas">Todas las categorías</option>
+                        {categorias.map(cat => (
+                            <option key={cat.id} value={cat.name}>{cat.name}</option>
+                        ))}
+                    </FiltroSelect>
+
+                    <FiltroSelect
+                        icon={Users}
+                        label="Género"
+                        value={genderFilter}
+                        activo={genderFilter !== "Todos"}
+                        onChange={(v) => { setGenderFilter(v); setCurrentPage(1); }}
+                    >
+                        <option value="Todos">Todos los géneros</option>
+                        {generos.map(g => (
+                            <option key={typeof g === 'string' ? g : (g as any).id} value={typeof g === 'string' ? g : (g as any).name}>
+                                {typeof g === 'string' ? g : (g as any).name}
+                            </option>
+                        ))}
+                    </FiltroSelect>
+
+                    <FiltroSelect
+                        icon={ArrowUpDown}
+                        label="Orden"
+                        value={sortBy}
+                        activo={sortBy !== "none"}
+                        onChange={(v) => setSortBy(v as any)}
+                    >
+                        <option value="none">Sin ordenar</option>
+                        <option value="price-asc">Precio: menor a mayor</option>
+                        <option value="price-desc">Precio: mayor a menor</option>
+                        <option value="id-asc">Código: menor a mayor</option>
+                        <option value="id-desc">Código: mayor a menor</option>
+                    </FiltroSelect>
+                </div>
+
+                {hayFiltros && (
+                    <button
+                        onClick={limpiarFiltros}
+                        className="h-11 px-4 rounded-xl text-sm font-semibold text-[#2C2C2C]/65 dark:text-[#F4EFEA]/60 hover:text-[#2C2C2C] dark:hover:text-[#F4EFEA] hover:bg-[#F4EFEA] dark:hover:bg-[#1B1D1A] active:scale-[0.97] transition-[background-color,color,transform] duration-150 whitespace-nowrap"
+                    >
+                        Limpiar filtros
+                    </button>
+                )}
             </div>
 
-            {/* Product Grid */}
+            {/* Tabla de productos */}
             {isLoading ? (
                 <div className="flex flex-col items-center justify-center py-20 gap-4">
                     <Loader2 className="w-10 h-10 animate-spin text-[#7D9878]" />
-                    <p className="text-[#2C2C2C]/60 dark:text-[#F4EFEA]/60 font-bold">Cargando productos...</p>
+                    <p className="text-[#2C2C2C]/60 dark:text-[#F4EFEA]/60 font-semibold">Cargando productos…</p>
                 </div>
             ) : filteredAndSortedProductos.length === 0 ? (
-                <div className="bg-white dark:bg-[#242723] rounded-3xl p-12 text-center border border-[#E6DFD5] dark:border-[#353B33] space-y-4">
-                    <Search className="w-12 h-12 text-[#7D9878] mx-auto" />
-                    <h3 className="text-xl font-bold text-[#2C2C2C] dark:text-[#F4EFEA]">No se encontraron productos</h3>
-                    <p className="text-[#2C2C2C]/60 dark:text-[#F4EFEA]/60 text-sm">Intenta ajustar los filtros de búsqueda.</p>
+                <div className="anim-entrada bg-white dark:bg-[#242723] rounded-2xl py-16 px-6 text-center border border-[#E6DFD5] dark:border-[#353B33] flex flex-col items-center">
+                    <div className="w-14 h-14 rounded-2xl bg-[#F4EFEA] dark:bg-[#1B1D1A] flex items-center justify-center mb-4">
+                        <Search className="w-6 h-6 text-[#7D9878] dark:text-[#A3B69B]" />
+                    </div>
+                    <h3 className="font-semibold text-[#2C2C2C] dark:text-[#F4EFEA]">No se encontraron productos</h3>
+                    <p className="text-[#2C2C2C]/60 dark:text-[#F4EFEA]/60 text-sm mt-1">Probá con otra búsqueda o sacá algún filtro.</p>
+                    {hayFiltros && (
+                        <button
+                            onClick={limpiarFiltros}
+                            className="mt-4 h-9 px-4 rounded-xl text-sm font-semibold bg-[#7D9878] text-white hover:bg-[#6B8566] active:scale-[0.97] transition-[background-color,transform] duration-150"
+                        >
+                            Limpiar filtros
+                        </button>
+                    )}
                 </div>
             ) : (
-                <div className="bg-white dark:bg-[#242723] rounded-3xl border border-[#E6DFD5] dark:border-[#353B33] shadow-sm overflow-hidden transition-colors">
+                <div className="anim-entrada [animation-delay:120ms] bg-white dark:bg-[#242723] rounded-2xl border border-[#E6DFD5] dark:border-[#353B33] shadow-sm overflow-hidden">
+                    <div className="flex items-center justify-between gap-3 px-6 py-3 border-b border-[#E6DFD5] dark:border-[#353B33]">
+                        <p className="text-sm text-[#2C2C2C]/60 dark:text-[#F4EFEA]/55">
+                            <span className="font-semibold text-[#2C2C2C] dark:text-[#F4EFEA] tabular-nums">{filteredAndSortedProductos.length}</span>{" "}
+                            {filteredAndSortedProductos.length === 1 ? "producto" : "productos"}
+                            {hayFiltros && " con estos filtros"}
+                        </p>
+                        {totalPages > 1 && (
+                            <p className="text-xs text-[#2C2C2C]/55 dark:text-[#F4EFEA]/50 tabular-nums">
+                                Página {currentPage} de {totalPages}
+                            </p>
+                        )}
+                    </div>
                     <div className="overflow-x-auto">
-                        <table className="w-full text-left border-collapse">
+                        <table className="w-full border-collapse">
                             <thead>
-                                <tr className="bg-[#F9F6F0] dark:bg-[#1B1D1A] text-[11px] font-black uppercase text-[#2C2C2C]/60 dark:text-[#F4EFEA]/60 tracking-wider border-b border-[#E6DFD5] dark:border-[#353B33]">
-                                    <th className="py-4 px-6 text-center">Producto</th>
-                                    <th className="py-4 px-6 text-center">Categoría</th>
-                                    <th className="py-4 px-6 text-center">Género / Variante</th>
-                                    <th className="py-4 px-6 text-center">Precio {isMinorista ? "Minorista" : "Mayorista"}</th>
-                                    <th className="py-4 px-6 text-center">% Margen</th>
-                                    <th className="py-4 px-6 text-center">Acciones</th>
+                                <tr className="bg-[#F9F6F0]/70 dark:bg-[#1B1D1A]/60 text-[11px] font-semibold uppercase tracking-wider text-[#2C2C2C]/50 dark:text-[#F4EFEA]/45 border-b border-[#E6DFD5] dark:border-[#353B33]">
+                                    <th className="py-3 pl-6 pr-4 text-left font-semibold">Producto</th>
+                                    <th className="py-3 px-4 text-center font-semibold">Categoría</th>
+                                    <th className="py-3 px-4 text-center font-semibold">Género</th>
+                                    <th className="py-3 px-4 text-center font-semibold">Precio {isMinorista ? "minorista" : "mayorista"}</th>
+                                    <th className="py-3 px-4 text-center font-semibold">Margen</th>
+                                    <th className="py-3 pl-4 pr-6 text-right font-semibold"><span className="sr-only">Acciones</span></th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-[#E6DFD5] dark:divide-[#353B33]">
-                                {paginatedProductos.map(producto => {
+                            {/* La clave cambia al pasar de página o de lista: las filas entran escalonadas */}
+                            <tbody key={`${mode}-${currentPage}`} className="divide-y divide-[#E6DFD5]/70 dark:divide-[#353B33]/70">
+                                {paginatedProductos.map((producto, i) => {
                                     const { title, brand } = extractBrand(producto.name);
                                     const cost = getProductCost(producto, esencias, insumos);
-                                    
+
                                     const rawPrice = isMinorista ? Number(producto.priceMinorista) : Number(producto.price);
                                     const isValidPrice = isFinite(rawPrice) && !isNaN(rawPrice) && rawPrice > 0;
                                     const currentPrice = isValidPrice ? rawPrice : 0;
@@ -798,74 +924,87 @@ export default function ListaPreciosPage() {
                                     const marginMay = calculateProfitMargin(cost, Number(producto.price) || 0);
                                     const marginMin = calculateProfitMargin(cost, Number(producto.priceMinorista) || 0);
                                     const currentMargin = isMinorista ? marginMin : marginMay;
+                                    const agregado = recienAgregado === producto.id;
 
                                     return (
                                         <tr
                                             key={producto.id}
-                                            className="hover:bg-[#7D9878]/5 dark:hover:bg-[#A3B69B]/10 transition-colors group text-center"
+                                            style={{ animationDelay: `${i * 22}ms` }}
+                                            className="anim-fila group transition-colors duration-150 hover:bg-[#F9F6F0] dark:hover:bg-[#2A2E29]"
                                         >
-                                            <td className="py-4 px-6 text-center">
-                                                <div className="flex flex-col items-center justify-center text-center">
+                                            <td className="py-3.5 pl-6 pr-4">
+                                                <div className="min-w-[200px] max-w-[340px]">
                                                     {brand && (
-                                                        <span className="text-[10px] font-black text-[#7D9878] dark:text-[#A3B69B] uppercase tracking-widest">
+                                                        <p className="text-[10px] font-bold text-[#6B8566] dark:text-[#A3B69B] uppercase tracking-widest truncate">
                                                             {brand}
-                                                        </span>
+                                                        </p>
                                                     )}
-                                                    <span className="text-sm font-bold text-[#2C2C2C] dark:text-[#F4EFEA]">
+                                                    <p className="text-sm font-semibold text-[#2C2C2C] dark:text-[#F4EFEA] truncate" title={producto.name}>
                                                         {title}
-                                                    </span>
+                                                    </p>
                                                 </div>
                                             </td>
-                                            <td className="py-4 px-6 text-center">
-                                                <div className="flex justify-center">
-                                                    {getCategoryBadge(producto.category)}
-                                                </div>
+                                            <td className="py-3.5 px-4 text-center">
+                                                {getCategoryBadge(producto.category)}
                                             </td>
-                                            <td className="py-4 px-6 text-center">
-                                                <div className="flex justify-center">
-                                                    {getGenderBadge(producto.gender)}
-                                                </div>
+                                            <td className="py-3.5 px-4 text-center">
+                                                {getGenderBadge(producto.gender)}
                                             </td>
-                                            <td className="py-4 px-6 text-center font-black text-[#2C2C2C] dark:text-[#F4EFEA] text-base">
+                                            <td className="py-3.5 px-4 text-center">
                                                 {!isValidPrice ? (
-                                                    <span className="px-2.5 py-1 bg-[#DAC4AA]/20 text-[#2C2C2C] dark:text-[#DAC4AA] rounded-lg text-xs font-bold">
+                                                    <span className="px-2.5 py-1 bg-[#DAC4AA]/20 text-[#7A5C34] dark:text-[#DAC4AA] rounded-lg text-xs font-semibold">
                                                         Consultar
                                                     </span>
                                                 ) : (
-                                                    `$${Intl.NumberFormat("es-AR").format(currentPrice)}`
+                                                    <span className="text-[15px] font-bold tabular-nums text-[#2C2C2C] dark:text-[#F4EFEA]">
+                                                        ${Intl.NumberFormat("es-AR").format(currentPrice)}
+                                                    </span>
                                                 )}
                                             </td>
-                                            <td className="py-4 px-6 text-center">
-                                                <span className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-extrabold ${currentMargin.isConsultar ? "bg-[#DAC4AA]/20 text-[#2C2C2C] dark:text-[#DAC4AA]" : (isMinorista ? "bg-[#C9866F]/10 text-[#C9866F]" : "bg-[#7D9878]/10 text-[#7D9878] dark:text-[#A3B69B]")}`}>
+                                            <td className="py-3.5 px-4 text-center">
+                                                <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold tabular-nums ${currentMargin.isConsultar ? "bg-[#DAC4AA]/20 text-[#7A5C34] dark:text-[#DAC4AA]" : (isMinorista ? "bg-[#C9866F]/10 text-[#97604D] dark:text-[#DBA793]" : "bg-[#7D9878]/10 text-[#5A7356] dark:text-[#A3B69B]")}`}>
                                                     {!currentMargin.isConsultar && <TrendingUp className="w-3.5 h-3.5" />}
                                                     {currentMargin.percentStr}
                                                 </span>
                                             </td>
-                                            <td className="py-4 px-6 text-center">
-                                                <div className="flex items-center justify-center gap-2">
+                                            <td className="py-3.5 pl-4 pr-6">
+                                                <div className="flex items-center justify-end gap-1">
                                                     <button
                                                         onClick={() => setInfoModalProduct(producto)}
-                                                        className="inline-flex items-center gap-1 px-2.5 py-2 rounded-xl text-xs font-bold transition-all bg-[#F9F6F0] dark:bg-[#1B1D1A] text-[#7D9878] dark:text-[#A3B69B] border border-[#E6DFD5] dark:border-[#353B33] hover:bg-[#7D9878]/10 active:scale-95 whitespace-nowrap"
+                                                        className="inline-flex items-center gap-1.5 h-9 px-2.5 rounded-lg text-xs font-semibold text-[#2C2C2C]/60 dark:text-[#F4EFEA]/55 hover:text-[#2C2C2C] dark:hover:text-[#F4EFEA] hover:bg-[#F4EFEA] dark:hover:bg-[#1B1D1A] active:scale-[0.96] transition-[background-color,color,transform] duration-150 whitespace-nowrap"
                                                         title="Ver insumos y fórmula utilizada"
+                                                        aria-label={`Insumos de ${producto.name}`}
                                                     >
-                                                        <Info className="w-4 h-4" />
-                                                        <span className="hidden md:inline">Insumos</span>
+                                                        <FlaskConical className="w-4 h-4" />
+                                                        <span className="hidden 2xl:inline">Insumos</span>
                                                     </button>
                                                     <button
                                                         onClick={() => setProfitModalProduct(producto)}
-                                                        className="inline-flex items-center gap-1 px-3 py-2 rounded-xl text-xs font-bold transition-all bg-[#F9F6F0] dark:bg-[#1B1D1A] text-[#7D9878] dark:text-[#A3B69B] border border-[#E6DFD5] dark:border-[#353B33] hover:bg-[#7D9878]/10 active:scale-95 whitespace-nowrap"
-                                                        title="Ver Desglose de % Ganancia"
+                                                        className="inline-flex items-center gap-1.5 h-9 px-2.5 rounded-lg text-xs font-semibold text-[#2C2C2C]/60 dark:text-[#F4EFEA]/55 hover:text-[#2C2C2C] dark:hover:text-[#F4EFEA] hover:bg-[#F4EFEA] dark:hover:bg-[#1B1D1A] active:scale-[0.96] transition-[background-color,color,transform] duration-150 whitespace-nowrap"
+                                                        title="Ver desglose de % de ganancia"
+                                                        aria-label={`Ganancia de ${producto.name}`}
                                                     >
-                                                        <Percent className="w-3.5 h-3.5" />
-                                                        <span>% Ganancia</span>
+                                                        <Percent className="w-4 h-4" />
+                                                        <span className="hidden 2xl:inline">Ganancia</span>
                                                     </button>
                                                     <button
-                                                        onClick={() => addToCart(producto, isMinorista ? "minorista" : "mayorista")}
+                                                        onClick={() => agregarAlPedido(producto)}
                                                         disabled={!isValidPrice}
-                                                        className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-white text-xs font-bold transition-all shadow-md active:scale-95 bg-[#7D9878] hover:bg-[#6b8566] shadow-[#7D9878]/20 disabled:opacity-40 disabled:pointer-events-none whitespace-nowrap"
+                                                        className={`relative ml-1 inline-flex items-center justify-center min-w-[108px] h-9 px-3.5 rounded-lg text-white text-xs font-semibold transition-[background-color,transform,box-shadow] duration-150 active:scale-[0.96] disabled:opacity-40 disabled:pointer-events-none whitespace-nowrap ${agregado ? "bg-[#5A7356]" : "bg-[#7D9878] hover:bg-[#6B8566] shadow-sm shadow-[#7D9878]/25"}`}
                                                     >
-                                                        <Plus className="w-4 h-4" />
-                                                        Agregar
+                                                        <AnimatePresence mode="popLayout" initial={false}>
+                                                            <motion.span
+                                                                key={agregado ? "ok" : "agregar"}
+                                                                initial={{ opacity: 0, y: 6, filter: "blur(2px)" }}
+                                                                animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+                                                                exit={{ opacity: 0, y: -6, filter: "blur(2px)" }}
+                                                                transition={{ duration: 0.16, ease: EASE_OUT }}
+                                                                className="flex items-center gap-1.5"
+                                                            >
+                                                                {agregado ? <Check className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+                                                                {agregado ? "Agregado" : "Agregar"}
+                                                            </motion.span>
+                                                        </AnimatePresence>
                                                     </button>
                                                 </div>
                                             </td>
@@ -883,7 +1022,40 @@ export default function ListaPreciosPage() {
                 currentPage={currentPage}
                 totalPages={totalPages}
                 onPageChange={(p) => setCurrentPage(p)}
+                showSummary={false}
             />
+
+            {/* Barra flotante del pedido: siempre a mano mientras se recorre la lista */}
+            <AnimatePresence>
+                {cartFiltered.length > 0 && !isCartOpen && (
+                    <motion.div
+                        key="barra-pedido"
+                        initial={{ opacity: 0, y: 24 }}
+                        animate={{ opacity: 1, y: 0, transition: { duration: 0.32, ease: EASE_OUT } }}
+                        exit={{ opacity: 0, y: 16, transition: { duration: 0.15 } }}
+                        className="fixed bottom-5 inset-x-0 z-40 flex justify-center px-4 pointer-events-none print:hidden"
+                    >
+                        <button
+                            onClick={() => setIsCartOpen(true)}
+                            className="pointer-events-auto flex items-center gap-4 max-w-full pl-5 pr-2 py-2 rounded-2xl bg-[#2C2C2C] dark:bg-[#F4EFEA] text-white dark:text-[#1B1D1A] shadow-2xl shadow-black/25 ring-1 ring-black/5 active:scale-[0.98] transition-transform duration-150"
+                        >
+                            <ShoppingBag className="w-5 h-5 shrink-0 opacity-80" />
+                            <span className="text-left leading-tight min-w-0">
+                                <span className="block text-[11px] opacity-60 whitespace-nowrap">
+                                    {unidadesCarrito} {unidadesCarrito === 1 ? "unidad" : "unidades"} · Pedido {isMinorista ? "minorista" : "mayorista"}
+                                </span>
+                                <span key={cartSummary.totalFinal} className="anim-pop inline-block text-base font-bold tabular-nums">
+                                    ${Intl.NumberFormat("es-AR").format(Math.round(cartSummary.totalFinal))}
+                                </span>
+                            </span>
+                            <span className="flex items-center gap-1.5 h-10 px-4 rounded-xl bg-[#7D9878] text-white text-sm font-semibold whitespace-nowrap">
+                                Ver pedido
+                                <ArrowRight className="w-4 h-4" />
+                            </span>
+                        </button>
+                    </motion.div>
+                )}
+            </AnimatePresence>
 
             {/* Export Modal */}
             {exportFormat && (
@@ -904,9 +1076,21 @@ export default function ListaPreciosPage() {
             )}
 
             {/* Modal de Rentabilidad (% Ganancia) */}
+            <AnimatePresence>
             {profitModalProduct && (
-                <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-300">
-                    <div className="bg-white dark:bg-[#242723] rounded-[2.5rem] shadow-2xl w-full max-w-md overflow-hidden border border-[#E6DFD5] dark:border-[#353B33] animate-in zoom-in-95 duration-300">
+                <motion.div
+                    key="modal-ganancia"
+                    {...fondoModal}
+                    onClick={() => setProfitModalProduct(null)}
+                    className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md"
+                >
+                    <motion.div
+                        {...panelModal}
+                        role="dialog"
+                        aria-modal="true"
+                        onClick={(e) => e.stopPropagation()}
+                        className="bg-white dark:bg-[#242723] rounded-[2rem] shadow-2xl w-full max-w-md overflow-hidden border border-[#E6DFD5] dark:border-[#353B33]"
+                    >
                         {/* Header */}
                         <div className="p-6 sm:p-8 border-b border-[#E6DFD5] dark:border-[#353B33] flex justify-between items-center bg-[#F9F6F0] dark:bg-[#1B1D1A]">
                             <div>
@@ -997,14 +1181,27 @@ export default function ListaPreciosPage() {
                                 );
                             })()}
                         </div>
-                    </div>
-                </div>
+                    </motion.div>
+                </motion.div>
             )}
+            </AnimatePresence>
 
             {/* Modal de Insumos y Fórmula de Fabricación (Info Button) */}
+            <AnimatePresence>
             {infoModalProduct && (
-                <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-300">
-                    <div className="bg-white dark:bg-[#242723] rounded-[2.5rem] shadow-2xl w-full max-w-lg overflow-hidden border border-[#E6DFD5] dark:border-[#353B33] animate-in zoom-in-95 duration-300 flex flex-col max-h-[85vh]">
+                <motion.div
+                    key="modal-insumos"
+                    {...fondoModal}
+                    onClick={() => setInfoModalProduct(null)}
+                    className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md"
+                >
+                    <motion.div
+                        {...panelModal}
+                        role="dialog"
+                        aria-modal="true"
+                        onClick={(e) => e.stopPropagation()}
+                        className="bg-white dark:bg-[#242723] rounded-[2rem] shadow-2xl w-full max-w-lg overflow-hidden border border-[#E6DFD5] dark:border-[#353B33] flex flex-col max-h-[85vh]"
+                    >
                         {/* Header */}
                         <div className="p-6 sm:p-8 border-b border-[#E6DFD5] dark:border-[#353B33] flex justify-between items-center bg-[#F9F6F0] dark:bg-[#1B1D1A] shrink-0">
                             <div>
@@ -1104,11 +1301,15 @@ export default function ListaPreciosPage() {
                                 );
                             })()}
                         </div>
-                    </div>
-                </div>
+                    </motion.div>
+                </motion.div>
             )}
+            </AnimatePresence>
 
             {/* Modal de Ver Pedido / Carrito (isCartOpen) */}
+            {/* Portal al body: así el panel queda por encima de la barra de navegación. */}
+            {typeof document !== "undefined" && createPortal(
+            <AnimatePresence>
             {isCartOpen && (() => {
                 const closeCart = () => {
                     setIsCartOpen(false);
@@ -1125,14 +1326,21 @@ export default function ListaPreciosPage() {
                         ? "bg-[#7D9878] text-white border-[#7D9878]"
                         : "bg-white dark:bg-[#242723] text-[#2C2C2C]/70 dark:text-[#F4EFEA]/70 border-[#E6DFD5] dark:border-[#353B33] hover:border-[#7D9878]"}`;
 
-                // Portal al body: así el panel queda por encima de la barra de navegación.
-                return createPortal(
-                    <div
-                        className="fixed inset-0 z-[300] flex justify-end bg-black/60 backdrop-blur-sm animate-in fade-in duration-300"
+                return (
+                    <motion.div
+                        key="carrito"
+                        {...fondoModal}
+                        className="fixed inset-0 z-[300] flex justify-end bg-black/60 backdrop-blur-sm"
                         onClick={closeCart}
                     >
-                        <div
-                            className={`bg-[#F9F6F0] dark:bg-[#1B1D1A] w-full h-full shadow-2xl border-l border-[#E6DFD5] dark:border-[#353B33] animate-in slide-in-from-right duration-300 flex flex-col ${hasItems ? "max-w-lg lg:max-w-5xl" : "max-w-lg"}`}
+                        {/* El panel entra desde la derecha con la curva de los cajones de iOS */}
+                        <motion.div
+                            role="dialog"
+                            aria-modal="true"
+                            initial={{ transform: "translateX(100%)" }}
+                            animate={{ transform: "translateX(0%)", transition: { duration: 0.42, ease: EASE_CAJON } }}
+                            exit={{ transform: "translateX(100%)", transition: { duration: 0.24, ease: EASE_OUT } }}
+                            className={`bg-[#F9F6F0] dark:bg-[#1B1D1A] w-full h-full shadow-2xl border-l border-[#E6DFD5] dark:border-[#353B33] flex flex-col ${hasItems ? "max-w-lg lg:max-w-5xl" : "max-w-lg"}`}
                             onClick={e => e.stopPropagation()}
                         >
                             {/* Encabezado */}
@@ -1171,7 +1379,7 @@ export default function ListaPreciosPage() {
                             {orderSuccess ? (
                                 <div className="flex-1 p-6">
                                     <div className="p-6 rounded-3xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 text-center space-y-3">
-                                        <CheckCircle2 className="w-12 h-12 text-emerald-500 mx-auto animate-bounce" />
+                                        <CheckCircle2 className="w-12 h-12 text-emerald-500 mx-auto anim-pop" />
                                         <h4 className="text-lg font-extrabold text-emerald-700 dark:text-emerald-400 font-brand">
                                             ¡Venta Registrada con Éxito!
                                         </h4>
@@ -1527,10 +1735,12 @@ export default function ListaPreciosPage() {
                                     </div>
                                 </>
                             )}
-                        </div>
-                    </div>
-                , document.body);
+                        </motion.div>
+                    </motion.div>
+                );
             })()}
+            </AnimatePresence>,
+            document.body)}
         </div>
     );
 }

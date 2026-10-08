@@ -200,3 +200,57 @@
     background-color: rgb(125 152 120 / 0.18);
   }
 }
+
+/* ── Animaciones compartidas ──────────────────────────────────────
+   Entrada de bloques y filas: suben 6px mientras aparecen (solo opacidad y
+   transform, así no traban aunque la página esté cargando datos). */
+@layer utilities {
+  .anim-entrada {
+    animation: anim-entrada 420ms cubic-bezier(0.23, 1, 0.32, 1) both;
+  }
+  .anim-fila {
+    animation: anim-entrada 260ms cubic-bezier(0.23, 1, 0.32, 1) both;
+  }
+  /* Contador que cambia (pedido, carrito): un pequeño salto para que se note */
+  .anim-pop {
+    animation: anim-pop 320ms cubic-bezier(0.23, 1, 0.32, 1);
+  }
+}
+
+@keyframes anim-entrada {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+@keyframes anim-pop {
+  0% {
+    transform: scale(0.7);
+    opacity: 0.5;
+  }
+  55% {
+    transform: scale(1.15);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* Quien pidió menos movimiento ve los cambios sin desplazamientos */
+@media (prefers-reduced-motion: reduce) {
+  .anim-entrada,
+  .anim-fila {
+    animation-name: anim-aparecer;
+  }
+  .anim-pop {
+    animation: none;
+  }
+}
+
+@keyframes anim-aparecer {
+  from {
+    opacity: 0;
+  }
+}

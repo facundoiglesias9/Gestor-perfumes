@@ -6,6 +6,7 @@ import TopNav from "@/components/TopNav";
 import { useAppContext } from "@/context/AppContext";
 import { puedeVer } from "@/lib/permisos";
 import { CheckCircle2, Loader2 } from "lucide-react";
+import { MotionConfig } from "framer-motion";
 
 function DashboardContent({ children }: { children: ReactNode }) {
     const { mounted, currentUser, logout } = useAppContext();
@@ -76,5 +77,10 @@ function DashboardContent({ children }: { children: ReactNode }) {
 }
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
-    return <DashboardContent>{children}</DashboardContent>;
+    // reducedMotion="user": quien pidió menos movimiento en su sistema no ve desplazamientos
+    return (
+        <MotionConfig reducedMotion="user">
+            <DashboardContent>{children}</DashboardContent>
+        </MotionConfig>
+    );
 }
