@@ -33,7 +33,7 @@ export default function LoginPage() {
         // 1. Check App Context Users
         if (usuarios && usuarios.length > 0) {
             const foundUser = usuarios.find((u: any) =>
-                (u.username || "").toLowerCase() === email.toLowerCase() &&
+                (u.username || "").toLowerCase() === email.trim().toLowerCase() &&
                 u.password === password
             );
 
@@ -84,9 +84,16 @@ export default function LoginPage() {
 
         // 3. Try searching the custom 'usuarios' table (for non-admin users on new machines)
         try {
-            const { data: usersData, error: dbError } = await fetchTable("usuarios", { 
-                filter: { username: email, password: password } 
+            // Los usuarios nuevos se guardan en minúscula: si el celular puso "Milagros", se prueba también "milagros"
+            const usuarioIngresado = email.trim();
+            let { data: usersData, error: dbError } = await fetchTable("usuarios", {
+                filter: { username: usuarioIngresado, password: password }
             });
+            if (!dbError && !usersData?.[0] && usuarioIngresado !== usuarioIngresado.toLowerCase()) {
+                ({ data: usersData, error: dbError } = await fetchTable("usuarios", {
+                    filter: { username: usuarioIngresado.toLowerCase(), password: password }
+                }));
+            }
             const dbUser = usersData?.[0];
 
             if (!dbError && dbUser) {
@@ -170,6 +177,10 @@ export default function LoginPage() {
                                 placeholder="Ingresá tu usuario"
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
+                                autoCapitalize="none"
+                                autoCorrect="off"
+                                autoComplete="username"
+                                spellCheck={false}
                                 required
                                 className="w-full bg-[#F9F6F0] dark:bg-[#1B1D1A] border border-[#E6DFD5] dark:border-[#353B33] rounded-2xl py-4 pl-12 pr-4 text-[#2C2C2C] dark:text-[#F4EFEA] placeholder-[#2C2C2C]/40 dark:placeholder-[#F4EFEA]/40 focus:outline-none focus:ring-2 focus:ring-[#7D9878]/20 focus:border-[#7D9878] transition-all font-bold text-sm"
                             />

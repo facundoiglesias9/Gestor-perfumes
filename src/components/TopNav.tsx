@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
     Tags, Truck, Wallet, ChevronDown, Layers, Plus, ShoppingCart, Archive,
     FlaskConical, ListTree, Percent, Terminal, StickyNote, Menu, X,
-    LogOut, Store, Boxes, Settings2, PieChart, type LucideIcon
+    LogOut, Store, Boxes, Settings2, PieChart, Users, UserRound, type LucideIcon
 } from "lucide-react";
 import ThemeToggle from "@/components/ThemeToggle";
 import { useAppContext } from "@/context/AppContext";
@@ -103,6 +103,7 @@ export default function TopNav() {
                 { href: "/parametros", label: "Parámetros y Clasificación", icon: ListTree, desc: "Categorías, géneros y opciones" },
                 { href: "/porcentaje-ganancia", label: "Porcentaje de Ganancia", icon: Percent, desc: "Márgenes por categoría" },
                 { href: "/logs", label: "Logs del Sistema", icon: Terminal, desc: "Actividad y errores del sistema" },
+                { href: "/perfil", label: "Usuarios", icon: Users, desc: "Quién puede entrar al sistema" },
             ]
         },
     ];
@@ -282,16 +283,21 @@ export default function TopNav() {
                         <ThemeToggle />
 
                         {currentUser && (
-                            <div className="flex items-center h-9 pl-1 pr-1 rounded-xl border border-[#E6DFD5] dark:border-[#353B33] bg-white dark:bg-[#242723]">
-                                <span
-                                    className="w-7 h-7 rounded-lg bg-gradient-to-br from-[#8FA888] to-[#6B8566] text-white text-xs font-black flex items-center justify-center"
-                                    title={`${currentUser.username} · administrador`}
+                            <div className={`flex items-center h-9 pl-1 pr-1 rounded-xl border bg-white dark:bg-[#242723] transition-colors duration-150 ${pathname === "/perfil" ? "border-[#7D9878]/60" : "border-[#E6DFD5] dark:border-[#353B33]"}`}>
+                                {/* Avatar y nombre llevan a Mi perfil (cuenta y usuarios del equipo) */}
+                                <Link
+                                    href="/perfil"
+                                    title={`Mi perfil · ${currentUser.username}`}
+                                    aria-current={pathname === "/perfil" ? "page" : undefined}
+                                    className="flex items-center rounded-lg group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7D9878]/50 active:scale-[0.97] transition-transform duration-150"
                                 >
-                                    {inicial}
-                                </span>
-                                <span className="hidden min-[1800px]:inline px-2 text-[13px] font-semibold text-[#2C2C2C] dark:text-[#F4EFEA] capitalize">
-                                    {currentUser.username}
-                                </span>
+                                    <span className="w-7 h-7 rounded-lg bg-gradient-to-br from-[#8FA888] to-[#6B8566] text-white text-xs font-black flex items-center justify-center transition-[filter] duration-150 group-hover:brightness-110">
+                                        {inicial}
+                                    </span>
+                                    <span className="hidden min-[1800px]:inline px-2 text-[13px] font-semibold text-[#2C2C2C] dark:text-[#F4EFEA] capitalize group-hover:text-[#5A7356] dark:group-hover:text-[#A3B69B] transition-colors duration-150">
+                                        {currentUser.username}
+                                    </span>
+                                </Link>
                                 <button
                                     onClick={() => {
                                         logout();
@@ -360,6 +366,15 @@ export default function TopNav() {
                                 <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
                                 USD ${usdRate?.toLocaleString('es-AR') || "---"}
                             </div>
+                            {currentUser && (
+                                <Link
+                                    href="/perfil"
+                                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold text-[#2C2C2C] dark:text-[#F4EFEA] border border-[#E6DFD5] dark:border-[#353B33]"
+                                >
+                                    <UserRound className="w-4 h-4" />
+                                    Mi perfil
+                                </Link>
+                            )}
                             {currentUser && (
                                 <button
                                     onClick={() => {

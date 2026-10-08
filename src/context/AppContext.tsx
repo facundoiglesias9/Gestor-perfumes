@@ -1314,17 +1314,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             setCurrentUser(updated);
         }
 
-        const { error } = await upsertRecord("usuarios", {
+        // Solo se mandan los datos que vienen cargados: la base convierte "sin dato" en vacío, y al
+        // registrar un ingreso desde otro dispositivo (que no trae la contraseña) la borraba.
+        const { error } = await upsertRecord("usuarios", Object.fromEntries(Object.entries({
             id: updated.id,
             username: updated.username,
             email: updated.email,
             password: updated.password,
             role: updated.role,
             status: updated.status,
-            last_login: updated.lastLogin || null,
-            notas: updated.notas || null
-        });
-        
+            last_login: updated.lastLogin,
+            notas: updated.notas
+        }).filter(([, valor]) => valor !== undefined)));
+
         if (error) {
             console.error("Error updating usuario natively:", error);
             addSystemLog("error", "Error al actualizar usuario en DB", { error, user: updated.username });
