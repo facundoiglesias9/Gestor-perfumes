@@ -34,10 +34,11 @@ export default function ThemeToggle() {
     return (
         <button
             onClick={toggleTheme}
-            className="p-2.5 rounded-xl bg-[#7D9878]/10 hover:bg-[#7D9878]/20 dark:bg-[#242723] dark:hover:bg-[#2F332E] text-[#7D9878] dark:text-[#A3B69B] border border-[#7D9878]/20 dark:border-[#353B33] transition-all"
+            className="w-9 h-9 flex items-center justify-center rounded-xl bg-white dark:bg-[#242723] hover:bg-[#F4EFEA] dark:hover:bg-[#2F332E] text-[#2C2C2C]/65 dark:text-[#F4EFEA]/65 hover:text-[#7D9878] dark:hover:text-[#A3B69B] border border-[#E6DFD5] dark:border-[#353B33] transition-colors"
             title="Alternar modo claro / oscuro"
+            aria-label="Alternar modo claro / oscuro"
         >
-            {theme === "light" ? <Moon className="w-4.5 h-4.5" /> : <Sun className="w-4.5 h-4.5 text-[#A3B69B]" />}
+            {theme === "light" ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
         </button>
     );
 }

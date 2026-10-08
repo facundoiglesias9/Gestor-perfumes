@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Search, Plus, Minus, ShoppingBag, X, MessageCircle, Clock, Trash2, Check, ChevronLeft, ChevronRight } from "lucide-react";
+import { Search, Plus, Minus, ShoppingBag, X, MessageCircle, Clock, Trash2, Check, ChevronLeft, ChevronRight, Car, Wind, SprayCan, Sparkles } from "lucide-react";
 import { formatNumber } from "@/lib/format-utils";
 import { extractBrand } from "@/lib/product-utils";
 
@@ -143,7 +143,8 @@ export default function CatalogoClient({ productos }: { productos: CatalogoProdu
 
     const mensajePedido = () => {
         const lineas = items.map(({ producto, qty }) =>
-            `• ${qty} x ${producto.name} ($${formatNumber(producto.price)} c/u)`
+            // El género va en el mensaje: hay perfumes con el mismo nombre en versión de hombre y de mujer.
+            `• ${qty} x ${producto.name}${producto.gender ? ` - ${producto.gender}` : ""} ($${formatNumber(producto.price)} c/u)`
         );
         return [
             "¡Hola Scenta! Quiero consultar por este pedido:",
@@ -159,14 +160,15 @@ export default function CatalogoClient({ productos }: { productos: CatalogoProdu
             {/* Encabezado */}
             <header className="border-b border-[#E6DFD5] dark:border-[#353B33] bg-white/70 dark:bg-[#242723]/70 backdrop-blur-md sticky top-0 z-30">
                 {/* Tres columnas: la del medio centra el título aunque el botón ocupe lugar a la derecha */}
-                <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4 grid grid-cols-[1fr_auto_1fr] items-center gap-4">
+                <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3 grid grid-cols-[1fr_auto_1fr] items-center gap-4">
                     <div />
-                    <div className="text-center">
-                        <h1 className="font-brand text-2xl sm:text-3xl font-bold tracking-wide">
-                            Scenta <span className="text-[#7D9878] dark:text-[#A3B69B]">Catálogo</span>
-                        </h1>
-                        <p className="text-xs text-[#2C2C2C]/60 dark:text-[#F4EFEA]/60">Armá tu pedido y consultalo por WhatsApp</p>
-                    </div>
+                    <a href="/catalogo" className="flex items-center gap-3">
+                        <img src="/logo-scenta.png" alt="" className="h-10 w-auto object-contain dark:invert dark:brightness-200" />
+                        <div className="text-left">
+                            <h1 className="font-brand text-xl sm:text-2xl font-bold tracking-[0.25em] leading-none">SCENTA</h1>
+                            <p className="text-[9px] font-bold uppercase tracking-[0.3em] text-[#7D9878] dark:text-[#A3B69B] mt-1">Fragancias naturales</p>
+                        </div>
+                    </a>
                     <button
                         onClick={() => setDrawerOpen(true)}
                         className="relative justify-self-end flex items-center gap-2 rounded-full bg-[#7D9878] hover:bg-[#6B8566] text-white px-4 py-2.5 text-sm font-bold transition-colors"
@@ -183,7 +185,24 @@ export default function CatalogoClient({ productos }: { productos: CatalogoProdu
                 </div>
             </header>
 
-            <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6 pb-32">
+            {/* Bienvenida */}
+            <section className="relative overflow-hidden border-b border-[#E6DFD5] dark:border-[#353B33]">
+                <div className="absolute inset-0 bg-[radial-gradient(#DAC4AA_1px,transparent_1px)] dark:bg-[radial-gradient(#353B33_1px,transparent_1px)] [background-size:22px_22px] opacity-50 pointer-events-none" />
+                <div className="absolute -top-24 left-1/2 -translate-x-1/2 w-[640px] h-[320px] rounded-full bg-[#A3B69B]/20 dark:bg-[#7D9878]/10 blur-3xl pointer-events-none" />
+                <div className="relative max-w-3xl mx-auto px-4 sm:px-6 py-10 sm:py-14 text-center">
+                    <span className="inline-flex items-center gap-1.5 rounded-full border border-[#7D9878]/30 bg-white/70 dark:bg-[#242723]/70 px-3 py-1 text-[10px] font-black uppercase tracking-[0.2em] text-[#7D9878] dark:text-[#A3B69B]">
+                        <Sparkles className="w-3 h-3" /> Catálogo
+                    </span>
+                    <h2 className="font-brand text-3xl sm:text-5xl font-bold mt-4 leading-tight">
+                        Fragancias para vos, <span className="text-[#7D9878] dark:text-[#A3B69B]">tu casa y tu auto</span>
+                    </h2>
+                    <p className="text-sm sm:text-base text-[#2C2C2C]/65 dark:text-[#F4EFEA]/65 mt-3 max-w-xl mx-auto">
+                        Elegí tus perfumes, armá el pedido y te lo confirmamos por WhatsApp.
+                    </p>
+                </div>
+            </section>
+
+            <main className="max-w-6xl mx-auto px-4 sm:px-6 py-8 pb-32">
                 {productos === null ? (
                     <EstadoVacio
                         titulo="El catálogo no está disponible en este momento"
@@ -305,8 +324,18 @@ export default function CatalogoClient({ productos }: { productos: CatalogoProdu
                         )}
                     </>
                 )}
-                <footer className="mt-16 pt-6 border-t border-[#E6DFD5] dark:border-[#353B33] text-center">
-                    <a href="/login" className="text-[11px] text-[#2C2C2C]/40 dark:text-[#F4EFEA]/40 hover:text-[#7D9878] transition-colors">
+                <footer className="mt-16 pt-8 border-t border-[#E6DFD5] dark:border-[#353B33] flex flex-col items-center gap-3 text-center">
+                    <img src="/logo-scenta.png" alt="Scenta" className="h-12 w-auto object-contain opacity-80 dark:invert dark:brightness-200" />
+                    <p className="font-brand text-sm tracking-[0.25em]">SCENTA</p>
+                    <a
+                        href={whatsappUrl("¡Hola Scenta! Quería hacerles una consulta.")}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 text-xs font-bold text-[#7D9878] dark:text-[#A3B69B] hover:underline"
+                    >
+                        <MessageCircle className="w-3.5 h-3.5" /> Escribinos por WhatsApp
+                    </a>
+                    <a href="/login" className="text-[11px] text-[#2C2C2C]/35 dark:text-[#F4EFEA]/35 hover:text-[#7D9878] transition-colors">
                         Acceso para el equipo
                     </a>
                 </footer>
@@ -424,40 +453,86 @@ function ChipFiltro({ activo, cantidad, onClick, children }: { activo: boolean; 
     );
 }
 
+// Estilo visual de la tarjeta según el tipo de producto: como no hay fotos, un recuadro con
+// degradé de la paleta Scenta + ícono + tamaño identifica cada producto de un vistazo.
+function estiloProducto(p: CatalogoProducto) {
+    const tipo = etiquetaCategoria(p.category || "").toLowerCase();
+    const g = (p.gender || "").toLowerCase();
+    const formato = tipo.includes("auto") ? "Auto" : tipo.includes("difusor") ? "Difusor" : etiquetaCategoria(p.category || "");
+    const Icono = tipo.includes("auto") ? Car : tipo.includes("difusor") ? Wind : SprayCan;
+    const fondo =
+        g.startsWith("fem") ? "from-[#C9866F]/25 via-[#DAC4AA]/20 to-[#F4EFEA]/10 dark:from-[#C9866F]/25 dark:via-[#C9866F]/10 dark:to-transparent" :
+        g.startsWith("masc") ? "from-[#7D9878]/30 via-[#A3B69B]/15 to-[#F4EFEA]/10 dark:from-[#7D9878]/30 dark:via-[#7D9878]/10 dark:to-transparent" :
+        g.startsWith("uni") ? "from-[#A3B69B]/25 via-[#DAC4AA]/20 to-[#F4EFEA]/10 dark:from-[#A3B69B]/20 dark:via-[#DAC4AA]/10 dark:to-transparent" :
+        "from-[#DAC4AA]/40 via-[#E6DFD5]/30 to-[#F4EFEA]/10 dark:from-[#DAC4AA]/20 dark:via-[#DAC4AA]/5 dark:to-transparent";
+    const acento =
+        g.startsWith("fem") ? "text-[#B5735C] dark:text-[#D29680]" :
+        g.startsWith("masc") ? "text-[#5A7356] dark:text-[#A3B69B]" :
+        "text-[#7F7D74] dark:text-[#DAC4AA]";
+    return { formato, Icono, fondo, acento };
+}
+
 function TarjetaProducto({ producto, qty, onQty }: { producto: CatalogoProducto; qty: number; onQty: (qty: number) => void }) {
     const { title, brand } = extractBrand(producto.name);
-    const etiquetas = [producto.category, producto.gender].filter(Boolean).join(" · ");
+    // El tamaño o formato ya se muestra en la etiqueta del recuadro: no repetirlo en el nombre.
+    const nombre = title.replace(/\s+(\d+\s*ML|DIFUSOR|AUTO)\s*$/i, "").trim() || title;
+    const { formato, Icono, fondo, acento } = estiloProducto(producto);
+    const enPedido = qty > 0;
 
     return (
-        <article className="rounded-3xl border border-[#E6DFD5] dark:border-[#353B33] bg-white dark:bg-[#242723] p-5 flex flex-col gap-3">
-            <div className="flex-1 space-y-1.5">
-                {etiquetas && (
-                    <p className="text-[10px] font-black uppercase tracking-widest text-[#7D9878] dark:text-[#A3B69B]">{etiquetas}</p>
+        <article className={`group relative flex flex-col overflow-hidden rounded-3xl border bg-white dark:bg-[#242723] transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-[#2C2C2C]/5 dark:hover:shadow-black/30 ${enPedido
+            ? "border-[#7D9878] ring-1 ring-[#7D9878]/40"
+            : "border-[#E6DFD5] dark:border-[#353B33] hover:border-[#A3B69B]/60"}`}
+        >
+            {/* Recuadro visual */}
+            <div className={`relative h-28 bg-gradient-to-br ${fondo} flex items-center justify-center`}>
+                <Icono className={`w-10 h-10 ${acento} opacity-70 transition-transform duration-300 group-hover:scale-110`} strokeWidth={1.4} />
+                <span className="absolute top-3 left-3 rounded-full bg-white/80 dark:bg-[#1B1D1A]/70 backdrop-blur px-2.5 py-1 text-[10px] font-black uppercase tracking-widest">
+                    {formato}
+                </span>
+                {producto.gender && (
+                    <span className={`absolute top-3 right-3 rounded-full bg-white/80 dark:bg-[#1B1D1A]/70 backdrop-blur px-2.5 py-1 text-[10px] font-black uppercase tracking-widest ${acento}`}>
+                        {producto.gender}
+                    </span>
                 )}
-                <h3 className="font-bold leading-snug">{title}</h3>
-                {brand && <p className="text-xs font-semibold text-[#2C2C2C]/60 dark:text-[#F4EFEA]/60">{brand}</p>}
+                {enPedido && (
+                    <span className="absolute bottom-3 right-3 flex items-center gap-1 rounded-full bg-[#7D9878] text-white px-2.5 py-1 text-[10px] font-black">
+                        <Check className="w-3 h-3" /> {qty} en tu pedido
+                    </span>
+                )}
+            </div>
+
+            <div className="flex-1 flex flex-col gap-1 p-5">
+                {brand && (
+                    <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#7D9878] dark:text-[#A3B69B]">{brand}</p>
+                )}
+                <h3 className="font-brand text-lg font-bold leading-snug">{nombre}</h3>
                 {producto.description && (
-                    <p className="text-sm text-[#2C2C2C]/70 dark:text-[#F4EFEA]/70 line-clamp-3">{producto.description}</p>
+                    <p className="text-sm text-[#2C2C2C]/65 dark:text-[#F4EFEA]/65 line-clamp-2 mt-1">{producto.description}</p>
                 )}
                 {producto.availability === "demora" && (
-                    <p className="inline-flex items-center gap-1 text-[11px] font-bold text-[#B5735C] dark:text-[#D29680]">
+                    <p className="inline-flex items-center gap-1 text-[11px] font-bold text-[#B5735C] dark:text-[#D29680] mt-1">
                         <Clock className="w-3.5 h-3.5" />
                         {producto.deliveryDays > 0 ? `Entrega en ${producto.deliveryDays} días` : "Entrega con demora"}
                     </p>
                 )}
-            </div>
-            <div className="flex items-center justify-between gap-3 pt-3 border-t border-[#E6DFD5] dark:border-[#353B33]">
-                <p className="text-lg font-black">${formatNumber(producto.price)}</p>
-                {qty > 0 ? (
-                    <Stepper qty={qty} onQty={onQty} />
-                ) : (
-                    <button
-                        onClick={() => onQty(1)}
-                        className="flex items-center gap-1.5 rounded-full bg-[#7D9878] hover:bg-[#6B8566] text-white px-4 py-2 text-sm font-bold transition-colors"
-                    >
-                        <Plus className="w-4 h-4" /> Agregar
-                    </button>
-                )}
+
+                <div className="mt-auto pt-4 flex items-end justify-between gap-3">
+                    <div>
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-[#2C2C2C]/40 dark:text-[#F4EFEA]/40">Precio</p>
+                        <p className="text-xl font-black tracking-tight">${formatNumber(producto.price)}</p>
+                    </div>
+                    {enPedido ? (
+                        <Stepper qty={qty} onQty={onQty} />
+                    ) : (
+                        <button
+                            onClick={() => onQty(1)}
+                            className="flex items-center gap-1.5 rounded-full bg-[#2C2C2C] dark:bg-[#F4EFEA] text-white dark:text-[#1B1D1A] hover:bg-[#7D9878] dark:hover:bg-[#A3B69B] px-4 py-2.5 text-sm font-bold transition-colors"
+                        >
+                            <Plus className="w-4 h-4" /> Agregar
+                        </button>
+                    )}
+                </div>
             </div>
         </article>
     );
