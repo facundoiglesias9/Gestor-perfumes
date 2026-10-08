@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import * as cheerio from "cheerio";
+import { esAdmin } from "@/lib/sesion";
 
 const FEMALE_BASE_URL = "https://vanrossum.com.ar/productos/00021";
 const MALE_BASE_URL = "https://vanrossum.com.ar/productos/00022";
@@ -87,9 +88,9 @@ async function getProductsFromCategory(baseUrl: string, gender: "Femenino" | "Ma
     return products;
 }
 
-import { fetchTable, upsertRecords } from "@/lib/db-actions";
-
 export async function GET() {
+    // Solo el equipo con sesión iniciada puede usar esta ruta
+    if (!(await esAdmin())) return NextResponse.json({ success: false, error: "No autorizado" }, { status: 401 });
     try {
         const femaleProducts = await getProductsFromCategory(FEMALE_BASE_URL, "Femenino", 9);
         const maleProducts = await getProductsFromCategory(MALE_BASE_URL, "Masculino", 6);

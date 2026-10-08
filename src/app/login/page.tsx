@@ -2,16 +2,13 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { KeyRound, User, Loader2, Eye, EyeOff } from "lucide-react";
-import { fetchTable } from "@/lib/db-actions";
+import { iniciarSesion } from "@/lib/auth-actions";
 
-import { useAppContext } from "@/context/AppContext";
+import { useAppContext, type UserRole } from "@/context/AppContext";
 import ThemeToggle from "@/components/ThemeToggle";
 
-// Ya no hay cuentas de clientes: el sistema interno es solo para administradores.
-const SOLO_EQUIPO = "Este acceso es solo para el equipo de Scenta. Para comprar, mirá nuestro catálogo.";
-
 export default function LoginPage() {
-    const { login, usuarios, addSystemLog, updateUsuario, currentUser, mounted } = useAppContext();
+    const { login, addSystemLog, currentUser, mounted } = useAppContext();
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [showPassword, setShowPassword] = useState(false);
@@ -25,125 +22,29 @@ export default function LoginPage() {
         }
     }, [currentUser, mounted, router]);
 
+    // La contraseña se revisa en el servidor; si es correcta, el servidor abre la sesión (cookie).
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
         setError(null);
 
-        // 1. Check App Context Users
-        if (usuarios && usuarios.length > 0) {
-            const foundUser = usuarios.find((u: any) =>
-                (u.username || "").toLowerCase() === email.trim().toLowerCase() &&
-                u.password === password
-            );
+        const usuario = email.trim();
+        const resultado = await iniciarSesion(usuario, password);
 
-            if (foundUser) {
-                if (foundUser.status === "Inactivo") {
-                    setError("Tu cuenta está inactiva. Contactá al administrador.");
-                    setLoading(false);
-                    return;
-                }
-                if (foundUser.role !== "admin") {
-                    setError(SOLO_EQUIPO);
-                    setLoading(false);
-                    return;
-                }
-
-                if (foundUser.username.toLowerCase() !== "facundo") {
-                    addSystemLog("auth", `Inicio de sesión exitoso: ${foundUser.username} (${foundUser.role || 'usuario'})`, { method: "context" });
-                }
-
-                // Calculate their specific redirect path based on their role
-                let targetPath = "/lista-precios";
-
-                const updatedUser = { ...foundUser, lastLogin: new Date().toLocaleDateString("es-AR") };
-
-                // Actualiza la BD o array con el nuevo login usando updateUsuario
-                try {
-                    await updateUsuario(updatedUser);
-                } catch (e) { console.error("Error updating user:", e) }
-
-                // Actualiza el estado GLOBAL de la app antes de navegar
-                login(updatedUser);
-                setLoading(false);
-
-                // Forzamos recarga para que el AppContext levante la nueva sesión limpiamente
-                window.location.href = targetPath;
-                return;
-            }
-        }
-
-        // 2. Fallback for primary admin 'facundo' if not in list
-        if (email === "facundo" && password === "admin123") {
-            const adminUser = { id: "admin-facu", username: "facundo", role: "admin" as const, status: "Activo" as const };
-            login(adminUser);
+        if (!resultado.ok) {
+            setError(resultado.error);
+            addSystemLog("auth", `Intento de inicio de sesión fallido para: ${usuario}`);
             setLoading(false);
-            window.location.href = "/lista-precios";
             return;
         }
 
-        // 3. Try searching the custom 'usuarios' table (for non-admin users on new machines)
-        try {
-            // Los usuarios nuevos se guardan en minúscula: si el celular puso "Milagros", se prueba también "milagros"
-            const usuarioIngresado = email.trim();
-            let { data: usersData, error: dbError } = await fetchTable("usuarios", {
-                filter: { username: usuarioIngresado, password: password }
-            });
-            if (!dbError && !usersData?.[0] && usuarioIngresado !== usuarioIngresado.toLowerCase()) {
-                ({ data: usersData, error: dbError } = await fetchTable("usuarios", {
-                    filter: { username: usuarioIngresado.toLowerCase(), password: password }
-                }));
-            }
-            const dbUser = usersData?.[0];
-
-            if (!dbError && dbUser) {
-                if (dbUser.status === "Inactivo") {
-                    setError("Tu cuenta está inactiva. Contactá al administrador.");
-                    setLoading(false);
-                    return;
-                }
-                if (dbUser.role !== "admin") {
-                    setError(SOLO_EQUIPO);
-                    setLoading(false);
-                    return;
-                }
-
-                if (dbUser.username.toLowerCase() !== "facundo") {
-                    addSystemLog("auth", `Inicio de sesión exitoso: ${dbUser.username} (${dbUser.role || 'usuario'})`, { method: "xata_table" });
-                }
-
-                const foundUser = {
-                    id: dbUser.id,
-                    username: dbUser.username,
-                    role: dbUser.role as any,
-                    status: dbUser.status as any
-                };
-
-                // Calculate their specific redirect path based on their role
-                let targetPath = "/lista-precios";
-
-                const updatedUser = { ...foundUser, lastLogin: new Date().toLocaleDateString("es-AR") };
-
-                // Actualiza la DB con nuevo login
-                try {
-                    await updateUsuario(updatedUser);
-                } catch (e) { console.error("Error updating user:", e) }
-
-                login(updatedUser);
-                setLoading(false);
-
-                window.location.href = targetPath;
-                return;
-            }
-        } catch (err) {
-            console.error("Error searching custom table:", err);
-            addSystemLog("error", "Error al intentar iniciar sesión en DB", { error: err });
+        const u = resultado.dato!;
+        if (u.username.toLowerCase() !== "facundo") {
+            addSystemLog("auth", `Inicio de sesión exitoso: ${u.username} (${u.role})`);
         }
-
-        // 4. Failed
-        setError("Credenciales incorrectas.");
-        addSystemLog("auth", `Intento de inicio de sesión fallido para: ${email}`);
-        setLoading(false);
+        login({ id: u.id, username: u.username, role: u.role as UserRole, status: "Activo", lastLogin: u.lastLogin });
+        // Recarga completa para que el sistema arranque con la sesión nueva
+        window.location.href = "/lista-precios";
     };
 
     return (

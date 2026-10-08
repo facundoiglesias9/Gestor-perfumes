@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server';
+import { esAdmin } from '@/lib/sesion';
 
 export async function POST(request: Request) {
+    // Solo el equipo con sesión iniciada puede usar esta ruta
+    if (!(await esAdmin())) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
     try {
         const formData = await request.formData();
         const file = formData.get('file') as File | null;

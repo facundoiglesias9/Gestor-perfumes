@@ -1,10 +1,13 @@
 import { NextResponse } from 'next/server';
+import { esAdmin } from '@/lib/sesion';
 // @ts-expect-error Types missing for pdf-parse exact lib path
 import pdf from 'pdf-parse/lib/pdf-parse.js';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
+    // Solo el equipo con sesión iniciada puede usar esta ruta
+    if (!(await esAdmin())) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
     try {
         const formData = await req.formData();
         const file = formData.get('file') as File;

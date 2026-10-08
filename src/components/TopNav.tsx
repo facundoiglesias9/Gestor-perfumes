@@ -299,8 +299,8 @@ export default function TopNav() {
                                     </span>
                                 </Link>
                                 <button
-                                    onClick={() => {
-                                        logout();
+                                    onClick={async () => {
+                                        await logout();
                                         window.location.href = "/login";
                                     }}
                                     className="ml-1 w-7 h-7 rounded-lg flex items-center justify-center text-[#2C2C2C]/50 dark:text-[#F4EFEA]/50 hover:text-rose-500 hover:bg-rose-500/10 transition-colors duration-150 active:scale-[0.94]"
@@ -377,8 +377,8 @@ export default function TopNav() {
                             )}
                             {currentUser && (
                                 <button
-                                    onClick={() => {
-                                        logout();
+                                    onClick={async () => {
+                                        await logout();
                                         window.location.href = "/login";
                                     }}
                                     className="ml-auto flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold text-rose-500 border border-rose-500/20"

@@ -1,10 +1,12 @@
-// Crea un usuario administrador: entra al sistema interno con la misma vista que el dueño.
+// Crea un usuario administrador (entra al sistema interno con la misma vista que el dueño),
+// o le pone una contraseña nueva si ya existe: sirve si alguien se olvidó la suya o si
+// nadie del equipo puede entrar. Normalmente esto se hace desde Mi perfil, en la página.
 //
 // Uso:
 //   node scripts/crear-admin.mjs <usuario>        -> usa DATABASE_URL de .env.local
 //
-// La contraseña se pide por teclado (no se muestra ni queda en el historial de la terminal).
-// Ojo: hoy las contraseñas se guardan tal cual en la tabla usuarios (ver pendientes de seguridad).
+// La contraseña se pide por teclado (no se muestra ni queda en el historial de la terminal)
+// y se guarda cifrada, igual que desde la página.
 
 import path from "node:path";
 import crypto from "node:crypto";
@@ -12,6 +14,7 @@ import readline from "node:readline";
 import { fileURLToPath } from "node:url";
 import postgres from "postgres";
 import dotenv from "dotenv";
+import { cifrarClave } from "./claves.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 dotenv.config({ path: path.join(ROOT, ".env.local"), quiet: true });
@@ -47,10 +50,14 @@ const isLocal = /@(localhost|127\.0\.0\.1)(:|\/)/.test(url);
 const sql = postgres(url, { ssl: isLocal ? false : "require", onnotice: () => {}, max: 1 });
 
 try {
-    const existentes = await sql`select id from usuarios where lower(username) = ${usuario}`;
-    if (existentes.length > 0) {
-        console.error(`Ya existe un usuario "${usuario}". No se cambió nada.`);
-        process.exit(1);
+    const existentes = await sql`select id, role from usuarios where lower(username) = ${usuario}`;
+    const existente = existentes[0];
+    if (existente) {
+        const cambiar = await preguntar(`Ya existe "${usuario}". ¿Querés ponerle una contraseña nueva? (s/n): `);
+        if (cambiar.trim().toLowerCase() !== "s") {
+            console.log("No se cambió nada.");
+            process.exit(0);
+        }
     }
 
     const clave = await preguntar(`Contraseña para "${usuario}": `, true);
@@ -64,6 +71,12 @@ try {
         process.exit(1);
     }
 
+    if (existente) {
+        await sql`update usuarios set password = ${cifrarClave(clave)} where id = ${existente.id}`;
+        console.log(`Listo: "${usuario}" ya puede entrar con la contraseña nueva.`);
+        process.exit(0);
+    }
+
     const ok = await preguntar(`Se va a crear "${usuario}" como administrador (ve todo el sistema). ¿Confirmás? (s/n): `);
     if (ok.trim().toLowerCase() !== "s") {
         console.log("Cancelado. No se creó nada.");
@@ -74,7 +87,7 @@ try {
     const id = crypto.randomBytes(8).toString("base64url").replace(/[^a-z0-9]/gi, "").toLowerCase().slice(0, 9);
     await sql`
         insert into usuarios (id, username, password, role, status)
-        values (${id}, ${usuario}, ${clave}, 'admin', 'Activo')
+        values (${id}, ${usuario}, ${cifrarClave(clave)}, 'admin', 'Activo')
     `;
     console.log(`Listo: "${usuario}" ya puede entrar al sistema con su contraseña.`);
 } catch (err) {

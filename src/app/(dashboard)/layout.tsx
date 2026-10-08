@@ -28,8 +28,7 @@ function DashboardContent({ children }: { children: ReactNode }) {
         } else if (!puedeVer(currentUser.role, pathname)) {
             setIsAuthorized(false);
             expulsado.current = true;
-            logout();
-            router.replace("/catalogo");
+            logout().finally(() => router.replace("/catalogo"));
         } else {
             setIsAuthorized(true);
         }

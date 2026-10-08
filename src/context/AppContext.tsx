@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useEffect, useState, useRef, useMemo } from "react";
 import { toast } from "sonner";
 import { fetchTable, fetchTables, upsertRecord, upsertRecords, deleteRecord, deleteRecords, clearTable } from "@/lib/db-actions";
+import { sesionActual, cerrarSesion } from "@/lib/auth-actions";
 import { sendOrderNotification } from "@/lib/email-service";
 
 
@@ -250,6 +251,7 @@ interface AppContextProps {
     addUsuario: (user: Usuario) => void;
     updateUsuario: (updated: Usuario) => void;
     deleteUsuario: (id: string) => void;
+    recargarUsuarios: () => Promise<void>;
     updatePermissions: (role: UserRole, perms: CategoryPermissions) => void;
     addToCart: (producto: Producto, priceType: "mayorista" | "minorista") => void;
     removeFromCart: (productId: string, priceType: "mayorista" | "minorista") => void;
@@ -274,7 +276,7 @@ interface AppContextProps {
     updateInventarioItem: (id: string, qty: number) => Promise<void>;
     runScraper: () => Promise<void>;
     login: (user: Usuario) => void;
-    logout: () => void;
+    logout: () => Promise<void>;
     generos: string[];
     setGeneros: React.Dispatch<React.SetStateAction<string[]>>;
     generateProductsFromBase: (baseId: string, targetCategory?: string) => Promise<{ created: number, updated: number } | undefined>;
@@ -744,23 +746,23 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             try {
                 // (La cotización del dólar llega más abajo, en la misma carga que el resto de las tablas.)
 
-                // 1. Auth check - only from local storage mock for now
+                // 1. Quién está usando el sistema: lo dice el servidor según la cookie de sesión.
+                // (Antes era un dato en el navegador que cualquiera podía escribir a mano.)
+                try {
+                    // Restos del sistema anterior: la sesión vieja y una copia de usuarios con contraseñas
+                    localStorage.removeItem("mockUser");
+                    localStorage.removeItem("usuarios");
+                } catch (e) { }
                 let resolvedUser: Usuario | null = null;
-                const mock = localStorage.getItem("mockUser");
-                if (mock) {
-                    try { 
-                        const parsed = JSON.parse(mock);
-                        // Re-verify against DB to get latest role/status
-                        const { data: usersData } = await fetchTable("usuarios", { filter: { id: parsed.id } });
-                        if (usersData?.[0]) {
-                            resolvedUser = dbToUsuario(usersData[0]);
-                            localStorage.setItem("mockUser", JSON.stringify(resolvedUser));
-                        } else {
-                            resolvedUser = parsed;
-                        }
-                    } catch (e) { 
-                        resolvedUser = null; 
-                    }
+                const sesion = await sesionActual();
+                if (sesion) {
+                    resolvedUser = {
+                        id: sesion.id,
+                        username: sesion.username,
+                        role: sesion.role as UserRole,
+                        status: (sesion.status as Usuario["status"]) || "Activo",
+                        lastLogin: sesion.lastLogin,
+                    };
                 }
                 setCurrentUser(resolvedUser);
 
@@ -787,17 +789,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                         }));
                         setProductos(parsed);
                         localProductsLoaded = true;
-                        // Only release UI once we have user context too, or if no user is coming
-                        if (resolvedUser || !localStorage.getItem("mockUser")) {
-                            setIsLoading(false);
-                        }
+                        setIsLoading(false);
                     }
 
                     const localPromo = localStorage.getItem("promociones");
                     if (localPromo) setPromotions(JSON.parse(localPromo));
                 } catch (e) { }
 
-                // 2. Parallel fetch essential vs admin data (Xata Refetch)
+                // 2. Datos de la base: solo con sesión (sin sesión la base no responde y no hacen falta)
+                if (resolvedUser) {
                 const startTime = performance.now();
                 console.log("🚀 Iniciando sincronización de datos...");
 
@@ -992,6 +992,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                     }
                 }
 
+                }
+
                 // Load ephemeral/local settings
                 const storedCart = localStorage.getItem(`cart_${resolvedUser?.id || 'guest'}`);
                 if (storedCart) setCart(JSON.parse(storedCart));
@@ -1146,7 +1148,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
     useEffect(() => {
         if (!mounted) return;
-        try { localStorage.setItem("usuarios", JSON.stringify(usuarios)); } catch (e) { }
         try { 
             // Limpiamos los productos de URLs Base64 pesadas antes de guardar en localStorage
             const strippedProducts = productos.map(p => ({
@@ -1160,13 +1161,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }, [usuarios, productos, categorias, promotions, mounted]);
 
     // ── Auth ──────────────────────────────────────────────────────
+    // La sesión la abre el servidor (iniciarSesion); acá solo se refleja en pantalla.
     const login = (user: Usuario) => {
-        localStorage.setItem("mockUser", JSON.stringify(user));
         setCurrentUser(user);
     };
 
+    // Hay que esperarla antes de navegar: borra la cookie de sesión en el servidor.
     const logout = async () => {
-        localStorage.removeItem("mockUser");
+        try { await cerrarSesion(); } catch (e) { console.error("No se pudo cerrar la sesión:", e); }
         setCurrentUser(null);
     };
 
@@ -1334,6 +1336,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         } else {
             addSystemLog("info", `Usuario actualizado: ${updated.username}`);
         }
+    };
+
+    // Vuelve a leer los usuarios de la base (sin contraseñas) después de crear o cambiar alguno
+    const recargarUsuarios = async () => {
+        const { data } = await fetchTable("usuarios", { orderBy: "username" });
+        if (data) setUsuarios(data.map(dbToUsuario));
     };
 
     const deleteUsuario = async (id: string) => {
@@ -2433,6 +2441,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         addUsuario,
         updateUsuario,
         deleteUsuario,
+        recargarUsuarios,
         updatePermissions,
         addToCart,
         removeFromCart,

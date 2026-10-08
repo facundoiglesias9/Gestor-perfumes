@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAppContext, type Usuario } from "@/context/AppContext";
+import { crearUsuarioEquipo, cambiarClaveUsuario, cambiarEstadoUsuario } from "@/lib/auth-actions";
 
 const EASE_OUT = [0.23, 1, 0.32, 1] as const;
 const aparecer = {
@@ -99,7 +100,7 @@ function FormClave({ nombre, onGuardar, onCancelar }: {
 }
 
 export default function PerfilPage() {
-    const { currentUser, usuarios, addUsuario, updateUsuario, logout } = useAppContext();
+    const { currentUser, usuarios, recargarUsuarios, addSystemLog, logout } = useAppContext();
 
     const esYo = (u: Usuario) =>
         u.id === currentUser?.id || (u.username || "").toLowerCase() === (currentUser?.username || "").toLowerCase();
@@ -142,44 +143,40 @@ export default function PerfilPage() {
 
         setErrorNuevo(null);
         setGuardandoNuevo(true);
-        try {
-            await addUsuario({
-                id: Math.random().toString(36).slice(2, 11),
-                username: nombre,
-                password: nuevaClave,
-                role: "admin",
-                status: "Activo",
-            });
-            toast.success(`Listo: "${nombre}" ya puede entrar`, { description: "Usa su usuario y la contraseña que le pusiste." });
-            setRecienCreado(nombre);
-            cerrarNuevo();
-        } catch {
-            toast.error("No se pudo crear el usuario", { description: "Revisá la conexión y probá de nuevo." });
-        } finally {
-            setGuardandoNuevo(false);
-        }
+        // El servidor la guarda cifrada y vuelve a revisar todo (nombre libre, largo, permiso)
+        const r = await crearUsuarioEquipo(nombre, nuevaClave).catch(() => ({ ok: false as const, error: "Revisá la conexión y probá de nuevo." }));
+        setGuardandoNuevo(false);
+        if (!r.ok) return setErrorNuevo(r.error);
+
+        await recargarUsuarios();
+        addSystemLog("info", `Nuevo usuario creado: ${nombre}`);
+        toast.success(`Listo: "${nombre}" ya puede entrar`, { description: "Usa su usuario y la contraseña que le pusiste." });
+        setRecienCreado(nombre);
+        cerrarNuevo();
     };
 
     const cambiarClave = async (u: Usuario, clave: string) => {
-        try {
-            await updateUsuario({ ...u, password: clave });
-            toast.success(esYo(u) ? "Tu contraseña se cambió" : `Se cambió la contraseña de ${u.username}`);
-            setClaveAbierta(null);
-        } catch {
-            toast.error("No se pudo cambiar la contraseña", { description: "Probá de nuevo en un momento." });
+        const r = await cambiarClaveUsuario(u.id, clave).catch(() => ({ ok: false as const, error: "Probá de nuevo en un momento." }));
+        if (!r.ok) {
+            toast.error("No se pudo cambiar la contraseña", { description: r.error });
+            return;
         }
+        addSystemLog("info", `Contraseña cambiada: ${u.username}`);
+        toast.success(esYo(u) ? "Tu contraseña se cambió" : `Se cambió la contraseña de ${u.username}`);
+        setClaveAbierta(null);
     };
 
     const cambiarEstado = async (u: Usuario) => {
         const activar = u.status === "Inactivo";
-        try {
-            await updateUsuario({ ...u, status: activar ? "Activo" : "Inactivo" });
-            toast.success(activar ? `${u.username} puede volver a entrar` : `${u.username} ya no puede entrar`);
-        } catch {
-            toast.error("No se pudo guardar el cambio");
-        } finally {
-            setConfirmarEstado(null);
+        const r = await cambiarEstadoUsuario(u.id, activar).catch(() => ({ ok: false as const, error: "Probá de nuevo en un momento." }));
+        setConfirmarEstado(null);
+        if (!r.ok) {
+            toast.error("No se pudo guardar el cambio", { description: r.error });
+            return;
         }
+        await recargarUsuarios();
+        addSystemLog("info", activar ? `Usuario reactivado: ${u.username}` : `Usuario desactivado: ${u.username}`);
+        toast.success(activar ? `${u.username} puede volver a entrar` : `${u.username} ya no puede entrar`);
     };
 
     return (
@@ -227,22 +224,16 @@ export default function PerfilPage() {
                         </div>
                     </dl>
 
-                    {miUsuario ? (
-                        <AnimatePresence initial={false}>
-                            {claveAbierta === miUsuario.id ? (
-                                <FormClave
-                                    key="mi-clave"
-                                    nombre="vos"
-                                    onGuardar={(c) => cambiarClave(miUsuario, c)}
-                                    onCancelar={() => setClaveAbierta(null)}
-                                />
-                            ) : null}
-                        </AnimatePresence>
-                    ) : (
-                        <p className="mt-4 text-xs text-[#2C2C2C]/55 dark:text-[#F4EFEA]/50">
-                            Entraste con el acceso de respaldo, así que tu contraseña no se puede cambiar desde acá.
-                        </p>
-                    )}
+                    <AnimatePresence initial={false}>
+                        {miUsuario && claveAbierta === miUsuario.id ? (
+                            <FormClave
+                                key="mi-clave"
+                                nombre="vos"
+                                onGuardar={(c) => cambiarClave(miUsuario, c)}
+                                onCancelar={() => setClaveAbierta(null)}
+                            />
+                        ) : null}
+                    </AnimatePresence>
 
                     <div className="mt-6 flex flex-wrap gap-2">
                         {miUsuario && claveAbierta !== miUsuario.id && (
@@ -252,7 +243,7 @@ export default function PerfilPage() {
                             </button>
                         )}
                         <button
-                            onClick={() => { logout(); window.location.href = "/login"; }}
+                            onClick={async () => { await logout(); window.location.href = "/login"; }}
                             className="inline-flex items-center gap-2 h-10 px-4 rounded-xl text-sm font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-500/10 active:scale-[0.97] transition-[background-color,transform] duration-150"
                         >
                             <LogOut className="w-4 h-4" />
