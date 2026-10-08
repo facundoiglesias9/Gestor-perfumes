@@ -5,9 +5,9 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-    Tags, Truck, Wallet, ChevronDown, Layers, Plus, ShoppingCart, Archive,
+    Tags, Wallet, ChevronDown, Layers, Plus, ShoppingCart, Archive,
     FlaskConical, ListTree, Percent, Terminal, StickyNote, Menu, X,
-    LogOut, Store, Boxes, Settings2, PieChart, Users, UserRound, type LucideIcon
+    LogOut, Store, Boxes, Settings2, PieChart, Users, UserRound, LayoutGrid, type LucideIcon
 } from "lucide-react";
 import ThemeToggle from "@/components/ThemeToggle";
 import { useAppContext } from "@/context/AppContext";
@@ -70,7 +70,7 @@ export default function TopNav() {
     const allDirectItems: NavItem[] = [
         { href: "/resumen", label: "Resumen", icon: PieChart },
         { href: "/lista-precios", label: "Precios", icon: Tags },
-        { href: "/disponibilidad", label: "Disponibilidad", icon: Truck },
+        { href: "/mi-catalogo", label: "Catálogo", icon: LayoutGrid },
         { href: "/caja", label: "Caja", icon: Wallet },
         { href: "/notas", label: "Notas", icon: StickyNote },
     ];

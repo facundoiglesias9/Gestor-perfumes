@@ -13,8 +13,9 @@ export type CatalogoProducto = {
     gender: string;
     description: string;
     price: number;
-    availability: "disponible" | "demora";
+    availability: "disponible" | "demora" | "sin-stock";
     deliveryDays: number;
+    foto: string | null;
 };
 
 const WHATSAPP_NUMBER = "5491123529147";
@@ -475,7 +476,7 @@ function ChipFiltro({ activo, cantidad, onClick, children }: { activo: boolean; 
     );
 }
 
-// Estilo visual de la tarjeta según el tipo de producto: como no hay fotos, un recuadro con
+// Estilo visual de la tarjeta según el tipo de producto: cuando no tiene foto, un recuadro con
 // degradé de la paleta Scenta + ícono + tamaño identifica cada producto de un vistazo.
 function estiloProducto(p: CatalogoProducto) {
     const tipo = etiquetaCategoria(p.category || "").toLowerCase();
@@ -500,15 +501,27 @@ function TarjetaProducto({ producto, qty, onQty }: { producto: CatalogoProducto;
     const nombre = title.replace(/\s+(\d+\s*ML|DIFUSOR|AUTO)\s*$/i, "").trim() || title;
     const { formato, Icono, fondo, acento } = estiloProducto(producto);
     const enPedido = qty > 0;
+    const sinStock = producto.availability === "sin-stock";
 
     return (
         <article className={`group relative flex flex-col overflow-hidden rounded-3xl border bg-white dark:bg-[#242723] transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-[#2C2C2C]/5 dark:hover:shadow-black/30 ${enPedido
             ? "border-[#7D9878] ring-1 ring-[#7D9878]/40"
             : "border-[#E6DFD5] dark:border-[#353B33] hover:border-[#A3B69B]/60"}`}
         >
-            {/* Recuadro visual */}
-            <div className={`relative h-28 bg-gradient-to-br ${fondo} flex items-center justify-center`}>
-                <Icono className={`w-10 h-10 ${acento} opacity-70 transition-transform duration-300 group-hover:scale-110`} strokeWidth={1.4} />
+            {/* Recuadro visual: la foto si hay; si no, degradé con el ícono del tipo */}
+            <div className={`relative h-40 overflow-hidden flex items-center justify-center ${producto.foto ? "bg-white" : `bg-gradient-to-br ${fondo}`}`}>
+                {producto.foto ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                        src={producto.foto}
+                        alt={producto.name}
+                        loading="lazy"
+                        decoding="async"
+                        className={`w-full h-full object-contain p-3 transition-transform duration-500 ease-out group-hover:scale-105 ${sinStock ? "opacity-50 grayscale" : ""}`}
+                    />
+                ) : (
+                    <Icono className={`w-10 h-10 ${acento} opacity-70 transition-transform duration-300 group-hover:scale-110`} strokeWidth={1.4} />
+                )}
                 <span className="absolute top-3 left-3 rounded-full bg-white/80 dark:bg-[#1B1D1A]/70 backdrop-blur px-2.5 py-1 text-[10px] font-black uppercase tracking-widest">
                     {formato}
                 </span>
@@ -520,6 +533,11 @@ function TarjetaProducto({ producto, qty, onQty }: { producto: CatalogoProducto;
                 {enPedido && (
                     <span className="absolute bottom-3 right-3 flex items-center gap-1 rounded-full bg-[#7D9878] text-white px-2.5 py-1 text-[10px] font-black">
                         <Check className="w-3 h-3" /> {qty} en tu pedido
+                    </span>
+                )}
+                {sinStock && (
+                    <span className="absolute bottom-3 left-3 rounded-full bg-[#C9866F] text-white px-2.5 py-1 text-[10px] font-black uppercase tracking-widest">
+                        Sin stock
                     </span>
                 )}
             </div>
@@ -544,7 +562,11 @@ function TarjetaProducto({ producto, qty, onQty }: { producto: CatalogoProducto;
                         <p className="text-[10px] font-bold uppercase tracking-widest text-[#2C2C2C]/40 dark:text-[#F4EFEA]/40">Precio</p>
                         <p className="text-xl font-black tracking-tight">${formatNumber(producto.price)}</p>
                     </div>
-                    {enPedido ? (
+                    {sinStock && !enPedido ? (
+                        <span className="rounded-full border border-[#E6DFD5] dark:border-[#353B33] px-4 py-2.5 text-sm font-bold text-[#2C2C2C]/45 dark:text-[#F4EFEA]/45">
+                            Sin stock
+                        </span>
+                    ) : enPedido ? (
                         <Stepper qty={qty} onQty={onQty} />
                     ) : (
                         <button

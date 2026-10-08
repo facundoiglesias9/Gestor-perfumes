@@ -49,6 +49,7 @@ export type Producto = {
     imageUrl?: string;
     availabilityStatus?: AvailabilityStatus;
     deliveryDays?: number;
+    visibleCatalogo?: boolean; // false = no aparece en el catálogo de clientes
 };
 
 export type UserRole = "admin" | "minorista" | "mayorista";
@@ -162,6 +163,7 @@ function dbToProducto(row: any): Producto {
         imageUrl: row.image_url ?? undefined,
         availabilityStatus: row.availability_status ?? "disponible",
         deliveryDays: row.delivery_days ?? 0,
+        visibleCatalogo: row.visible_catalogo ?? true,
     };
 }
 
@@ -237,6 +239,8 @@ interface AppContextProps {
     setBases: React.Dispatch<React.SetStateAction<Base[]>>;
     productos: Producto[];
     setProductos: React.Dispatch<React.SetStateAction<Producto[]>>;
+    /** Cambia los productos en pantalla sin volver a guardarlos (para cuando ya se guardó en el servidor) */
+    setProductosSinGuardar: React.Dispatch<React.SetStateAction<Producto[]>>;
     usuarios: Usuario[];
     setUsuarios: React.Dispatch<React.SetStateAction<Usuario[]>>;
     globalPermissions: Record<UserRole, CategoryPermissions>;
@@ -803,7 +807,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
                 const essentialRequests = [
                     { table: "categorias", options: { orderBy: "name" } },
-                    { table: "productos", options: { columns: ["id", "name", "category", "base_id", "components", "cost", "price", "price_minorista", "stock", "description", "gender", "last_update", "availability_status", "delivery_days"] } },
+                    { table: "productos", options: { columns: ["id", "name", "category", "base_id", "components", "cost", "price", "price_minorista", "stock", "description", "gender", "last_update", "availability_status", "delivery_days", "visible_catalogo"] } },
                     { table: "promociones" },
                     { table: "config" },
                 ];
@@ -2429,7 +2433,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         inventario, setInventario: _setInventario,
         transacciones, setTransacciones: _setTransacciones,
         bases, setBases: _setBases,
-        productos, setProductos: _setProductos,
+        productos, setProductos: _setProductos, setProductosSinGuardar: setProductos,
         usuarios, setUsuarios: _setUsuarios,
         globalPermissions,
         cart,

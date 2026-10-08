@@ -21,10 +21,12 @@ async function getProductosPublicos(): Promise<CatalogoProducto[] | null> {
         // Solo columnas públicas: nunca costos, precio mayorista ni componentes.
         const rows = await sql`
             SELECT id, name, category, gender, description, price_minorista,
-                   availability_status, delivery_days
+                   availability_status, delivery_days,
+                   -- solo las fotos cargadas desde la página Catálogo (las viejas en base64 pesaban demasiado)
+                   CASE WHEN image_url LIKE '/api/foto/%' THEN image_url END AS foto
             FROM productos
             WHERE price_minorista > 0
-              AND COALESCE(availability_status, 'disponible') <> 'no-disponible'
+              AND COALESCE(visible_catalogo, true)
             ORDER BY name ASC
         `;
         return rows.map(r => ({
@@ -34,8 +36,9 @@ async function getProductosPublicos(): Promise<CatalogoProducto[] | null> {
             gender: r.gender ? String(r.gender).trim() : "Unisex",
             description: descripcionPublica(r.description),
             price: Number(r.price_minorista) || 0,
-            availability: r.availability_status === "demora" ? "demora" : "disponible",
+            availability: r.availability_status === "demora" ? "demora" : r.availability_status === "no-disponible" ? "sin-stock" : "disponible",
             deliveryDays: Number(r.delivery_days) || 0,
+            foto: r.foto ? String(r.foto) : null,
         }));
     } catch (err) {
         console.error("Catálogo público: no se pudieron leer los productos", err);

@@ -6,9 +6,11 @@ import { useAppContext, Base, BaseComponent, Producto, Esencia, Insumo } from "@
 import { useRouter } from "next/navigation";
 import SelectorModal from "@/components/SelectorModal";
 import { upsertRecord } from "@/lib/db-actions";
+import { guardarFotoProducto } from "@/lib/catalogo-actions";
+import { prepararFoto } from "@/lib/foto-cliente";
 
 export default function CrearProductoPage() {
-    const { bases, insumos, esencias, categorias, productos, setProductos, generos } = useAppContext();
+    const { bases, insumos, esencias, categorias, productos, setProductos, setProductosSinGuardar, generos } = useAppContext();
     const router = useRouter();
 
     const [selectedBaseId, setSelectedBaseId] = useState("");
@@ -17,6 +19,8 @@ export default function CrearProductoPage() {
     const [gender, setGender] = useState("");
     const [description, setDescription] = useState("");
     const [imageUrl, setImageUrl] = useState("");
+    // Foto ya achicada, esperando a que el producto exista para guardarla
+    const [fotoPendiente, setFotoPendiente] = useState<{ base64: string; tipo: string } | null>(null);
     const [uploadingImage, setUploadingImage] = useState(false);
     const [availabilityStatus, setAvailabilityStatus] = useState<any>("disponible");
     const [deliveryDays, setDeliveryDays] = useState("0");
@@ -90,24 +94,12 @@ export default function CrearProductoPage() {
 
         setUploadingImage(true);
         try {
-            const formData = new FormData();
-            formData.append('file', file);
-
-            const res = await fetch('/api/upload', {
-                method: 'POST',
-                body: formData
-            });
-
-            const data = await res.json();
-
-            if (!res.ok) {
-                throw new Error(data.error || "Error al subir la imagen");
-            }
-
-            setImageUrl(data.url);
+            const preparada = await prepararFoto(file);
+            setFotoPendiente(preparada);
+            setImageUrl(`data:${preparada.tipo};base64,${preparada.base64}`); // solo para verla antes de guardar
         } catch (error: any) {
-            console.error("Error al subir imagen:", error);
-            alert("Error al subir la imagen. Asegurate de que el archivo sea correcto.");
+            console.error("Error al preparar imagen:", error);
+            alert(error?.message || "Error al subir la imagen. Asegurate de que el archivo sea correcto.");
         } finally {
             setUploadingImage(false);
         }
@@ -115,6 +107,7 @@ export default function CrearProductoPage() {
 
     const handleDeleteImage = async () => {
         setImageUrl("");
+        setFotoPendiente(null);
     };
 
     // Update derived values when cost changes
@@ -228,7 +221,7 @@ const handleMarginMinoristaChange = (val: string) => {
         setMarginTypeMinor(newType);
     };
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
         // Generate sequential ID: 001, 002, etc.
@@ -251,14 +244,14 @@ const handleMarginMinoristaChange = (val: string) => {
             priceMinorista: parseFloat(priceMinorista) || 0,
             stock: 0,
             description,
-            imageUrl,
+            imageUrl: undefined,
             availabilityStatus,
             deliveryDays: parseInt(deliveryDays) || 0
         };
         setProductos([newProduct, ...productos]);
 
         // Guardar en la base de datos
-        upsertRecord("productos", {
+        await upsertRecord("productos", {
             id: newProduct.id,
             name: newProduct.name,
             category: newProduct.category,
@@ -270,10 +263,17 @@ const handleMarginMinoristaChange = (val: string) => {
             price_minorista: newProduct.priceMinorista,
             stock: newProduct.stock,
             description: newProduct.description,
-            image_url: newProduct.imageUrl,
+            image_url: null,
             availability_status: newProduct.availabilityStatus,
             delivery_days: newProduct.deliveryDays
         });
+
+        // Con el producto ya creado, se guarda su foto aparte
+        if (fotoPendiente) {
+            const r = await guardarFotoProducto(newProduct.id, fotoPendiente.base64, fotoPendiente.tipo);
+            if (r.ok) setProductosSinGuardar(prev => prev.map(p => p.id === newProduct.id ? { ...p, imageUrl: r.dato } : p));
+            else alert(`El producto se creó, pero la foto no se pudo guardar: ${r.error}`);
+        }
 
         router.push("/lista-mayorista");
     };

@@ -5,6 +5,8 @@ import { useState, useMemo, useEffect, useCallback } from "react";
 import { useAppContext, BaseComponent, Producto } from "@/context/AppContext";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
+import { guardarFotoProducto, quitarFotoProducto } from "@/lib/catalogo-actions";
+import { prepararFoto } from "@/lib/foto-cliente";
 
 export default function EditarProductoPage() {
     const { bases, insumos, esencias, categorias, updateProducto, productos, generos } = useAppContext();
@@ -107,30 +109,22 @@ export default function EditarProductoPage() {
 
         setUploadingImage(true);
         try {
-            const formData = new FormData();
-            formData.append('file', file);
-
-            const res = await fetch('/api/upload', {
-                method: 'POST',
-                body: formData
-            });
-
-            const data = await res.json();
-
-            if (!res.ok) {
-                throw new Error(data.error || "Error al subir la imagen");
-            }
-
-            setImageUrl(data.url);
+            // Se achica en el navegador y se guarda aparte (igual que desde la página Catálogo)
+            const { base64, tipo } = await prepararFoto(file);
+            const r = await guardarFotoProducto(String(id), base64, tipo);
+            if (!r.ok) throw new Error(r.error);
+            setImageUrl(r.dato!);
         } catch (error: any) {
             console.error("Error al subir imagen:", error);
-            alert("Error al subir la imagen. Asegurate de que el archivo sea correcto.");
+            alert(error?.message || "Error al subir la imagen. Asegurate de que el archivo sea correcto.");
         } finally {
             setUploadingImage(false);
         }
     };
 
     const handleDeleteImage = async () => {
+        const r = await quitarFotoProducto(String(id));
+        if (!r.ok) return alert(r.error);
         setImageUrl("");
     };
 
