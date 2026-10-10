@@ -206,7 +206,7 @@ export default function CajaPage() {
                     </p>
                 </div>
 
-                <div className="mt-6 md:mt-0 md:absolute md:right-10 md:top-1/2 md:-translate-y-1/2">
+                <div className="mt-6">
                     <button
                         onClick={abrirModal}
                         className="flex items-center gap-2.5 px-7 py-3.5 rounded-2xl bg-[#7D9878] text-white font-bold hover:bg-[#6b8566] hover:shadow-xl hover:shadow-[#7D9878]/20 active:scale-[0.97] transition-[background-color,box-shadow,transform] duration-150 font-brand"

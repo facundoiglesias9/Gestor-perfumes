@@ -116,7 +116,7 @@ export default function TopNav() {
     const showPedidos = puedeVer(role, "/pedidos");
 
     // Estilos compartidos de la botonera (misma altura y peso en todos los botones).
-    const itemBase = "relative flex items-center gap-2 h-9 px-3 rounded-xl text-[13px] font-semibold whitespace-nowrap transition-[color,transform] duration-150 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7D9878]/50";
+    const itemBase = "relative flex items-center gap-2 h-9 px-2.5 2xl:px-3 rounded-xl text-[13px] font-semibold whitespace-nowrap transition-[color,transform] duration-150 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7D9878]/50";
     const itemActivo = "text-[#2C2C2C] dark:text-[#F4EFEA]";
     const itemInactivo = "text-[#2C2C2C]/60 dark:text-[#F4EFEA]/55 hover:text-[#2C2C2C] dark:hover:text-[#F4EFEA]";
     const botonDerecha = "flex items-center gap-2 h-9 px-3 rounded-xl border border-[#E6DFD5] dark:border-[#353B33] bg-white dark:bg-[#242723] text-[13px] font-semibold whitespace-nowrap transition-[background-color,border-color,color,transform] duration-150";
@@ -124,9 +124,10 @@ export default function TopNav() {
 
     return (
         <header className="sticky top-0 z-50 bg-white/80 dark:bg-[#1B1D1A]/80 backdrop-blur-xl border-b border-[#E6DFD5] dark:border-[#353B33] transition-colors duration-300 print:hidden">
-            <div className="max-w-[1800px] mx-auto px-4 sm:px-8">
-                {/* Tres columnas iguales a los costados: así el menú queda en el centro real de la pantalla */}
-                <div className="flex xl:grid xl:grid-cols-[1fr_auto_1fr] items-center justify-between gap-4 h-16 w-full">
+            <div className="max-w-[1800px] mx-auto px-4 sm:px-6 2xl:px-8">
+                {/* En pantallas grandes: tres columnas iguales a los costados, así el menú queda en el centro real.
+                    En pantallas medianas (1280 a 1535 px) todo se achica un poco y se reparte el espacio para que entre en una fila. */}
+                <div className="flex 2xl:grid 2xl:grid-cols-[1fr_auto_1fr] items-center justify-between gap-4 xl:gap-3 2xl:gap-4 h-16 w-full">
 
                     {/* Izquierda: logo */}
                     <div className="flex items-center justify-self-start shrink-0">
@@ -136,7 +137,7 @@ export default function TopNav() {
                                 alt="Scenta Logo"
                                 className="h-9 w-auto object-contain dark:invert dark:brightness-200 transition-transform duration-300 ease-out group-hover:scale-105"
                             />
-                            <div className="flex flex-col justify-center">
+                            <div className="flex flex-col justify-center xl:hidden 2xl:flex">
                                 <span className="text-lg font-bold font-brand tracking-[0.22em] text-[#2C2C2C] dark:text-[#F4EFEA] uppercase leading-none">
                                     Scenta
                                 </span>
@@ -173,7 +174,7 @@ export default function TopNav() {
                                 );
                             })}
 
-                            <span className="w-px h-5 bg-[#E6DFD5] dark:bg-[#353B33] mx-1.5" aria-hidden />
+                            <span className="w-px h-5 bg-[#E6DFD5] dark:bg-[#353B33] mx-1 2xl:mx-1.5" aria-hidden />
 
                             {menuSections.map((section) => {
                                 const isSectionActive = section.items.some(i => i.href === pathname);
@@ -276,8 +277,8 @@ export default function TopNav() {
                             title={usdLastUpdate ? `Dólar blue · actualizado ${new Date(usdLastUpdate).toLocaleString("es-AR")}` : "Dólar blue"}
                         >
                             <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                            <span className="text-[11px] font-bold uppercase tracking-wider text-[#2C2C2C]/45 dark:text-[#F4EFEA]/45">Dólar</span>
-                            <span className="font-bold tabular-nums text-emerald-700 dark:text-emerald-400">${usdRate?.toLocaleString("es-AR") || "---"}</span>
+                            <span className="hidden 2xl:inline text-[11px] font-bold uppercase tracking-wider text-[#2C2C2C]/45 dark:text-[#F4EFEA]/45">Dólar</span>
+                            <span className="font-bold tabular-nums text-emerald-700 dark:text-emerald-400"><span className="2xl:hidden">US</span>${usdRate?.toLocaleString("es-AR") || "---"}</span>
                         </div>
 
                         <ThemeToggle />

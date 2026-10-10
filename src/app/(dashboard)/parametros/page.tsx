@@ -155,7 +155,7 @@ export default function ParametrosPage() {
                     </p>
                 </div>
 
-                <div className="mt-6 md:mt-0 md:absolute md:right-10 md:top-1/2 md:-translate-y-1/2 flex items-center gap-3">
+                <div className="mt-6 flex items-center gap-3">
                     {activeTab === "categorias" && (
                         <button
                             onClick={() => {

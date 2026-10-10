@@ -92,7 +92,7 @@ export default function NotasPage() {
                     </p>
                 </div>
 
-                <div className="mt-6 md:mt-0 md:absolute md:right-10 md:top-1/2 md:-translate-y-1/2">
+                <div className="mt-6">
                     <button
                         onClick={addNota}
                         className="flex shrink-0 items-center justify-center gap-2 px-6 py-4 bg-[#7D9878] hover:bg-[#6b8566] text-white font-black rounded-2xl hover:scale-105 active:scale-95 transition-all shadow-lg shadow-[#7D9878]/20 group font-brand"
