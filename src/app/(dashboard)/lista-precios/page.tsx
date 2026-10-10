@@ -52,7 +52,8 @@ import { useState, useMemo, useEffect, useCallback, useRef, type ReactNode } fro
 import { createPortal } from "react-dom";
 import { useAppContext, Producto } from "@/context/AppContext";
 import { motion, AnimatePresence } from "framer-motion";
-import { exportToExcel, exportToPDF } from "@/lib/export-utils";
+import { exportarListaExcel, exportarListaPDF } from "@/lib/exportar-lista";
+import { toast } from "sonner";
 import { formatNumber } from "@/lib/format-utils";
 import { extractBrand } from "@/lib/product-utils";
 import ExportModal from "@/components/ExportModal";
@@ -663,33 +664,19 @@ export default function ListaPreciosPage() {
         setItemDiscounts({});
     };
 
-    const handlePerformExport = (data: Producto[], format: "excel" | "pdf") => {
-        const listName = isMinorista ? "Minorista" : "Mayorista";
-        if (format === "excel") {
-            const excelData = data.map(p => {
-                const val = isMinorista ? Number(p.priceMinorista) : Number(p.price);
-                return {
-                    "Producto": p.name,
-                    "Categoría": p.category,
-                    "Género": p.gender,
-                    [`Precio ${listName}`]: (isNaN(val) || val <= 0) ? "Consultar" : `$${Intl.NumberFormat("es-AR").format(val)}`
-                };
+    const handlePerformExport = async (data: Producto[], format: "excel" | "pdf") => {
+        const lista = isMinorista ? "Minorista" : "Mayorista";
+        try {
+            if (format === "excel") await exportarListaExcel({ lista, productos: data });
+            else await exportarListaPDF({ lista, productos: data });
+            toast.success(format === "excel" ? "Excel descargado" : "PDF descargado", {
+                description: `${data.length} productos de la lista ${lista.toLowerCase()}.`,
             });
-            exportToExcel(excelData, `Lista_Precios_${listName}_Scenta`, `Scenta - Lista de Precios ${listName}`);
-        } else {
-            const headers = ["Producto", "Categoría", "Género", `Precio ${listName}`];
-            const rows = data.map(p => {
-                const val = isMinorista ? Number(p.priceMinorista) : Number(p.price);
-                return [
-                    p.name,
-                    p.category,
-                    p.gender,
-                    (isNaN(val) || val <= 0) ? "Consultar" : `$${Intl.NumberFormat("es-AR").format(val)}`
-                ];
-            });
-            exportToPDF(`Lista de Precios ${listName} - Scenta`, headers, rows, `Lista_Precios_${listName}_Scenta`);
+            setExportFormat(null);
+        } catch (err) {
+            console.error("Error al exportar:", err);
+            toast.error("No se pudo generar el archivo", { description: "Probá de nuevo en un momento." });
         }
-        setExportFormat(null);
     };
 
     const unidadesCarrito = cartFiltered.reduce((acc, i) => acc + i.quantity, 0);
@@ -1069,9 +1056,11 @@ export default function ListaPreciosPage() {
                     initialFilters={{
                         category: categoryFilter,
                         gender: genderFilter,
-                        showOutOfStock: showOutOfStock
+                        showOutOfStock: showOutOfStock,
+                        showConsult: showConsult
                     }}
                     type={exportFormat}
+                    lista={isMinorista ? "Minorista" : "Mayorista"}
                 />
             )}
 

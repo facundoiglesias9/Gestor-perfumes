@@ -190,31 +190,32 @@ export default function MiCatalogoPage() {
                 }}
             />
 
-            {/* Encabezado */}
-            <header className="anim-entrada flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6 bg-white dark:bg-[#242723] p-6 md:p-8 rounded-[2rem] border border-[#E6DFD5] dark:border-[#353B33] shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.2)]">
-                <div className="space-y-2 max-w-2xl">
+            {/* Encabezado centrado, igual que la Lista de Precios */}
+            <header className="anim-entrada relative overflow-hidden bg-white dark:bg-[#242723] rounded-[2rem] px-6 py-9 md:px-10 md:py-11 border border-[#E6DFD5] dark:border-[#353B33] shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.2)]">
+                {/* Luz suave detrás del título */}
+                <div aria-hidden className="pointer-events-none absolute left-1/2 -translate-x-1/2 -top-36 w-[760px] max-w-full h-72 rounded-full bg-[#7D9878]/[0.14] dark:bg-[#A3B69B]/[0.07] blur-3xl" />
+
+                <div className="relative flex flex-col items-center text-center">
                     <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#7D9878]/10 text-[#5A7356] dark:text-[#A3B69B] border border-[#7D9878]/20 text-[11px] font-bold tracking-widest uppercase">
                         <Store className="w-3.5 h-3.5" />
                         Vidriera
                     </span>
-                    <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight text-[#2C2C2C] dark:text-[#F4EFEA] font-brand">Catálogo</h1>
-                    <p className="text-sm font-semibold text-[#2C2C2C]/70 dark:text-[#F4EFEA]/65">
+                    <h1 className="mt-4 text-4xl md:text-5xl font-extrabold tracking-tight text-[#2C2C2C] dark:text-[#F4EFEA] font-brand">Catálogo</h1>
+                    <p className="mt-3 text-sm font-semibold text-[#2C2C2C]/70 dark:text-[#F4EFEA]/65">
                         {totalCatalogo} en el catálogo · {productos.length} productos en total
                     </p>
-                    <p className="text-sm text-[#2C2C2C]/60 dark:text-[#F4EFEA]/55 leading-relaxed">
+                    <p className="mt-2 max-w-2xl text-sm md:text-base text-[#2C2C2C]/60 dark:text-[#F4EFEA]/55 leading-relaxed">
                         Lo que ven los clientes en el catálogo. <strong className="font-semibold text-[#2C2C2C]/80 dark:text-[#F4EFEA]/80">Visible</strong> apagado
                         lo saca del catálogo sin borrarlo. <strong className="font-semibold text-[#2C2C2C]/80 dark:text-[#F4EFEA]/80">Sin stock</strong> lo
                         muestra marcado así y no se puede pedir. Tocá la foto (o arrastrá una encima) para cargarla o cambiarla.
                     </p>
-                </div>
 
-                <div className="flex flex-col items-stretch sm:items-end gap-3 shrink-0">
-                    <div className="flex gap-2">
+                    <div className="mt-7 flex flex-wrap items-center justify-center gap-3">
                         <a
                             href="/catalogo"
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="inline-flex items-center gap-2 h-11 px-4 rounded-xl border border-[#E6DFD5] dark:border-[#353B33] text-sm font-semibold text-[#2C2C2C]/80 dark:text-[#F4EFEA]/80 hover:text-[#2C2C2C] dark:hover:text-[#F4EFEA] hover:bg-[#F4EFEA] dark:hover:bg-[#1B1D1A] active:scale-[0.97] transition-[background-color,color,transform] duration-150"
+                            className="inline-flex items-center gap-2 h-11 px-4 rounded-xl bg-white dark:bg-[#1B1D1A] border border-[#E6DFD5] dark:border-[#353B33] text-sm font-semibold text-[#2C2C2C]/80 dark:text-[#F4EFEA]/80 hover:text-[#2C2C2C] dark:hover:text-[#F4EFEA] hover:border-[#7D9878]/50 active:scale-[0.97] transition-[border-color,color,transform] duration-150"
                         >
                             <ExternalLink className="w-4 h-4" />
                             Ver catálogo
@@ -227,8 +228,9 @@ export default function MiCatalogoPage() {
                             Nuevo producto
                         </Link>
                     </div>
+
                     {/* Avance de fotos */}
-                    <div className="w-full sm:w-72">
+                    <div className="mt-6 w-full max-w-sm">
                         <div className="flex justify-between text-xs text-[#2C2C2C]/60 dark:text-[#F4EFEA]/55 mb-1.5">
                             <span>Productos del catálogo con foto</span>
                             <span className="font-semibold text-[#2C2C2C]/80 dark:text-[#F4EFEA]/80">{conFoto} de {totalCatalogo}</span>

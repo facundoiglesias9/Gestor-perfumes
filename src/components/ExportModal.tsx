@@ -1,6 +1,6 @@
 "use client";
 
-import { X, Check, FileSpreadsheet, FileText, Filter, CheckCircle2 } from "lucide-react";
+import { X, Check, FileSpreadsheet, FileText, Filter, LoaderCircle } from "lucide-react";
 import { useState, useMemo, useEffect } from "react";
 import { Producto } from "@/context/AppContext";
 import Ventana from "@/components/Ventana";
@@ -8,7 +8,7 @@ import Ventana from "@/components/Ventana";
 interface ExportModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onExport: (filteredData: Producto[], format: "excel" | "pdf") => void;
+    onExport: (filteredData: Producto[], format: "excel" | "pdf") => void | Promise<void>;
     productos: Producto[];
     categorias: { id: string; name: string }[];
     generos: string[];
@@ -16,8 +16,11 @@ interface ExportModalProps {
         category?: string;
         gender?: string;
         showOutOfStock?: boolean;
+        showConsult?: boolean;
     };
     type: "excel" | "pdf";
+    /** Nombre de la lista que se exporta (Minorista o Mayorista) */
+    lista?: string;
 }
 
 export default function ExportModal({ 
@@ -28,11 +31,14 @@ export default function ExportModal({
     categorias, 
     generos,
     initialFilters,
-    type
+    type,
+    lista
 }: ExportModalProps) {
+    const [generando, setGenerando] = useState(false);
     const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
     const [selectedGenders, setSelectedGenders] = useState<string[]>([]);
     const [includeOutOfStock, setIncludeOutOfStock] = useState(false);
+    const [incluirSinPrecio, setIncluirSinPrecio] = useState(false);
 
     const availableCategories = useMemo(() => {
         const catMap = new Map<string, string>();
@@ -69,24 +75,27 @@ export default function ExportModal({
         });
     }, [generos, availableCategories]);
 
-    // Initialize with current page filters
+    // Al abrir, arranca con los filtros que tiene la página. Se usan los valores sueltos (no el
+    // objeto entero) para que lo elegido no se reinicie cada vez que la página se actualiza.
+    const { category: catInicial, gender: generoInicial, showOutOfStock: sinStockInicial, showConsult: sinPrecioInicial } = initialFilters;
     useEffect(() => {
         if (isOpen) {
-            if (initialFilters.category && initialFilters.category !== "Todas") {
-                setSelectedCategories([initialFilters.category]);
+            if (catInicial && catInicial !== "Todas") {
+                setSelectedCategories([catInicial]);
             } else {
                 setSelectedCategories(availableCategories);
             }
 
-            if (initialFilters.gender && initialFilters.gender !== "Todos") {
-                setSelectedGenders([initialFilters.gender]);
+            if (generoInicial && generoInicial !== "Todos") {
+                setSelectedGenders([generoInicial]);
             } else {
                 setSelectedGenders(availableGenders);
             }
 
-            setIncludeOutOfStock(initialFilters.showOutOfStock || false);
+            setIncludeOutOfStock(sinStockInicial || false);
+            setIncluirSinPrecio(sinPrecioInicial || false);
         }
-    }, [isOpen, initialFilters, availableCategories, availableGenders]);
+    }, [isOpen, catInicial, generoInicial, sinStockInicial, sinPrecioInicial, availableCategories, availableGenders]);
 
     const filteredData = useMemo(() => {
         return productos.filter(p => {
@@ -124,10 +133,14 @@ export default function ExportModal({
             }
 
             const matchesStock = includeOutOfStock ? true : p.availabilityStatus !== "no-disponible";
-            
-            return matchesCat && matchesGender && matchesStock;
+
+            // Sin precio cargado sale como "Consultar": solo si se pide
+            const precio = Number(lista === "Mayorista" ? p.price : p.priceMinorista);
+            const matchesPrecio = incluirSinPrecio || (Number.isFinite(precio) && precio > 0);
+
+            return matchesCat && matchesGender && matchesStock && matchesPrecio;
         });
-    }, [productos, selectedCategories, selectedGenders, includeOutOfStock]);
+    }, [productos, selectedCategories, selectedGenders, includeOutOfStock, incluirSinPrecio, lista]);
 
     const toggleCategory = (cat: string) => {
         setSelectedCategories(prev => 
@@ -154,9 +167,13 @@ export default function ExportModal({
                     <div>
                         <h3 className="text-2xl font-black text-[#2C2C2C] dark:text-[#F4EFEA] flex items-center gap-3 font-brand">
                             {type === "excel" ? <FileSpreadsheet className="text-[#7D9878]" /> : <FileText className="text-[#C9866F]" />}
-                            Exportar catálogo
+                            {lista ? `Exportar lista ${lista.toLowerCase()}` : "Exportar lista de precios"}
                         </h3>
-                        <p className="text-[#2C2C2C]/60 dark:text-[#F4EFEA]/60 font-bold text-sm mt-1">Configura qué productos incluir en el archivo.</p>
+                        <p className="text-[#2C2C2C]/60 dark:text-[#F4EFEA]/60 font-semibold text-sm mt-1 max-w-md">
+                            {type === "excel"
+                                ? "Planilla ordenada por categoría, con filtros y los precios como números para poder hacer cuentas."
+                                : "Documento listo para mandar: portada con tu WhatsApp, índice y productos agrupados por categoría."}
+                        </p>
                     </div>
                     <button onClick={onClose} className="p-2.5 rounded-full bg-[#1B1D1A] text-white hover:bg-rose-600 hover:text-white hover:rotate-90 hover:scale-110 active:scale-95 transition-all duration-300 shadow-sm border border-[#353B33] flex items-center justify-center shrink-0 cursor-pointer" title="Cerrar">
                         <X className="w-5 h-5" />
@@ -229,8 +246,8 @@ export default function ExportModal({
                         </div>
                     </section>
 
-                    {/* Stock Toggle */}
-                    <section className="pt-4 border-t border-[#E6DFD5] dark:border-[#353B33]">
+                    {/* Opciones: sin stock y sin precio */}
+                    <section className="pt-4 border-t border-[#E6DFD5] dark:border-[#353B33] grid sm:grid-cols-2 gap-3">
                         <button 
                             onClick={() => setIncludeOutOfStock(!includeOutOfStock)}
                             className="flex items-center gap-3 p-4 bg-[#F9F6F0] dark:bg-[#1B1D1A] rounded-2xl w-full border border-[#E6DFD5] dark:border-[#353B33] hover:border-[#7D9878] transition-all group"
@@ -244,6 +261,19 @@ export default function ExportModal({
                             </div>
                             <span className="text-xs font-black text-[#2C2C2C] dark:text-[#F4EFEA] uppercase tracking-widest">Incluir productos sin stock</span>
                         </button>
+                        <button 
+                            onClick={() => setIncluirSinPrecio(!incluirSinPrecio)}
+                            className="flex items-center gap-3 p-4 bg-[#F9F6F0] dark:bg-[#1B1D1A] rounded-2xl w-full border border-[#E6DFD5] dark:border-[#353B33] hover:border-[#7D9878] transition-all group"
+                        >
+                            <div className={`w-5 h-5 rounded-md border-2 transition-all flex items-center justify-center ${
+                                incluirSinPrecio 
+                                ? 'bg-[#7D9878] border-[#7D9878]' 
+                                : 'border-[#E6DFD5] dark:border-[#353B33]'
+                            }`}>
+                                {incluirSinPrecio && <Check className="w-3 h-3 text-white" />}
+                            </div>
+                            <span className="text-xs font-black text-[#2C2C2C] dark:text-[#F4EFEA] uppercase tracking-widest">Incluir productos sin precio</span>
+                        </button>
                     </section>
                 </div>
 
@@ -255,9 +285,18 @@ export default function ExportModal({
                     </div>
                     
                     <button
-                        onClick={() => onExport(filteredData, type)}
-                        disabled={filteredData.length === 0}
-                        className={`w-full sm:w-auto px-10 py-4 font-black rounded-2xl text-lg shadow-xl transition-all flex items-center justify-center gap-3 ${
+                        onClick={async () => {
+                            if (generando) return;
+                            setGenerando(true);
+                            try {
+                                await onExport(filteredData, type);
+                            } finally {
+                                setGenerando(false);
+                            }
+                        }}
+                        disabled={filteredData.length === 0 || generando}
+                        aria-busy={generando}
+                        className={`w-full sm:w-auto px-10 py-4 font-black rounded-2xl text-lg shadow-xl transition-all flex items-center justify-center gap-3 disabled:cursor-wait ${
                             filteredData.length === 0
                             ? 'bg-[#E6DFD5] dark:bg-[#353B33] text-[#2C2C2C]/40 cursor-not-allowed shadow-none'
                             : type === 'excel'
@@ -265,8 +304,10 @@ export default function ExportModal({
                                 : 'bg-[#C9866F] text-white hover:bg-[#b06f59] shadow-[#C9866F]/20 active:scale-95'
                         }`}
                     >
-                        {type === 'excel' ? <FileSpreadsheet className="w-6 h-6" /> : <FileText className="w-6 h-6" />}
-                        {type === 'excel' ? 'Exportar Excel' : 'Exportar PDF'}
+                        {generando
+                            ? <LoaderCircle className="w-6 h-6 animate-spin" />
+                            : type === 'excel' ? <FileSpreadsheet className="w-6 h-6" /> : <FileText className="w-6 h-6" />}
+                        {generando ? 'Generando…' : type === 'excel' ? 'Exportar Excel' : 'Exportar PDF'}
                     </button>
                 </div>
             </div>
