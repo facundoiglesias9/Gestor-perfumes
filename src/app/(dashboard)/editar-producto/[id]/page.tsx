@@ -7,6 +7,7 @@ import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import { guardarFotoProducto, quitarFotoProducto } from "@/lib/catalogo-actions";
 import { prepararFoto } from "@/lib/foto-cliente";
+import { Selector } from "@/components/Desplegable";
 
 export default function EditarProductoPage() {
     const { bases, insumos, esencias, categorias, updateProducto, productos, generos } = useAppContext();
@@ -232,10 +233,10 @@ export default function EditarProductoPage() {
     if (!existingProduct) return <div className="p-20 text-center font-bold">Cargando producto...</div>;
 
     return (
-        <div className="space-y-8 pb-12 animate-in fade-in duration-700">
+        <div className="space-y-8 pb-12 anim-entrada">
             <header className="relative text-center p-8 md:p-10 bg-white dark:bg-[#242723] rounded-[2.5rem] border border-[#E6DFD5] dark:border-[#353B33] shadow-sm flex flex-col items-center justify-center">
                 <div className="space-y-3 flex flex-col items-center">
-                    <Link href="/lista-mayorista" className="inline-flex items-center gap-2 text-[#7D9878] font-bold text-sm mb-2 hover:gap-3 transition-all">
+                    <Link href="/lista-mayorista" className="inline-flex items-center gap-2 text-[#7D9878] font-bold text-sm mb-2 hover:gap-3 transition">
                         <ArrowLeft className="w-4 h-4" /> Volver a la lista
                     </Link>
                     <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight text-[#2C2C2C] dark:text-[#F4EFEA] transition-colors font-brand text-center">
@@ -257,7 +258,7 @@ export default function EditarProductoPage() {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="space-y-2 md:col-span-2">
                                 <label className="text-xs font-bold text-[#2C2C2C]/60 dark:text-[#F4EFEA]/60 uppercase tracking-widest pl-1">Seleccionar Base (Opcional)</label>
-                                <select
+                                <Selector
                                     value={selectedBaseId}
                                     onChange={(e) => {
                                         const newBaseId = e.target.value;
@@ -272,13 +273,13 @@ export default function EditarProductoPage() {
                                             }
                                         }
                                     }}
-                                    className="w-full bg-[#F9F6F0] dark:bg-[#1B1D1A] border border-[#E6DFD5] dark:border-[#353B33] rounded-2xl py-3.5 px-4 text-[#2C2C2C] dark:text-[#F4EFEA] font-bold focus:outline-none focus:border-[#7D9878] transition-all font-semibold"
+                                    className="w-full bg-[#F9F6F0] dark:bg-[#1B1D1A] border border-[#E6DFD5] dark:border-[#353B33] rounded-2xl py-3.5 px-4 text-[#2C2C2C] dark:text-[#F4EFEA] font-bold focus:outline-none focus:border-[#7D9878] transition font-semibold"
                                 >
                                     <option value="">-- Sin Base (Carga Manual) --</option>
                                     {bases.map(b => (
                                         <option key={b.id} value={b.id}>{b.name}</option>
                                     ))}
-                                </select>
+                                </Selector>
                             </div>
 
                             <div className="md:col-span-2 space-y-2">
@@ -288,21 +289,21 @@ export default function EditarProductoPage() {
                                     type="text"
                                     value={name}
                                     onChange={e => setName(e.target.value)}
-                                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl py-3.5 px-4 text-slate-900 dark:text-slate-100 font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+                                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl py-3.5 px-4 text-slate-900 dark:text-slate-100 font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
                                 />
                             </div>
 
                             <div className="space-y-2">
                                 <label className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest pl-1">Estado de Disponibilidad</label>
-                                <select
+                                <Selector
                                     value={availabilityStatus}
                                     onChange={(e) => setAvailabilityStatus(e.target.value)}
-                                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl py-3.5 px-4 text-slate-900 dark:text-slate-100 font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+                                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl py-3.5 px-4 text-slate-900 dark:text-slate-100 font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
                                 >
                                     <option value="disponible">En Mano / Inmediata</option>
                                     <option value="demora">Con Demora (X Días)</option>
                                     <option value="no-disponible">Faltante / Consultar</option>
-                                </select>
+                                </Selector>
                             </div>
 
                             <div className="space-y-2">
@@ -312,7 +313,7 @@ export default function EditarProductoPage() {
                                     disabled={availabilityStatus !== "demora"}
                                     value={deliveryDays}
                                     onChange={e => setDeliveryDays(e.target.value)}
-                                    className={`w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl py-3.5 px-4 text-slate-900 dark:text-slate-100 font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all ${availabilityStatus !== "demora" ? "opacity-30 grayscale" : ""}`}
+                                    className={`w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl py-3.5 px-4 text-slate-900 dark:text-slate-100 font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500 transition ${availabilityStatus !== "demora" ? "opacity-30 grayscale" : ""}`}
                                 />
                             </div>
                         </div>
@@ -321,7 +322,7 @@ export default function EditarProductoPage() {
                             <label className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest pl-1">Ajustar Componentes para este Producto</label>
                             <div className="space-y-3">
                                 {currentComponents.map((comp, idx) => (
-                                    <div key={idx} className="flex items-center gap-4 bg-slate-50 dark:bg-slate-950 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 group hover:border-indigo-500/50 transition-all font-bold">
+                                    <div key={idx} className="flex items-center gap-4 bg-slate-50 dark:bg-slate-950 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 group hover:border-indigo-500/50 transition font-bold">
                                         <div className={`p-2 rounded-xl scale-90 ${comp.type === "Esencia" ? "bg-orange-50 text-orange-600 dark:bg-orange-500/10" : "bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10"}`}>
                                             {comp.type === "Esencia" ? <FlaskConical className="w-5 h-5" /> : <Package className="w-5 h-5" />}
                                         </div>
@@ -361,7 +362,7 @@ export default function EditarProductoPage() {
                 </div>
 
                 <div className="space-y-8">
-                    <section className="bg-white dark:bg-slate-900 rounded-[2.5rem] p-8 border border-slate-200 dark:border-slate-800 shadow-sm space-y-6 sticky top-8 animate-in slide-in-from-right duration-500">
+                    <section className="bg-white dark:bg-slate-900 rounded-[2.5rem] p-8 border border-slate-200 dark:border-slate-800 shadow-sm space-y-6 sticky top-8 anim-entrada [animation-delay:80ms]">
                         <div className="flex items-center gap-3 mb-2">
                             <div className="p-2 bg-slate-100 dark:bg-slate-800 rounded-xl text-slate-600 dark:text-slate-400">
                                 <Calculator className="w-5 h-5" />
@@ -376,21 +377,21 @@ export default function EditarProductoPage() {
                             </div>
 
                             {/* Mayorista Section */}
-                            <div className="space-y-4 p-6 rounded-[2rem] bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 transition-all">
+                            <div className="space-y-4 p-6 rounded-[2rem] bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 transition">
                                 <div className="flex justify-between items-center mb-1">
                                     <h3 className="text-sm font-black text-slate-800 dark:text-slate-200 uppercase tracking-tight">Venta Mayorista</h3>
                                     <div className="flex bg-white dark:bg-slate-900 p-1 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
                                         <button
                                             type="button"
                                             onClick={() => handleMarginMayoristaModeChange("porcentaje")}
-                                            className={`px-3 py-1.5 rounded-lg text-[10px] font-black transition-all flex items-center gap-1.5 ${marginTypeMayor === "porcentaje" ? "bg-slate-900 dark:bg-slate-200 text-white dark:text-slate-900 shadow-sm" : "text-slate-400 hover:text-slate-600"}`}
+                                            className={`px-3 py-1.5 rounded-lg text-[10px] font-black transition flex items-center gap-1.5 ${marginTypeMayor === "porcentaje" ? "bg-slate-900 dark:bg-slate-200 text-white dark:text-slate-900 shadow-sm" : "text-slate-400 hover:text-slate-600"}`}
                                         >
                                             <Percent className="w-3 h-3" /> %
                                         </button>
                                         <button
                                             type="button"
                                             onClick={() => handleMarginMayoristaModeChange("monto")}
-                                            className={`px-3 py-1.5 rounded-lg text-[10px] font-black transition-all flex items-center gap-1.5 ${marginTypeMayor === "monto" ? "bg-slate-900 dark:bg-slate-200 text-white dark:text-slate-900 shadow-sm" : "text-slate-400 hover:text-slate-600"}`}
+                                            className={`px-3 py-1.5 rounded-lg text-[10px] font-black transition flex items-center gap-1.5 ${marginTypeMayor === "monto" ? "bg-slate-900 dark:bg-slate-200 text-white dark:text-slate-900 shadow-sm" : "text-slate-400 hover:text-slate-600"}`}
                                         >
                                             <DollarSign className="w-3 h-3" /> $
                                         </button>
@@ -407,7 +408,7 @@ export default function EditarProductoPage() {
                                                 disabled={marginTypeMayor === "monto"}
                                                 readOnly={marginTypeMayor === "monto"}
                                                 onChange={e => handleMarginMayoristaChange(e.target.value)}
-                                                className={`w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl py-2.5 px-4 text-slate-900 dark:text-slate-50 font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all ${marginTypeMayor === "monto" ? "opacity-50" : ""}`}
+                                                className={`w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl py-2.5 px-4 text-slate-900 dark:text-slate-50 font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500 transition ${marginTypeMayor === "monto" ? "opacity-50" : ""}`}
                                             />
                                             <span className="absolute right-4 top-1/2 -translate-y-1/2 font-bold text-slate-300 text-xs">{marginTypeMayor === "porcentaje" ? "%" : "$"}</span>
                                         </div>
@@ -421,28 +422,28 @@ export default function EditarProductoPage() {
                                             disabled={marginTypeMayor === "porcentaje"}
                                             readOnly={marginTypeMayor === "porcentaje"}
                                             onChange={e => handlePriceMayoristaChange(e.target.value)}
-                                            className={`w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl py-2.5 px-4 text-slate-900 dark:text-slate-50 font-black focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all ${marginTypeMayor === "porcentaje" ? "opacity-50" : ""}`}
+                                            className={`w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl py-2.5 px-4 text-slate-900 dark:text-slate-50 font-black focus:outline-none focus:ring-2 focus:ring-indigo-500 transition ${marginTypeMayor === "porcentaje" ? "opacity-50" : ""}`}
                                         />
                                     </div>
                                 </div>
                             </div>
 
                             {/* Minorista Section */}
-                            <div className="space-y-4 p-6 rounded-[2rem] bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 transition-all">
+                            <div className="space-y-4 p-6 rounded-[2rem] bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 transition">
                                 <div className="flex justify-between items-center mb-1">
                                     <h3 className="text-sm font-black text-slate-800 dark:text-slate-200 uppercase tracking-tight">Venta Minorista</h3>
                                     <div className="flex bg-white dark:bg-slate-900 p-1 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
                                         <button
                                             type="button"
                                             onClick={() => handleMarginMinoristaModeChange("porcentaje")}
-                                            className={`px-3 py-1.5 rounded-lg text-[10px] font-black transition-all flex items-center gap-1.5 ${marginTypeMinor === "porcentaje" ? "bg-slate-900 dark:bg-slate-200 text-white dark:text-slate-900 shadow-sm" : "text-slate-400 hover:text-slate-600"}`}
+                                            className={`px-3 py-1.5 rounded-lg text-[10px] font-black transition flex items-center gap-1.5 ${marginTypeMinor === "porcentaje" ? "bg-slate-900 dark:bg-slate-200 text-white dark:text-slate-900 shadow-sm" : "text-slate-400 hover:text-slate-600"}`}
                                         >
                                             <Percent className="w-3 h-3" /> %
                                         </button>
                                         <button
                                             type="button"
                                             onClick={() => handleMarginMinoristaModeChange("monto")}
-                                            className={`px-3 py-1.5 rounded-lg text-[10px] font-black transition-all flex items-center gap-1.5 ${marginTypeMinor === "monto" ? "bg-slate-900 dark:bg-slate-200 text-white dark:text-slate-900 shadow-sm" : "text-slate-400 hover:text-slate-600"}`}
+                                            className={`px-3 py-1.5 rounded-lg text-[10px] font-black transition flex items-center gap-1.5 ${marginTypeMinor === "monto" ? "bg-slate-900 dark:bg-slate-200 text-white dark:text-slate-900 shadow-sm" : "text-slate-400 hover:text-slate-600"}`}
                                         >
                                             <DollarSign className="w-3 h-3" /> $
                                         </button>
@@ -459,7 +460,7 @@ export default function EditarProductoPage() {
                                                 disabled={marginTypeMinor === "monto"}
                                                 readOnly={marginTypeMinor === "monto"}
                                                 onChange={e => handleMarginMinoristaChange(e.target.value)}
-                                                className={`w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl py-2.5 px-4 text-slate-900 dark:text-slate-50 font-bold focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all ${marginTypeMinor === "monto" ? "opacity-50" : ""}`}
+                                                className={`w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl py-2.5 px-4 text-slate-900 dark:text-slate-50 font-bold focus:outline-none focus:ring-2 focus:ring-emerald-500 transition ${marginTypeMinor === "monto" ? "opacity-50" : ""}`}
                                             />
                                             <span className="absolute right-4 top-1/2 -translate-y-1/2 font-bold text-slate-300 text-xs">{marginTypeMinor === "porcentaje" ? "%" : "$"}</span>
                                         </div>
@@ -473,7 +474,7 @@ export default function EditarProductoPage() {
                                             disabled={marginTypeMinor === "porcentaje"}
                                             readOnly={marginTypeMinor === "porcentaje"}
                                             onChange={e => handlePriceMinoristaChange(e.target.value)}
-                                            className={`w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl py-2.5 px-4 text-slate-900 dark:text-slate-50 font-black focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all ${marginTypeMinor === "porcentaje" ? "opacity-50" : ""}`}
+                                            className={`w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl py-2.5 px-4 text-slate-900 dark:text-slate-50 font-black focus:outline-none focus:ring-2 focus:ring-emerald-500 transition ${marginTypeMinor === "porcentaje" ? "opacity-50" : ""}`}
                                         />
                                     </div>
                                 </div>
@@ -482,9 +483,9 @@ export default function EditarProductoPage() {
 
                         <button
                             type="submit"
-                            className="w-full py-5 rounded-2xl bg-[#7D9878] text-white font-black text-xl hover:bg-[#6b8566] hover:shadow-2xl hover:shadow-[#7D9878]/30 active:scale-[0.98] transition-all flex items-center justify-center gap-3 mt-4 group font-brand"
+                            className="w-full py-5 rounded-2xl bg-[#7D9878] text-white font-black text-xl hover:bg-[#6b8566] hover:shadow-2xl hover:shadow-[#7D9878]/30 active:scale-[0.98] transition flex items-center justify-center gap-3 mt-4 group font-brand"
                         >
-                            <Save className="w-6 h-6 group-hover:scale-110 transition-transform" />
+                            <Save className="w-6 h-6 transition-transform" />
                             Guardar Cambios
                         </button>
                     </section>
@@ -502,7 +503,7 @@ export default function EditarProductoPage() {
                                 if (currentComponents.find(c => c.id === ins.id)) return;
                                 setCurrentComponents([...currentComponents, { id: ins.id, name: ins.name, qty: 0, type: "Insumo" }]);
                             }}
-                            className="p-4 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl text-left hover:border-indigo-500 transition-all group shadow-sm font-bold"
+                            className="p-4 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl text-left hover:border-indigo-500 transition group shadow-sm font-bold"
                         >
                             <Package className="w-4 h-4 text-slate-300 group-hover:text-indigo-500 mb-2" />
                             <p className="text-xs font-bold text-slate-700 dark:text-slate-300 line-clamp-1">{ins.name}</p>
@@ -516,7 +517,7 @@ export default function EditarProductoPage() {
                                 if (currentComponents.find(c => c.id === esc.id)) return;
                                 setCurrentComponents([...currentComponents, { id: esc.id, name: esc.name, qty: 0, type: "Esencia" }]);
                             }}
-                            className="p-4 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl text-left hover:border-orange-500 transition-all group shadow-sm font-bold"
+                            className="p-4 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl text-left hover:border-orange-500 transition group shadow-sm font-bold"
                         >
                             <FlaskConical className="w-4 h-4 text-slate-300 group-hover:text-orange-500 mb-2" />
                             <p className="text-xs font-bold text-slate-700 dark:text-slate-300 line-clamp-1">{esc.name}</p>

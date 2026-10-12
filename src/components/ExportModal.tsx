@@ -1,9 +1,10 @@
 "use client";
 
-import { X, Check, FileSpreadsheet, FileText, Filter, LoaderCircle } from "lucide-react";
+import { Check, FileSpreadsheet, FileText, LoaderCircle } from "lucide-react";
 import { useState, useMemo, useEffect } from "react";
 import { Producto } from "@/context/AppContext";
 import Ventana from "@/components/Ventana";
+import { PanelVentana, CabeceraVentana, CuerpoVentana, PieVentana, TituloGrupo, TodoNada, FilaInterruptor, opcion, BOTON_PRINCIPAL, BOTON_SECUNDARIO } from "@/components/ventana-partes";
 
 interface ExportModalProps {
     isOpen: boolean;
@@ -159,158 +160,105 @@ export default function ExportModal({
     const selectAllGenders = () => setSelectedGenders(availableGenders);
     const deselectAllGenders = () => setSelectedGenders([]);
 
+    const exportar = async () => {
+        if (generando) return;
+        setGenerando(true);
+        try {
+            await onExport(filteredData, type);
+        } finally {
+            setGenerando(false);
+        }
+    };
+
     return (
-        <Ventana abierta={isOpen} onCerrar={onClose}>
-            <div className="bg-white dark:bg-[#242723] rounded-[2.5rem] shadow-2xl w-full max-w-2xl overflow-hidden border border-[#E6DFD5] dark:border-[#353B33] flex flex-col max-h-[calc(100vh-8rem)]">
-                {/* Header */}
-                <div className="p-8 border-b border-[#E6DFD5] dark:border-[#353B33] flex justify-between items-center bg-[#F9F6F0] dark:bg-[#1B1D1A]">
-                    <div>
-                        <h3 className="text-2xl font-black text-[#2C2C2C] dark:text-[#F4EFEA] flex items-center gap-3 font-brand">
-                            {type === "excel" ? <FileSpreadsheet className="text-[#7D9878]" /> : <FileText className="text-[#C9866F]" />}
-                            {lista ? `Exportar lista ${lista.toLowerCase()}` : "Exportar lista de precios"}
-                        </h3>
-                        <p className="text-[#2C2C2C]/60 dark:text-[#F4EFEA]/60 font-semibold text-sm mt-1 max-w-md">
-                            {type === "excel"
-                                ? "Planilla ordenada por categoría, con filtros y los precios como números para poder hacer cuentas."
-                                : "Documento listo para mandar: portada con tu WhatsApp, índice y productos agrupados por categoría."}
-                        </p>
-                    </div>
-                    <button onClick={onClose} className="p-2.5 rounded-full bg-[#1B1D1A] text-white hover:bg-rose-600 hover:text-white hover:rotate-90 hover:scale-110 active:scale-95 transition-all duration-300 shadow-sm border border-[#353B33] flex items-center justify-center shrink-0 cursor-pointer" title="Cerrar">
-                        <X className="w-5 h-5" />
-                    </button>
-                </div>
+        <Ventana abierta={isOpen} onCerrar={generando ? undefined : onClose} etiqueta="Exportar lista de precios">
+            <PanelVentana ancho="lg">
+                <CabeceraVentana
+                    etiqueta={type === "excel" ? "Exportar a Excel" : "Exportar a PDF"}
+                    titulo={lista ? `Lista ${lista.toLowerCase()}` : "Lista de precios"}
+                    descripcion={type === "excel"
+                        ? "Planilla ordenada por categoría, con filtros y los precios como números para poder hacer cuentas."
+                        : "Documento listo para mandar: portada con tu WhatsApp, índice y productos agrupados por categoría."}
+                    icono={type === "excel" ? FileSpreadsheet : FileText}
+                    tono={type === "excel" ? "salvia" : "terracota"}
+                    onCerrar={onClose}
+                    cerrarDeshabilitado={generando}
+                />
 
-                <div className="p-8 space-y-8 max-h-[60vh] overflow-y-auto custom-scrollbar">
-                    {/* Categories */}
-                    <section className="space-y-4">
-                        <div className="flex justify-between items-end">
-                            <h4 className="text-xs font-black uppercase tracking-widest text-[#7D9878] dark:text-[#A3B69B] flex items-center gap-2">
-                                <Filter className="w-3.5 h-3.5" />
-                                Categorías
-                            </h4>
-                            <div className="flex gap-4">
-                                <button onClick={selectAllCats} className="text-[10px] font-black text-[#2C2C2C]/50 hover:text-[#7D9878] transition-colors">TODO</button>
-                                <button onClick={deselectAllCats} className="text-[10px] font-black text-[#2C2C2C]/50 hover:text-[#C9866F] transition-colors">NADA</button>
-                            </div>
-                        </div>
-                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                            {availableCategories.map(cat => (
-                                <button
-                                    key={cat}
-                                    onClick={() => toggleCategory(cat)}
-                                    className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border text-left transition-all ${
-                                        selectedCategories.includes(cat)
-                                        ? 'bg-[#7D9878]/15 border-[#7D9878] text-[#7D9878] dark:text-[#A3B69B] font-bold'
-                                        : 'border-[#E6DFD5] dark:border-[#353B33] text-[#2C2C2C]/70 dark:text-[#F4EFEA]/70 hover:bg-[#7D9878]/5'
-                                    }`}
-                                >
-                                    <div className={`w-4 h-4 rounded flex items-center justify-center border ${
-                                        selectedCategories.includes(cat)
-                                        ? 'bg-[#7D9878] border-[#7D9878]'
-                                        : 'border-[#E6DFD5] dark:border-[#353B33]'
-                                    }`}>
-                                        {selectedCategories.includes(cat) && <Check className="w-3 h-3 text-white" />}
-                                    </div>
-                                    <span className="text-[11px] truncate">{cat}</span>
-                                </button>
-                            ))}
-                        </div>
-                    </section>
-
-                    {/* Genres */}
-                    <section className="space-y-4">
-                        <div className="flex justify-between items-end">
-                            <h4 className="text-xs font-black uppercase tracking-widest text-[#7D9878] dark:text-[#A3B69B] flex items-center gap-2">
-                                <Filter className="w-3.5 h-3.5" />
-                                Géneros
-                            </h4>
-                            <div className="flex gap-4">
-                                <button onClick={selectAllGenders} className="text-[10px] font-black text-[#2C2C2C]/50 hover:text-[#7D9878] transition-colors">TODO</button>
-                                <button onClick={deselectAllGenders} className="text-[10px] font-black text-[#2C2C2C]/50 hover:text-[#C9866F] transition-colors">NADA</button>
-                            </div>
-                        </div>
+                <CuerpoVentana className="space-y-7">
+                    <section>
+                        <TituloGrupo derecha={<TodoNada onTodo={selectAllCats} onNada={deselectAllCats} />}>Categorías</TituloGrupo>
                         <div className="flex flex-wrap gap-2">
-                            {availableGenders.map(gen => (
-                                <button
-                                    key={gen}
-                                    onClick={() => toggleGender(gen)}
-                                    className={`flex items-center gap-2 px-4 py-2 rounded-xl border transition-all ${
-                                        selectedGenders.includes(gen)
-                                        ? 'bg-[#7D9878]/15 border-[#7D9878] text-[#7D9878] dark:text-[#A3B69B] font-bold'
-                                        : 'border-[#E6DFD5] dark:border-[#353B33] text-[#2C2C2C]/70 dark:text-[#F4EFEA]/70 hover:bg-[#7D9878]/5'
-                                    }`}
-                                >
-                                    <span className="text-[11px]">{gen}</span>
-                                </button>
-                            ))}
+                            {availableCategories.map(cat => {
+                                const elegida = selectedCategories.includes(cat);
+                                return (
+                                    <button key={cat} type="button" aria-pressed={elegida} onClick={() => toggleCategory(cat)} className={opcion(elegida)}>
+                                        {elegida && <Check className="w-3.5 h-3.5" strokeWidth={3} />}
+                                        {cat}
+                                    </button>
+                                );
+                            })}
                         </div>
                     </section>
 
-                    {/* Opciones: sin stock y sin precio */}
-                    <section className="pt-4 border-t border-[#E6DFD5] dark:border-[#353B33] grid sm:grid-cols-2 gap-3">
-                        <button 
-                            onClick={() => setIncludeOutOfStock(!includeOutOfStock)}
-                            className="flex items-center gap-3 p-4 bg-[#F9F6F0] dark:bg-[#1B1D1A] rounded-2xl w-full border border-[#E6DFD5] dark:border-[#353B33] hover:border-[#7D9878] transition-all group"
-                        >
-                            <div className={`w-5 h-5 rounded-md border-2 transition-all flex items-center justify-center ${
-                                includeOutOfStock 
-                                ? 'bg-[#7D9878] border-[#7D9878]' 
-                                : 'border-[#E6DFD5] dark:border-[#353B33]'
-                            }`}>
-                                {includeOutOfStock && <Check className="w-3 h-3 text-white" />}
-                            </div>
-                            <span className="text-xs font-black text-[#2C2C2C] dark:text-[#F4EFEA] uppercase tracking-widest">Incluir productos sin stock</span>
-                        </button>
-                        <button 
-                            onClick={() => setIncluirSinPrecio(!incluirSinPrecio)}
-                            className="flex items-center gap-3 p-4 bg-[#F9F6F0] dark:bg-[#1B1D1A] rounded-2xl w-full border border-[#E6DFD5] dark:border-[#353B33] hover:border-[#7D9878] transition-all group"
-                        >
-                            <div className={`w-5 h-5 rounded-md border-2 transition-all flex items-center justify-center ${
-                                incluirSinPrecio 
-                                ? 'bg-[#7D9878] border-[#7D9878]' 
-                                : 'border-[#E6DFD5] dark:border-[#353B33]'
-                            }`}>
-                                {incluirSinPrecio && <Check className="w-3 h-3 text-white" />}
-                            </div>
-                            <span className="text-xs font-black text-[#2C2C2C] dark:text-[#F4EFEA] uppercase tracking-widest">Incluir productos sin precio</span>
-                        </button>
+                    <section>
+                        <TituloGrupo derecha={<TodoNada onTodo={selectAllGenders} onNada={deselectAllGenders} />}>Géneros</TituloGrupo>
+                        <div className="flex flex-wrap gap-2">
+                            {availableGenders.map(gen => {
+                                const elegido = selectedGenders.includes(gen);
+                                return (
+                                    <button key={gen} type="button" aria-pressed={elegido} onClick={() => toggleGender(gen)} className={opcion(elegido)}>
+                                        {elegido && <Check className="w-3.5 h-3.5" strokeWidth={3} />}
+                                        {gen}
+                                    </button>
+                                );
+                            })}
+                        </div>
                     </section>
-                </div>
 
-                {/* Footer */}
-                <div className="p-8 bg-[#F9F6F0] dark:bg-[#1B1D1A] flex flex-col sm:flex-row items-center justify-between gap-6 border-t border-[#E6DFD5] dark:border-[#353B33]">
-                    <div className="flex flex-col items-center sm:items-start">
-                        <p className="text-[#2C2C2C] dark:text-[#F4EFEA] font-black text-2xl font-brand">{filteredData.length}</p>
-                        <p className="text-[10px] font-black uppercase tracking-widest text-[#2C2C2C]/60 dark:text-[#F4EFEA]/60">Productos seleccionados</p>
+                    <section>
+                        <TituloGrupo>Incluir también</TituloGrupo>
+                        <div className="grid sm:grid-cols-2 gap-2.5">
+                            <FilaInterruptor
+                                titulo="Productos sin stock"
+                                descripcion="Salen marcados como sin stock"
+                                activo={includeOutOfStock}
+                                onCambiar={setIncludeOutOfStock}
+                            />
+                            <FilaInterruptor
+                                titulo="Productos sin precio"
+                                descripcion="Salen como «Consultar»"
+                                activo={incluirSinPrecio}
+                                onCambiar={setIncluirSinPrecio}
+                            />
+                        </div>
+                    </section>
+                </CuerpoVentana>
+
+                <PieVentana>
+                    <p className="text-sm text-[#2C2C2C]/60 dark:text-[#F4EFEA]/55">
+                        <span className="font-semibold tabular-nums text-[#2C2C2C] dark:text-[#F4EFEA]">{filteredData.length}</span>
+                        {filteredData.length === 1 ? " producto" : " productos"}
+                    </p>
+                    <div className="flex items-center gap-2">
+                        <button type="button" onClick={onClose} disabled={generando} className={BOTON_SECUNDARIO}>
+                            Cancelar
+                        </button>
+                        <button
+                            type="button"
+                            onClick={exportar}
+                            disabled={filteredData.length === 0 || generando}
+                            aria-busy={generando}
+                            className={BOTON_PRINCIPAL}
+                        >
+                            {generando
+                                ? <LoaderCircle className="w-4 h-4 animate-spin" />
+                                : type === "excel" ? <FileSpreadsheet className="w-4 h-4" /> : <FileText className="w-4 h-4" />}
+                            {generando ? "Generando…" : type === "excel" ? "Descargar Excel" : "Descargar PDF"}
+                        </button>
                     </div>
-                    
-                    <button
-                        onClick={async () => {
-                            if (generando) return;
-                            setGenerando(true);
-                            try {
-                                await onExport(filteredData, type);
-                            } finally {
-                                setGenerando(false);
-                            }
-                        }}
-                        disabled={filteredData.length === 0 || generando}
-                        aria-busy={generando}
-                        className={`w-full sm:w-auto px-10 py-4 font-black rounded-2xl text-lg shadow-xl transition-all flex items-center justify-center gap-3 disabled:cursor-wait ${
-                            filteredData.length === 0
-                            ? 'bg-[#E6DFD5] dark:bg-[#353B33] text-[#2C2C2C]/40 cursor-not-allowed shadow-none'
-                            : type === 'excel'
-                                ? 'bg-[#7D9878] text-white hover:bg-[#6b8566] shadow-[#7D9878]/20 active:scale-95'
-                                : 'bg-[#C9866F] text-white hover:bg-[#b06f59] shadow-[#C9866F]/20 active:scale-95'
-                        }`}
-                    >
-                        {generando
-                            ? <LoaderCircle className="w-6 h-6 animate-spin" />
-                            : type === 'excel' ? <FileSpreadsheet className="w-6 h-6" /> : <FileText className="w-6 h-6" />}
-                        {generando ? 'Generando…' : type === 'excel' ? 'Exportar Excel' : 'Exportar PDF'}
-                    </button>
-                </div>
-            </div>
+                </PieVentana>
+            </PanelVentana>
         </Ventana>
     );
 }

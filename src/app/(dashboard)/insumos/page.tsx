@@ -1,11 +1,13 @@
 "use client";
 
-import { Search, Plus, Filter, Layers, Trash2, X, Edit2, Download } from "lucide-react";
+import { Search, Plus, Filter, Layers, Trash2, Edit2, Download, Check } from "lucide-react";
 import { useState } from "react";
 import { useAppContext } from "@/context/AppContext";
 import ConfirmModal from "@/components/ConfirmModal";
 import { exportToExcel } from "@/lib/export-utils";
 import Ventana from "@/components/Ventana";
+import { PanelVentana, CabeceraVentana, CuerpoVentana, PieVentana, ETIQUETA_CAMPO, AYUDA_CAMPO, CAMPO, BOTON_PRINCIPAL, BOTON_SECUNDARIO } from "@/components/ventana-partes";
+import { Selector } from "@/components/Desplegable";
 
 export default function InsumosPage() {
     const { insumos, setInsumos, categorias, proveedores, bases, setBases, productos, setProductos, getNextId } = useAppContext();
@@ -173,7 +175,7 @@ export default function InsumosPage() {
     };
 
     return (
-        <div className="space-y-8 pb-12 animate-in fade-in duration-700 relative">
+        <div className="space-y-8 pb-12 anim-entrada relative">
             <header className="flex flex-col items-center text-center gap-6 bg-white dark:bg-[#242723] p-8 md:p-10 rounded-[2.5rem] shadow-sm border border-[#E6DFD5] dark:border-[#353B33] transition-colors duration-300">
                 <div className="flex flex-col items-center space-y-3 max-w-2xl mx-auto">
                     <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#7D9878]/10 text-[#7D9878] dark:text-[#A3B69B] text-xs font-bold tracking-widest uppercase">
@@ -191,14 +193,14 @@ export default function InsumosPage() {
                 <div className="flex flex-wrap items-center justify-center gap-3">
                     <button
                         onClick={handlePerformExport}
-                        className="flex items-center gap-2.5 px-6 py-3.5 rounded-2xl bg-white dark:bg-[#1B1D1A] text-[#2C2C2C] dark:text-[#F4EFEA] font-bold hover:bg-[#7D9878]/10 shadow-sm border border-[#E6DFD5] dark:border-[#353B33] active:scale-95 transition-all"
+                        className="flex items-center gap-2.5 px-6 py-3.5 rounded-2xl bg-white dark:bg-[#1B1D1A] text-[#2C2C2C] dark:text-[#F4EFEA] font-bold hover:bg-[#7D9878]/10 shadow-sm border border-[#E6DFD5] dark:border-[#353B33] active:scale-95 transition"
                     >
                         <Download className="w-5 h-5" strokeWidth={2.5} />
                         Exportar Excel
                     </button>
                     <button
                         onClick={() => setIsAddModalOpen(true)}
-                        className="flex items-center gap-2.5 px-7 py-3.5 rounded-2xl bg-[#7D9878] hover:bg-[#6b8566] text-white font-bold hover:shadow-xl hover:shadow-[#7D9878]/20 active:scale-95 transition-all"
+                        className="flex items-center gap-2.5 px-7 py-3.5 rounded-2xl bg-[#7D9878] hover:bg-[#6b8566] text-white font-bold hover:shadow-xl hover:shadow-[#7D9878]/20 active:scale-95 transition"
                     >
                         <Plus className="w-5 h-5" strokeWidth={2.5} />
                         Agregar Insumo
@@ -215,7 +217,7 @@ export default function InsumosPage() {
                             value={searchTerm}
                             onChange={e => setSearchTerm(e.target.value)}
                             placeholder="Buscar insumo o proveedor..."
-                            className="w-full bg-[#F9F6F0] dark:bg-[#1B1D1A] border border-[#E6DFD5] dark:border-[#353B33] rounded-2xl py-3.5 pl-14 pr-6 text-[#2C2C2C] dark:text-[#F4EFEA] placeholder:text-[#2C2C2C]/50 dark:placeholder:text-[#F4EFEA]/60 focus:outline-none focus:border-[#7D9878] transition-all font-semibold"
+                            className="w-full bg-[#F9F6F0] dark:bg-[#1B1D1A] border border-[#E6DFD5] dark:border-[#353B33] rounded-2xl py-3.5 pl-14 pr-6 text-[#2C2C2C] dark:text-[#F4EFEA] placeholder:text-[#2C2C2C]/50 dark:placeholder:text-[#F4EFEA]/60 focus:outline-none focus:border-[#7D9878] transition font-semibold"
                         />
                     </div>
                 </div>
@@ -301,125 +303,130 @@ export default function InsumosPage() {
                 onCancel={() => setItemToDelete(null)}
             />
 
-            <Ventana abierta={isAddModalOpen} onCerrar={handleCloseModal} cerrarAlTocarFondo={false}>
+            <Ventana abierta={isAddModalOpen} onCerrar={handleCloseModal} cerrarAlTocarFondo={false} etiqueta={editingId ? "Editar insumo" : "Nuevo insumo"}>
             {isAddModalOpen && (
-                    <div className="bg-white dark:bg-[#242723] rounded-[2.5rem] shadow-2xl w-full max-w-lg overflow-hidden border border-[#E6DFD5] dark:border-[#353B33] flex flex-col max-h-[calc(100vh-8rem)]">
-                        <div className="p-6 sm:p-8 pb-6 border-b border-[#E6DFD5] dark:border-[#353B33] flex justify-between items-center bg-[#F9F6F0] dark:bg-[#1B1D1A] shrink-0">
-                            <div>
-                                <h2 className="text-2xl font-extrabold text-[#2C2C2C] dark:text-[#F4EFEA] font-brand">{editingId ? "Editar Insumo" : "Nuevo Insumo"}</h2>
-                                <p className="text-[#2C2C2C]/60 dark:text-[#F4EFEA]/60 font-medium mt-1">{editingId ? "Modificá los datos del insumo" : "Ingresá los datos del nuevo insumo."}</p>
-                            </div>
-                            <button
-                                onClick={handleCloseModal}
-                                className="p-2.5 rounded-full bg-[#1B1D1A] text-white hover:bg-rose-600 hover:text-white hover:rotate-90 hover:scale-110 active:scale-95 transition-all duration-300 shadow-sm border border-[#353B33] flex items-center justify-center shrink-0 cursor-pointer"
-                                title="Cerrar"
-                            >
-                                <X className="w-5 h-5" />
-                            </button>
-                        </div>
+                    <PanelVentana ancho="md">
+                        <CabeceraVentana
+                            etiqueta={editingId ? "Editar insumo" : "Nuevo insumo"}
+                            titulo={formData.name.trim() || (editingId ? "Insumo" : "Nuevo insumo")}
+                            descripcion="Frascos, tapas, etiquetas y todo lo que lleva cada producto."
+                            icono={Layers}
+                            onCerrar={handleCloseModal}
+                        />
 
-                        <form onSubmit={handleAddSubmit} className="p-6 sm:p-8 space-y-6 overflow-y-auto flex-1 custom-scrollbar">
-                            <div className="space-y-2">
-                                <label className="text-xs font-black text-[#2C2C2C] dark:text-[#F4EFEA] uppercase tracking-widest pl-1">Nombre</label>
-                                <input
-                                    required
-                                    type="text"
-                                    value={formData.name}
-                                    onChange={e => setFormData({ ...formData, name: e.target.value })}
-                                    placeholder="Ej: Frasco Vidrio 50ml"
-                                    className="w-full bg-[#F9F6F0] dark:bg-[#1B1D1A] border border-[#E6DFD5] dark:border-[#353B33] rounded-2xl py-3.5 px-4 text-[#2C2C2C] dark:text-[#F4EFEA] placeholder:text-[#2C2C2C]/50 dark:placeholder:text-[#F4EFEA]/50 focus:outline-none focus:border-[#7D9878] transition-all font-semibold"
-                                />
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <label className="text-xs font-black text-[#2C2C2C] dark:text-[#F4EFEA] uppercase tracking-widest pl-1">Unidad de Medida</label>
-                                    <select
+                        <form onSubmit={handleAddSubmit} className="flex flex-col flex-1 min-h-0">
+                            <CuerpoVentana className="space-y-5">
+                                <label className="block">
+                                    <span className={ETIQUETA_CAMPO}>Nombre</span>
+                                    <input
                                         required
-                                        value={formData.unit}
-                                        onChange={e => setFormData({ ...formData, unit: e.target.value })}
-                                        className="w-full bg-[#F9F6F0] dark:bg-[#1B1D1A] border border-[#E6DFD5] dark:border-[#353B33] rounded-2xl py-3.5 px-4 text-[#2C2C2C] dark:text-[#F4EFEA] focus:outline-none focus:border-[#7D9878] transition-all font-semibold"
-                                    >
-                                        <option value="un.">Unidades (un.)</option>
-                                        <option value="ml">Mililitros (ml)</option>
-                                    </select>
+                                        type="text"
+                                        value={formData.name}
+                                        onChange={e => setFormData({ ...formData, name: e.target.value })}
+                                        placeholder="Ej: Frasco de vidrio 50 ml"
+                                        className={CAMPO}
+                                    />
+                                </label>
+
+                                <div className="grid grid-cols-2 gap-4">
+                                    <label className="block">
+                                        <span className={ETIQUETA_CAMPO}>Unidad</span>
+                                        <Selector
+                                            required
+                                            value={formData.unit}
+                                            onChange={e => setFormData({ ...formData, unit: e.target.value })}
+                                            className={`${CAMPO} cursor-pointer`}
+                                        >
+                                            <option value="un.">Unidades (un.)</option>
+                                            <option value="ml">Mililitros (ml)</option>
+                                        </Selector>
+                                    </label>
+
+                                    <label className="block">
+                                        <span className={ETIQUETA_CAMPO}>Cantidad del bulto</span>
+                                        <span className="relative block">
+                                            <input
+                                                required
+                                                type="number"
+                                                min="1"
+                                                value={formData.qty}
+                                                onFocus={(e) => e.target.select()}
+                                                onChange={e => setFormData({ ...formData, qty: e.target.value })}
+                                                placeholder="100"
+                                                className={`${CAMPO} pr-12 text-right tabular-nums`}
+                                            />
+                                            <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-sm text-[#2C2C2C]/45 dark:text-[#F4EFEA]/45 pointer-events-none">
+                                                {formData.unit}
+                                            </span>
+                                        </span>
+                                    </label>
                                 </div>
 
-                                <div className="space-y-2 relative">
-                                    <label className="text-xs font-black text-[#2C2C2C] dark:text-[#F4EFEA] uppercase tracking-widest pl-1">Cant. del Bulto</label>
-                                    <div className="relative">
+                                <label className="block">
+                                    <span className={ETIQUETA_CAMPO}>Costo del bulto</span>
+                                    <span className="relative block">
+                                        <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-[#2C2C2C]/45 dark:text-[#F4EFEA]/45 pointer-events-none">$</span>
                                         <input
                                             required
                                             type="number"
-                                            min="1"
-                                            value={formData.qty}
+                                            min="0"
+                                            value={formData.cost}
                                             onFocus={(e) => e.target.select()}
-                                            onChange={e => setFormData({ ...formData, qty: e.target.value })}
-                                            placeholder="100"
-                                            className="w-full bg-[#F9F6F0] dark:bg-[#1B1D1A] border border-[#E6DFD5] dark:border-[#353B33] rounded-2xl py-3.5 pl-4 pr-10 text-[#2C2C2C] dark:text-[#F4EFEA] placeholder:text-[#2C2C2C]/50 dark:placeholder:text-[#F4EFEA]/50 focus:outline-none focus:border-[#7D9878] transition-all font-bold text-right"
+                                            onChange={e => setFormData({ ...formData, cost: e.target.value })}
+                                            placeholder="0"
+                                            className={`${CAMPO} pl-8 tabular-nums`}
                                         />
-                                        <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[#2C2C2C]/60 dark:text-[#F4EFEA]/60 font-bold text-sm">
-                                            {formData.unit}
-                                        </span>
-                                    </div>
+                                    </span>
+                                    <span className={`block ${AYUDA_CAMPO}`}>En pesos, lo que pagás por el bulto completo.</span>
+                                </label>
+
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <label className="block">
+                                        <span className={ETIQUETA_CAMPO}>Presentación</span>
+                                        <Selector
+                                            required
+                                            value={formData.category}
+                                            onChange={e => setFormData({ ...formData, category: e.target.value })}
+                                            className={`${CAMPO} cursor-pointer`}
+                                        >
+                                            <option value="" disabled>Elegí una</option>
+                                            <option value="Todas">Todas</option>
+                                            {categorias.map(cat => (
+                                                <option key={cat.id} value={cat.name}>{cat.name}</option>
+                                            ))}
+                                            {categorias.length === 0 && <option disabled>No hay categorías</option>}
+                                        </Selector>
+                                    </label>
+
+                                    <label className="block">
+                                        <span className={ETIQUETA_CAMPO}>Proveedor</span>
+                                        <Selector
+                                            required
+                                            value={formData.provider}
+                                            onChange={e => setFormData({ ...formData, provider: e.target.value })}
+                                            className={`${CAMPO} cursor-pointer`}
+                                        >
+                                            <option value="" disabled>Elegí uno</option>
+                                            {proveedores.map(prov => (
+                                                <option key={prov.id} value={prov.name}>{prov.name}</option>
+                                            ))}
+                                            {proveedores.length === 0 && <option disabled>No hay proveedores</option>}
+                                        </Selector>
+                                    </label>
                                 </div>
-                            </div>
+                            </CuerpoVentana>
 
-                            <div className="space-y-2 relative">
-                                <label className="text-xs font-black text-[#2C2C2C] dark:text-[#F4EFEA] uppercase tracking-widest pl-1">Costo por Bulto (ARS)</label>
-                                <div className="relative">
-                                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[#2C2C2C]/60 dark:text-[#F4EFEA]/60 font-bold">$</span>
-                                    <input
-                                        required
-                                        type="number"
-                                        min="0"
-                                        value={formData.cost}
-                                        onFocus={(e) => e.target.select()}
-                                        onChange={e => setFormData({ ...formData, cost: e.target.value })}
-                                        placeholder="0.00"
-                                        className="w-full bg-[#F9F6F0] dark:bg-[#1B1D1A] border border-[#E6DFD5] dark:border-[#353B33] rounded-2xl py-3.5 pl-10 pr-4 text-[#2C2C2C] dark:text-[#F4EFEA] placeholder:text-[#2C2C2C]/50 dark:placeholder:text-[#F4EFEA]/50 focus:outline-none focus:border-[#7D9878] transition-all font-bold"
-                                    />
-                                </div>
-                            </div>
-
-                            <div className="space-y-2">
-                                <label className="text-xs font-black text-[#2C2C2C] dark:text-[#F4EFEA] uppercase tracking-widest pl-1">Categoría Asociada</label>
-                                <select
-                                    required
-                                    value={formData.category}
-                                    onChange={e => setFormData({ ...formData, category: e.target.value })}
-                                    className="w-full bg-[#F9F6F0] dark:bg-[#1B1D1A] border border-[#E6DFD5] dark:border-[#353B33] rounded-2xl py-3.5 px-4 text-[#2C2C2C] dark:text-[#F4EFEA] focus:outline-none focus:border-[#7D9878] transition-all font-semibold"
-                                >
-                                    <option value="" disabled>Seleccioná una categoría</option>
-                                    <option value="Todas">Todas (Aplica a todo)</option>
-                                    {categorias.map(cat => (
-                                        <option key={cat.id} value={cat.name}>{cat.name}</option>
-                                    ))}
-                                    {categorias.length === 0 && <option disabled>No hay categorías</option>}
-                                </select>
-                            </div>
-
-                            <div className="space-y-2">
-                                <label className="text-xs font-black text-[#2C2C2C] dark:text-[#F4EFEA] uppercase tracking-widest pl-1">Proveedor</label>
-                                <select
-                                    required
-                                    value={formData.provider}
-                                    onChange={e => setFormData({ ...formData, provider: e.target.value })}
-                                    className="w-full bg-[#F9F6F0] dark:bg-[#1B1D1A] border border-[#E6DFD5] dark:border-[#353B33] rounded-2xl py-3.5 px-4 text-[#2C2C2C] dark:text-[#F4EFEA] focus:outline-none focus:border-[#7D9878] transition-all font-semibold"
-                                >
-                                    <option value="" disabled>Seleccioná un proveedor</option>
-                                    {proveedores.map(prov => (
-                                        <option key={prov.id} value={prov.name}>{prov.name}</option>
-                                    ))}
-                                    {proveedores.length === 0 && <option disabled>No hay proveedores</option>}
-                                </select>
-                            </div>
-
-                            <button type="submit" className="w-full py-4 mt-4 rounded-2xl bg-[#7D9878] text-white font-extrabold text-lg flex items-center justify-center gap-2 hover:bg-[#6b8566] hover:shadow-xl hover:shadow-[#7D9878]/20 active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none transition-all font-brand">
-                                {editingId ? "Guardar Cambios" : "Guardar Insumo"}
-                            </button>
+                            <PieVentana>
+                                <button type="button" onClick={handleCloseModal} className={BOTON_SECUNDARIO}>
+                                    Cancelar
+                                </button>
+                                <button type="submit" className={BOTON_PRINCIPAL}>
+                                    <Check className="w-4 h-4" strokeWidth={2.5} />
+                                    {editingId ? "Guardar cambios" : "Crear insumo"}
+                                </button>
+                            </PieVentana>
                         </form>
-                    </div>
+                    </PanelVentana>
             )}
             </Ventana>
         </div>

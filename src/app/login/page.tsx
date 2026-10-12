@@ -58,7 +58,7 @@ export default function LoginPage() {
                 <ThemeToggle />
             </div>
 
-            <div className="w-full max-w-md p-10 rounded-[2.5rem] bg-white dark:bg-[#242723] border border-[#E6DFD5] dark:border-[#353B33] shadow-2xl z-10 mx-4 transition-all flex flex-col gap-8 relative overflow-hidden">
+            <div className="w-full max-w-md p-10 rounded-[2.5rem] bg-white dark:bg-[#242723] border border-[#E6DFD5] dark:border-[#353B33] shadow-2xl z-10 mx-4 transition flex flex-col gap-8 relative overflow-hidden">
                 <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-[#7D9878] via-[#A3B69B] to-[#7D9878]" />
 
                 <div className="text-center space-y-3">
@@ -83,7 +83,7 @@ export default function LoginPage() {
                                 autoComplete="username"
                                 spellCheck={false}
                                 required
-                                className="w-full bg-[#F9F6F0] dark:bg-[#1B1D1A] border border-[#E6DFD5] dark:border-[#353B33] rounded-2xl py-4 pl-12 pr-4 text-[#2C2C2C] dark:text-[#F4EFEA] placeholder-[#2C2C2C]/40 dark:placeholder-[#F4EFEA]/40 focus:outline-none focus:ring-2 focus:ring-[#7D9878]/20 focus:border-[#7D9878] transition-all font-bold text-sm"
+                                className="w-full bg-[#F9F6F0] dark:bg-[#1B1D1A] border border-[#E6DFD5] dark:border-[#353B33] rounded-2xl py-4 pl-12 pr-4 text-[#2C2C2C] dark:text-[#F4EFEA] placeholder-[#2C2C2C]/40 dark:placeholder-[#F4EFEA]/40 focus:outline-none focus:ring-2 focus:ring-[#7D9878]/20 focus:border-[#7D9878] transition font-bold text-sm"
                             />
                         </div>
                     </div>
@@ -98,7 +98,7 @@ export default function LoginPage() {
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
                                 required
-                                className="w-full bg-[#F9F6F0] dark:bg-[#1B1D1A] border border-[#E6DFD5] dark:border-[#353B33] rounded-2xl py-4 pl-12 pr-12 text-[#2C2C2C] dark:text-[#F4EFEA] placeholder-[#2C2C2C]/40 dark:placeholder-[#F4EFEA]/40 focus:outline-none focus:ring-2 focus:ring-[#7D9878]/20 focus:border-[#7D9878] transition-all font-bold text-sm"
+                                className="w-full bg-[#F9F6F0] dark:bg-[#1B1D1A] border border-[#E6DFD5] dark:border-[#353B33] rounded-2xl py-4 pl-12 pr-12 text-[#2C2C2C] dark:text-[#F4EFEA] placeholder-[#2C2C2C]/40 dark:placeholder-[#F4EFEA]/40 focus:outline-none focus:ring-2 focus:ring-[#7D9878]/20 focus:border-[#7D9878] transition font-bold text-sm"
                             />
                             <button
                                 type="button"
@@ -120,7 +120,7 @@ export default function LoginPage() {
                     <button
                         type="submit"
                         disabled={loading}
-                        className="w-full bg-[#7D9878] hover:bg-[#6b8566] text-white font-black text-sm uppercase tracking-widest py-5 rounded-2xl transition-all active:scale-[0.98] flex items-center justify-center gap-3 shadow-xl shadow-[#7D9878]/20 disabled:opacity-70"
+                        className="w-full bg-[#7D9878] hover:bg-[#6b8566] text-white font-black text-sm uppercase tracking-widest py-5 rounded-2xl transition active:scale-[0.98] flex items-center justify-center gap-3 shadow-xl shadow-[#7D9878]/20 disabled:opacity-70"
                     >
                         {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Ingresar"}
                     </button>

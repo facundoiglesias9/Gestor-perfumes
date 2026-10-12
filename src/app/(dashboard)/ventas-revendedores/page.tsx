@@ -3,6 +3,7 @@
 import { ShoppingBag, TrendingUp, Calendar, User, Search, Trophy, ArrowRight, BarChart3 } from "lucide-react";
 import { useState, useMemo } from "react";
 import { useAppContext } from "@/context/AppContext";
+import { Selector } from "@/components/Desplegable";
 
 export default function VentasRevendedoresPage() {
     const { orders, usuarios } = useAppContext();
@@ -98,7 +99,7 @@ export default function VentasRevendedoresPage() {
     }, [resellerStats]);
 
     return (
-        <div className="space-y-8 pb-12 animate-in fade-in duration-700">
+        <div className="space-y-8 pb-12 anim-entrada">
             {/* Header section with month filter */}
             <header className="flex flex-col md:flex-row md:justify-between md:items-end gap-6 bg-white dark:bg-slate-900 p-8 md:p-10 rounded-[2.5rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100 dark:border-slate-800">
                 <div className="space-y-3">
@@ -116,7 +117,7 @@ export default function VentasRevendedoresPage() {
 
                 <div className="flex flex-wrap gap-4">
                     <div className="bg-slate-50 dark:bg-slate-800/50 p-1 rounded-2xl border border-slate-200 dark:border-slate-700 flex gap-1">
-                        <select
+                        <Selector
                             value={selectedMonth}
                             onChange={(e) => setSelectedMonth(Number(e.target.value))}
                             className="bg-transparent text-sm font-bold text-slate-700 dark:text-slate-300 px-4 py-2 focus:outline-none"
@@ -125,8 +126,8 @@ export default function VentasRevendedoresPage() {
                             {months.map((m, i) => (
                                 <option key={i} value={i} className="bg-white dark:bg-slate-900">{m}</option>
                             ))}
-                        </select>
-                        <select
+                        </Selector>
+                        <Selector
                             value={selectedYear}
                             onChange={(e) => setSelectedYear(Number(e.target.value))}
                             className="bg-transparent text-sm font-bold text-slate-700 dark:text-slate-300 px-4 py-2 focus:outline-none"
@@ -134,7 +135,7 @@ export default function VentasRevendedoresPage() {
                             {years.map(y => (
                                 <option key={y} value={y} className="bg-white dark:bg-slate-900">{y}</option>
                             ))}
-                        </select>
+                        </Selector>
                     </div>
                 </div>
             </header>
@@ -162,7 +163,7 @@ export default function VentasRevendedoresPage() {
                 </div>
 
                 <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-indigo-200 dark:border-indigo-500/30 shadow-[0_10px_40px_rgba(125,152,120,0.05)] space-y-4 relative overflow-hidden group">
-                    <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-110 transition-transform">
+                    <div className="absolute top-0 right-0 p-4 opacity-10 transition-transform">
                         <Trophy className="w-24 h-24 text-indigo-600" />
                     </div>
                     <div className="p-3 bg-amber-50 dark:bg-amber-500/10 rounded-2xl w-fit">
@@ -215,7 +216,7 @@ export default function VentasRevendedoresPage() {
                                 </tr>
                             ) : (
                                 resellerStats.map((stat, index) => (
-                                    <tr key={stat.id} className="group hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-all">
+                                    <tr key={stat.id} className="group hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition">
                                         <td className="px-8 py-6">
                                             <span className={`w-8 h-8 rounded-lg flex items-center justify-center font-black text-sm ${stat.salesValue > 0 && index === 0 ? "bg-amber-100 text-amber-600 shadow-sm" :
                                                 stat.salesValue > 0 && index === 1 ? "bg-slate-200 text-slate-600" :
@@ -258,7 +259,7 @@ export default function VentasRevendedoresPage() {
                             Usá los selectores de mes para auditar cierres de caja históricos.
                         </p>
                     </div>
-                    <ShoppingBag className="absolute -bottom-10 -right-10 w-64 h-64 text-indigo-500 opacity-20 group-hover:scale-110 transition-all duration-700 p-10" />
+                    <ShoppingBag className="absolute -bottom-10 -right-10 w-64 h-64 text-indigo-500 opacity-20 transition duration-700 p-10" />
                 </div>
 
                 <div className="bg-slate-900 p-10 rounded-[2.5rem] border border-slate-800 space-y-8">

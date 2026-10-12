@@ -8,6 +8,7 @@ import SelectorModal from "@/components/SelectorModal";
 import { upsertRecord } from "@/lib/db-actions";
 import { guardarFotoProducto } from "@/lib/catalogo-actions";
 import { prepararFoto } from "@/lib/foto-cliente";
+import { Selector } from "@/components/Desplegable";
 
 export default function CrearProductoPage() {
     const { bases, insumos, esencias, categorias, productos, setProductos, setProductosSinGuardar, generos } = useAppContext();
@@ -279,7 +280,7 @@ const handleMarginMinoristaChange = (val: string) => {
     };
 
     return (
-        <div className="space-y-8 pb-12 animate-in fade-in duration-700">
+        <div className="space-y-8 pb-12 anim-entrada">
             <header className="relative text-center p-8 md:p-10 bg-white dark:bg-[#242723] rounded-[2.5rem] border border-[#E6DFD5] dark:border-[#353B33] shadow-sm flex flex-col items-center justify-center">
                 <div className="space-y-3 flex flex-col items-center">
                     <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#7D9878]/10 text-[#7D9878] dark:text-[#A3B69B] text-xs font-bold tracking-widest uppercase mb-1 border border-[#7D9878]/20">
@@ -308,21 +309,21 @@ const handleMarginMinoristaChange = (val: string) => {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="space-y-2 md:col-span-2">
                                 <label className="text-xs font-bold text-[#2C2C2C]/50 dark:text-[#F4EFEA]/50 uppercase tracking-widest pl-1">Seleccionar Base (Opcional)</label>
-                                <select
+                                <Selector
                                     value={selectedBaseId}
                                     onChange={(e) => handleBaseChange(e.target.value)}
-                                    className="w-full bg-[#F9F6F0] dark:bg-[#1B1D1A] border border-[#E6DFD5] dark:border-[#353B33] rounded-2xl py-3.5 px-4 text-[#2C2C2C] dark:text-[#F4EFEA] font-bold focus:outline-none focus:border-[#7D9878] transition-all font-semibold"
+                                    className="w-full bg-[#F9F6F0] dark:bg-[#1B1D1A] border border-[#E6DFD5] dark:border-[#353B33] rounded-2xl py-3.5 px-4 text-[#2C2C2C] dark:text-[#F4EFEA] font-bold focus:outline-none focus:border-[#7D9878] transition font-semibold"
                                 >
                                     <option value="">-- Sin Base (Carga Manual) --</option>
                                     {bases.map(b => (
                                         <option key={b.id} value={b.id}>{b.name}</option>
                                     ))}
-                                </select>
+                                </Selector>
                             </div>
 
                             <div className="space-y-2">
                                 <label className="text-xs font-bold text-[#2C2C2C]/50 dark:text-[#F4EFEA]/50 uppercase tracking-widest pl-1">Categoría</label>
-                                <select
+                                <Selector
                                     required
                                     value={category}
                                     onChange={(e) => {
@@ -335,32 +336,32 @@ const handleMarginMinoristaChange = (val: string) => {
                                             setGender("");
                                         }
                                     }}
-                                    className="w-full bg-[#F9F6F0] dark:bg-[#1B1D1A] border border-[#E6DFD5] dark:border-[#353B33] rounded-2xl py-3.5 px-4 text-[#2C2C2C] dark:text-[#F4EFEA] font-bold focus:outline-none focus:ring-2 focus:ring-[#7D9878]/30 transition-all font-semibold"
+                                    className="w-full bg-[#F9F6F0] dark:bg-[#1B1D1A] border border-[#E6DFD5] dark:border-[#353B33] rounded-2xl py-3.5 px-4 text-[#2C2C2C] dark:text-[#F4EFEA] font-bold focus:outline-none focus:ring-2 focus:ring-[#7D9878]/30 transition font-semibold"
                                 >
                                     <option value="">-- Seleccionar Categoría --</option>
                                     {categorias.map(c => (
                                         <option key={c.id} value={c.name}>{c.name}</option>
                                     ))}
-                                </select>
+                                </Selector>
                             </div>
 
                             <div className="space-y-2">
                                 <label className="text-xs font-bold text-[#2C2C2C]/50 dark:text-[#F4EFEA]/50 uppercase tracking-widest pl-1">Género</label>
                                 {category && (category.toLowerCase().includes("difusor") || category.toLowerCase().includes("auto") || category.toLowerCase().includes("ambiente")) ? (
-                                    <select
+                                    <Selector
                                         required
                                         disabled
                                         value="Ambiente"
                                         className="w-full bg-[#F9F6F0] dark:bg-[#1B1D1A] border border-[#E6DFD5] dark:border-[#353B33] rounded-2xl py-3.5 px-4 text-[#2C2C2C]/70 dark:text-[#F4EFEA]/70 font-bold cursor-not-allowed opacity-80"
                                     >
                                         <option value="Ambiente">Ambiente</option>
-                                    </select>
+                                    </Selector>
                                 ) : (
-                                    <select
+                                    <Selector
                                         required
                                         value={gender === "Ambiente" ? "" : gender}
                                         onChange={(e) => setGender(e.target.value)}
-                                        className="w-full bg-[#F9F6F0] dark:bg-[#1B1D1A] border border-[#E6DFD5] dark:border-[#353B33] rounded-2xl py-3.5 px-4 text-[#2C2C2C] dark:text-[#F4EFEA] font-bold focus:outline-none focus:ring-2 focus:ring-[#7D9878]/30 transition-all font-semibold"
+                                        className="w-full bg-[#F9F6F0] dark:bg-[#1B1D1A] border border-[#E6DFD5] dark:border-[#353B33] rounded-2xl py-3.5 px-4 text-[#2C2C2C] dark:text-[#F4EFEA] font-bold focus:outline-none focus:ring-2 focus:ring-[#7D9878]/30 transition font-semibold"
                                     >
                                         <option value="">-- Seleccionar Género --</option>
                                         {generos
@@ -369,7 +370,7 @@ const handleMarginMinoristaChange = (val: string) => {
                                                 <option key={idx} value={g}>{g}</option>
                                             ))
                                         }
-                                    </select>
+                                    </Selector>
                                 )}
                             </div>
 
@@ -381,21 +382,21 @@ const handleMarginMinoristaChange = (val: string) => {
                                     value={name}
                                     onChange={e => setName(e.target.value)}
                                     placeholder="Ej: Floral Mystery 100ml"
-                                    className="w-full bg-[#F9F6F0] dark:bg-[#1B1D1A] border border-[#E6DFD5] dark:border-[#353B33] rounded-2xl py-3.5 px-4 text-[#2C2C2C] dark:text-[#F4EFEA] font-bold focus:outline-none focus:ring-2 focus:ring-[#7D9878]/30 transition-all"
+                                    className="w-full bg-[#F9F6F0] dark:bg-[#1B1D1A] border border-[#E6DFD5] dark:border-[#353B33] rounded-2xl py-3.5 px-4 text-[#2C2C2C] dark:text-[#F4EFEA] font-bold focus:outline-none focus:ring-2 focus:ring-[#7D9878]/30 transition"
                                 />
                             </div>
 
                             <div className="space-y-2">
                                 <label className="text-xs font-bold text-[#2C2C2C]/50 dark:text-[#F4EFEA]/50 uppercase tracking-widest pl-1">Estado de Disponibilidad</label>
-                                <select
+                                <Selector
                                     value={availabilityStatus}
                                     onChange={(e) => setAvailabilityStatus(e.target.value)}
-                                    className="w-full bg-[#F9F6F0] dark:bg-[#1B1D1A] border border-[#E6DFD5] dark:border-[#353B33] rounded-2xl py-3.5 px-4 text-[#2C2C2C] dark:text-[#F4EFEA] font-bold focus:outline-none focus:ring-2 focus:ring-[#7D9878]/30 transition-all"
+                                    className="w-full bg-[#F9F6F0] dark:bg-[#1B1D1A] border border-[#E6DFD5] dark:border-[#353B33] rounded-2xl py-3.5 px-4 text-[#2C2C2C] dark:text-[#F4EFEA] font-bold focus:outline-none focus:ring-2 focus:ring-[#7D9878]/30 transition"
                                 >
                                     <option value="disponible">En Mano / Inmediata</option>
                                     <option value="demora">Con Demora (X Días)</option>
                                     <option value="no-disponible">Faltante / Consultar</option>
-                                </select>
+                                </Selector>
                             </div>
 
                             <div className="space-y-2">
@@ -405,7 +406,7 @@ const handleMarginMinoristaChange = (val: string) => {
                                     disabled={availabilityStatus !== "demora"}
                                     value={deliveryDays}
                                     onChange={e => setDeliveryDays(e.target.value)}
-                                    className={`w-full bg-[#F9F6F0] dark:bg-[#1B1D1A] border border-[#E6DFD5] dark:border-[#353B33] rounded-2xl py-3.5 px-4 text-[#2C2C2C] dark:text-[#F4EFEA] font-bold focus:outline-none focus:ring-2 focus:ring-[#7D9878]/30 transition-all ${availabilityStatus !== "demora" ? "opacity-30 grayscale" : ""}`}
+                                    className={`w-full bg-[#F9F6F0] dark:bg-[#1B1D1A] border border-[#E6DFD5] dark:border-[#353B33] rounded-2xl py-3.5 px-4 text-[#2C2C2C] dark:text-[#F4EFEA] font-bold focus:outline-none focus:ring-2 focus:ring-[#7D9878]/30 transition ${availabilityStatus !== "demora" ? "opacity-30 grayscale" : ""}`}
                                 />
                             </div>
                         </div>
@@ -417,14 +418,14 @@ const handleMarginMinoristaChange = (val: string) => {
                                     <button
                                         type="button"
                                         onClick={() => setIsEssenceModalOpen(true)}
-                                        className="flex items-center gap-1.5 px-3 py-1.5 bg-[#DAC4AA]/20 text-[#2C2C2C] dark:text-[#DAC4AA] rounded-xl text-[10px] font-black uppercase tracking-tighter hover:bg-[#DAC4AA]/30 transition-all"
+                                        className="flex items-center gap-1.5 px-3 py-1.5 bg-[#DAC4AA]/20 text-[#2C2C2C] dark:text-[#DAC4AA] rounded-xl text-[10px] font-black uppercase tracking-tighter hover:bg-[#DAC4AA]/30 transition"
                                     >
                                         <FlaskConical className="w-3.5 h-3.5" /> + Esencia
                                     </button>
                                     <button
                                         type="button"
                                         onClick={() => setIsInsumoModalOpen(true)}
-                                        className="flex items-center gap-1.5 px-3 py-1.5 bg-[#7D9878]/10 text-[#7D9878] dark:text-[#A3B69B] rounded-xl text-[10px] font-black uppercase tracking-tighter hover:bg-[#7D9878]/20 transition-all"
+                                        className="flex items-center gap-1.5 px-3 py-1.5 bg-[#7D9878]/10 text-[#7D9878] dark:text-[#A3B69B] rounded-xl text-[10px] font-black uppercase tracking-tighter hover:bg-[#7D9878]/20 transition"
                                     >
                                         <Package className="w-3.5 h-3.5" /> + Insumo
                                     </button>
@@ -440,7 +441,7 @@ const handleMarginMinoristaChange = (val: string) => {
                                     currentComponents.map((comp, idx) => {
                                         const { total } = getComponentCostInfo(comp);
                                         return (
-                                            <div key={idx} className="flex items-center gap-4 bg-[#F9F6F0] dark:bg-[#1B1D1A] p-4 rounded-2xl border border-[#E6DFD5] dark:border-[#353B33] group hover:border-[#7D9878] transition-all font-bold">
+                                            <div key={idx} className="flex items-center gap-4 bg-[#F9F6F0] dark:bg-[#1B1D1A] p-4 rounded-2xl border border-[#E6DFD5] dark:border-[#353B33] group hover:border-[#7D9878] transition font-bold">
                                                 <div className={`p-2 rounded-xl scale-90 ${comp.type === "Esencia" ? "bg-[#DAC4AA]/20 text-[#2C2C2C] dark:text-[#DAC4AA]" : "bg-[#7D9878]/10 text-[#7D9878] dark:text-[#A3B69B]"}`}>
                                                     {comp.type === "Esencia" ? <FlaskConical className="w-5 h-5" /> : <Package className="w-5 h-5" />}
                                                 </div>
@@ -476,7 +477,7 @@ const handleMarginMinoristaChange = (val: string) => {
                 </div>
 
                 <div className="space-y-8">
-                    <section className="bg-white dark:bg-[#242723] rounded-[2.5rem] p-8 border border-[#E6DFD5] dark:border-[#353B33] shadow-sm space-y-6 sticky top-8 animate-in slide-in-from-right duration-500">
+                    <section className="bg-white dark:bg-[#242723] rounded-[2.5rem] p-8 border border-[#E6DFD5] dark:border-[#353B33] shadow-sm space-y-6 sticky top-8 anim-entrada [animation-delay:80ms]">
                         <div className="flex items-center gap-3 mb-2">
                             <div className="p-2 bg-[#F9F6F0] dark:bg-[#1B1D1A] rounded-xl text-[#7D9878] dark:text-[#A3B69B]">
                                 <Calculator className="w-5 h-5" />
@@ -491,21 +492,21 @@ const handleMarginMinoristaChange = (val: string) => {
                             </div>
 
                             {/* Mayorista Section */}
-                            <div className="space-y-4 p-6 rounded-[2rem] bg-[#F9F6F0] dark:bg-[#1B1D1A] border border-[#E6DFD5] dark:border-[#353B33] transition-all">
+                            <div className="space-y-4 p-6 rounded-[2rem] bg-[#F9F6F0] dark:bg-[#1B1D1A] border border-[#E6DFD5] dark:border-[#353B33] transition">
                                 <div className="flex justify-between items-center mb-1">
                                     <h3 className="text-sm font-black text-[#2C2C2C] dark:text-[#F4EFEA] uppercase tracking-tight">Venta Mayorista</h3>
                                     <div className="flex bg-white dark:bg-[#242723] p-1 rounded-xl border border-[#E6DFD5] dark:border-[#353B33] shadow-sm">
                                         <button
                                             type="button"
                                             onClick={() => handleMarginMayoristaModeChange("porcentaje")}
-                                            className={`px-3 py-1.5 rounded-lg text-[10px] font-black transition-all flex items-center gap-1.5 ${marginTypeMayor === "porcentaje" ? "bg-[#7D9878] text-white shadow-sm" : "text-[#2C2C2C]/50 dark:text-[#F4EFEA]/50"}`}
+                                            className={`px-3 py-1.5 rounded-lg text-[10px] font-black transition flex items-center gap-1.5 ${marginTypeMayor === "porcentaje" ? "bg-[#7D9878] text-white shadow-sm" : "text-[#2C2C2C]/50 dark:text-[#F4EFEA]/50"}`}
                                         >
                                             <Percent className="w-3 h-3" /> %
                                         </button>
                                         <button
                                             type="button"
                                             onClick={() => handleMarginMayoristaModeChange("monto")}
-                                            className={`px-3 py-1.5 rounded-lg text-[10px] font-black transition-all flex items-center gap-1.5 ${marginTypeMayor === "monto" ? "bg-[#7D9878] text-white shadow-sm" : "text-[#2C2C2C]/50 dark:text-[#F4EFEA]/50"}`}
+                                            className={`px-3 py-1.5 rounded-lg text-[10px] font-black transition flex items-center gap-1.5 ${marginTypeMayor === "monto" ? "bg-[#7D9878] text-white shadow-sm" : "text-[#2C2C2C]/50 dark:text-[#F4EFEA]/50"}`}
                                         >
                                             <DollarSign className="w-3 h-3" /> $
                                         </button>
@@ -522,7 +523,7 @@ const handleMarginMinoristaChange = (val: string) => {
                                                 disabled={marginTypeMayor === "monto"}
                                                 readOnly={marginTypeMayor === "monto"}
                                                 onChange={e => handleMarginMayoristaChange(e.target.value)}
-                                                className={`w-full bg-white dark:bg-[#242723] border border-[#E6DFD5] dark:border-[#353B33] rounded-xl py-2.5 px-4 text-[#2C2C2C] dark:text-[#F4EFEA] font-bold focus:outline-none focus:ring-2 focus:ring-[#7D9878] transition-all ${marginTypeMayor === "monto" ? "opacity-50" : ""}`}
+                                                className={`w-full bg-white dark:bg-[#242723] border border-[#E6DFD5] dark:border-[#353B33] rounded-xl py-2.5 px-4 text-[#2C2C2C] dark:text-[#F4EFEA] font-bold focus:outline-none focus:ring-2 focus:ring-[#7D9878] transition ${marginTypeMayor === "monto" ? "opacity-50" : ""}`}
                                             />
                                             <span className="absolute right-4 top-1/2 -translate-y-1/2 font-bold text-[#2C2C2C]/40 text-xs">{marginTypeMayor === "porcentaje" ? "%" : "$"}</span>
                                         </div>
@@ -536,28 +537,28 @@ const handleMarginMinoristaChange = (val: string) => {
                                             disabled={marginTypeMayor === "porcentaje"}
                                             readOnly={marginTypeMayor === "porcentaje"}
                                             onChange={e => handlePriceMayoristaChange(e.target.value)}
-                                            className={`w-full bg-white dark:bg-[#242723] border border-[#E6DFD5] dark:border-[#353B33] rounded-xl py-2.5 px-4 text-[#2C2C2C] dark:text-[#F4EFEA] font-black focus:outline-none focus:ring-2 focus:ring-[#7D9878] transition-all ${marginTypeMayor === "porcentaje" ? "opacity-50" : ""}`}
+                                            className={`w-full bg-white dark:bg-[#242723] border border-[#E6DFD5] dark:border-[#353B33] rounded-xl py-2.5 px-4 text-[#2C2C2C] dark:text-[#F4EFEA] font-black focus:outline-none focus:ring-2 focus:ring-[#7D9878] transition ${marginTypeMayor === "porcentaje" ? "opacity-50" : ""}`}
                                         />
                                     </div>
                                 </div>
                             </div>
 
                             {/* Minorista Section */}
-                            <div className="space-y-4 p-6 rounded-[2rem] bg-[#F9F6F0] dark:bg-[#1B1D1A] border border-[#E6DFD5] dark:border-[#353B33] transition-all">
+                            <div className="space-y-4 p-6 rounded-[2rem] bg-[#F9F6F0] dark:bg-[#1B1D1A] border border-[#E6DFD5] dark:border-[#353B33] transition">
                                 <div className="flex justify-between items-center mb-1">
                                     <h3 className="text-sm font-black text-[#2C2C2C] dark:text-[#F4EFEA] uppercase tracking-tight">Venta Minorista</h3>
                                     <div className="flex bg-white dark:bg-[#242723] p-1 rounded-xl border border-[#E6DFD5] dark:border-[#353B33] shadow-sm">
                                         <button
                                             type="button"
                                             onClick={() => handleMarginMinoristaModeChange("porcentaje")}
-                                            className={`px-3 py-1.5 rounded-lg text-[10px] font-black transition-all flex items-center gap-1.5 ${marginTypeMinor === "porcentaje" ? "bg-[#7D9878] text-white shadow-sm" : "text-[#2C2C2C]/50 dark:text-[#F4EFEA]/50"}`}
+                                            className={`px-3 py-1.5 rounded-lg text-[10px] font-black transition flex items-center gap-1.5 ${marginTypeMinor === "porcentaje" ? "bg-[#7D9878] text-white shadow-sm" : "text-[#2C2C2C]/50 dark:text-[#F4EFEA]/50"}`}
                                         >
                                             <Percent className="w-3 h-3" /> %
                                         </button>
                                         <button
                                             type="button"
                                             onClick={() => handleMarginMinoristaModeChange("monto")}
-                                            className={`px-3 py-1.5 rounded-lg text-[10px] font-black transition-all flex items-center gap-1.5 ${marginTypeMinor === "monto" ? "bg-[#7D9878] text-white shadow-sm" : "text-[#2C2C2C]/50 dark:text-[#F4EFEA]/50"}`}
+                                            className={`px-3 py-1.5 rounded-lg text-[10px] font-black transition flex items-center gap-1.5 ${marginTypeMinor === "monto" ? "bg-[#7D9878] text-white shadow-sm" : "text-[#2C2C2C]/50 dark:text-[#F4EFEA]/50"}`}
                                         >
                                             <DollarSign className="w-3 h-3" /> $
                                         </button>
@@ -574,7 +575,7 @@ const handleMarginMinoristaChange = (val: string) => {
                                                 disabled={marginTypeMinor === "monto"}
                                                 readOnly={marginTypeMinor === "monto"}
                                                 onChange={e => handleMarginMinoristaChange(e.target.value)}
-                                                className={`w-full bg-white dark:bg-[#242723] border border-[#E6DFD5] dark:border-[#353B33] rounded-xl py-2.5 px-4 text-[#2C2C2C] dark:text-[#F4EFEA] font-bold focus:outline-none focus:ring-2 focus:ring-[#7D9878] transition-all ${marginTypeMinor === "monto" ? "opacity-50" : ""}`}
+                                                className={`w-full bg-white dark:bg-[#242723] border border-[#E6DFD5] dark:border-[#353B33] rounded-xl py-2.5 px-4 text-[#2C2C2C] dark:text-[#F4EFEA] font-bold focus:outline-none focus:ring-2 focus:ring-[#7D9878] transition ${marginTypeMinor === "monto" ? "opacity-50" : ""}`}
                                             />
                                             <span className="absolute right-4 top-1/2 -translate-y-1/2 font-bold text-[#2C2C2C]/40 text-xs">{marginTypeMinor === "porcentaje" ? "%" : "$"}</span>
                                         </div>
@@ -588,7 +589,7 @@ const handleMarginMinoristaChange = (val: string) => {
                                             disabled={marginTypeMinor === "porcentaje"}
                                             readOnly={marginTypeMinor === "porcentaje"}
                                             onChange={e => handlePriceMinoristaChange(e.target.value)}
-                                            className={`w-full bg-white dark:bg-[#242723] border border-[#E6DFD5] dark:border-[#353B33] rounded-xl py-2.5 px-4 text-[#2C2C2C] dark:text-[#F4EFEA] font-black focus:outline-none focus:ring-2 focus:ring-[#7D9878] transition-all ${marginTypeMinor === "porcentaje" ? "opacity-50" : ""}`}
+                                            className={`w-full bg-white dark:bg-[#242723] border border-[#E6DFD5] dark:border-[#353B33] rounded-xl py-2.5 px-4 text-[#2C2C2C] dark:text-[#F4EFEA] font-black focus:outline-none focus:ring-2 focus:ring-[#7D9878] transition ${marginTypeMinor === "porcentaje" ? "opacity-50" : ""}`}
                                         />
                                     </div>
                                 </div>
@@ -598,9 +599,9 @@ const handleMarginMinoristaChange = (val: string) => {
                         <button
                             type="submit"
                             disabled={!name || !category || !gender || currentComponents.length === 0}
-                            className="w-full py-5 rounded-2xl bg-[#7D9878] disabled:bg-[#E6DFD5] dark:disabled:bg-[#353B33] text-white font-black text-xl hover:bg-[#6b8566] hover:shadow-2xl hover:shadow-[#7D9878]/30 active:scale-[0.98] transition-all flex items-center justify-center gap-3 mt-4 group font-brand"
+                            className="w-full py-5 rounded-2xl bg-[#7D9878] disabled:bg-[#E6DFD5] dark:disabled:bg-[#353B33] text-white font-black text-xl hover:bg-[#6b8566] hover:shadow-2xl hover:shadow-[#7D9878]/30 active:scale-[0.98] transition flex items-center justify-center gap-3 mt-4 group font-brand"
                         >
-                            <Save className="w-6 h-6 group-hover:scale-110 transition-transform" />
+                            <Save className="w-6 h-6 transition-transform" />
                             Lanzar Producto
                         </button>
                     </section>

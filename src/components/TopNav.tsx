@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import Link from "next/link";
+import Link, { useLinkStatus } from "next/link";
 import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -27,6 +27,18 @@ function Pastilla() {
             transition={RESORTE}
             className="absolute inset-0 rounded-xl bg-white dark:bg-[#353B33] shadow-sm shadow-[#2C2C2C]/[0.06] ring-1 ring-[#E6DFD5]/80 dark:ring-white/[0.04]"
         />
+    );
+}
+
+// Mientras se abre la sección tocada: una rayita que late debajo del botón. Aparece recién a los
+// 120 ms, así en las secciones que abren al instante no se ve nada.
+function CargandoSeccion({ enMenu }: { enMenu?: boolean }) {
+    const { pending } = useLinkStatus();
+    if (!pending) return null;
+    return enMenu ? (
+        <span aria-hidden className="nav-cargando ml-auto w-1.5 h-1.5 rounded-full bg-[#7D9878] dark:bg-[#A3B69B] shrink-0" />
+    ) : (
+        <span aria-hidden className="nav-cargando absolute left-1/2 -translate-x-1/2 bottom-0.5 h-[3px] w-5 rounded-full bg-[#7D9878] dark:bg-[#A3B69B]" />
     );
 }
 
@@ -170,6 +182,7 @@ export default function TopNav() {
                                             <Icon className={`w-4 h-4 shrink-0 transition-colors duration-150 ${isActive ? "text-[#7D9878] dark:text-[#A3B69B]" : "group-hover:text-[#7D9878] dark:group-hover:text-[#A3B69B]"}`} />
                                             {item.label}
                                         </span>
+                                        <CargandoSeccion />
                                     </Link>
                                 );
                             })}
@@ -237,6 +250,7 @@ export default function TopNav() {
                                                                         <span className="block text-xs text-[#2C2C2C]/55 dark:text-[#F4EFEA]/50 truncate">{item.desc}</span>
                                                                     )}
                                                                 </span>
+                                                                <CargandoSeccion enMenu />
                                                             </Link>
                                                         );
                                                     })}

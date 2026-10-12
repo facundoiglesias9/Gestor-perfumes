@@ -54,7 +54,7 @@ export default function PromocionesPage() {
     };
 
     return (
-        <div className="space-y-8 pb-12 animate-in fade-in duration-700">
+        <div className="space-y-8 pb-12 anim-entrada">
             <header className="flex flex-col md:flex-row md:justify-between md:items-end gap-6 bg-white dark:bg-slate-900 p-8 md:p-10 rounded-[2.5rem] shadow-sm border border-slate-100 dark:border-slate-800 transition-colors duration-300">
                 <div className="space-y-3">
                     <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 text-xs font-bold tracking-widest uppercase mb-1">
@@ -80,7 +80,7 @@ export default function PromocionesPage() {
                         </h2>
                         <button
                             onClick={() => setIsActive(!isActive)}
-                            className={`flex items-center gap-2 px-4 py-2 rounded-xl font-black text-xs uppercase tracking-widest transition-all ${isActive
+                            className={`flex items-center gap-2 px-4 py-2 rounded-xl font-black text-xs uppercase tracking-widest transition ${isActive
                                 ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400"
                                 : "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400"
                                 }`}
@@ -101,7 +101,7 @@ export default function PromocionesPage() {
                                     placeholder="Buscar por nombre..."
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
-                                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800 rounded-2xl py-3 pl-11 pr-4 text-sm font-bold focus:ring-2 focus:ring-indigo-500/20 outline-none transition-all"
+                                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800 rounded-2xl py-3 pl-11 pr-4 text-sm font-bold focus:ring-2 focus:ring-indigo-500/20 outline-none transition"
                                 />
                             </div>
 
@@ -110,7 +110,7 @@ export default function PromocionesPage() {
                                     <button
                                         key={p.id}
                                         onClick={() => setSelectedProductId(p.id)}
-                                        className={`flex items-center justify-between p-3 rounded-xl border transition-all ${selectedProductId === p.id
+                                        className={`flex items-center justify-between p-3 rounded-xl border transition ${selectedProductId === p.id
                                             ? "bg-[#7D9878]/15 border-[#7D9878] text-[#7D9878] dark:text-[#A3B69B] shadow-sm"
                                             : "bg-white dark:bg-[#1B1D1A] border-[#E6DFD5] dark:border-[#353B33] text-[#2C2C2C] dark:text-[#F4EFEA] hover:border-[#7D9878]"
                                             }`}
@@ -163,7 +163,7 @@ export default function PromocionesPage() {
                                     placeholder="Dejar vacío para oferta indefinida"
                                     value={durationDays}
                                     onChange={(e) => setDurationDays(e.target.value ? parseInt(e.target.value) : "")}
-                                    className="w-full bg-[#F9F6F0] dark:bg-[#1B1D1A] border border-[#E6DFD5] dark:border-[#353B33] text-[#2C2C2C] dark:text-[#F4EFEA] placeholder:text-[#2C2C2C]/50 dark:placeholder:text-[#F4EFEA]/50 rounded-2xl py-3 pl-11 pr-4 text-sm font-bold focus:border-[#7D9878] outline-none transition-all"
+                                    className="w-full bg-[#F9F6F0] dark:bg-[#1B1D1A] border border-[#E6DFD5] dark:border-[#353B33] text-[#2C2C2C] dark:text-[#F4EFEA] placeholder:text-[#2C2C2C]/50 dark:placeholder:text-[#F4EFEA]/50 rounded-2xl py-3 pl-11 pr-4 text-sm font-bold focus:border-[#7D9878] outline-none transition"
                                 />
                             </div>
                         </div>
@@ -171,7 +171,7 @@ export default function PromocionesPage() {
                         <button
                             onClick={handleSave}
                             disabled={isSaving || !selectedProductId}
-                            className="w-full bg-[#7D9878] hover:bg-[#6b8566] disabled:opacity-50 text-white rounded-2xl py-4 font-black flex items-center justify-center gap-3 shadow-xl hover:shadow-[#7D9878]/20 transition-all active:scale-[0.98] font-brand"
+                            className="w-full bg-[#7D9878] hover:bg-[#6b8566] disabled:opacity-50 text-white rounded-2xl py-4 font-black flex items-center justify-center gap-3 shadow-xl hover:shadow-[#7D9878]/20 transition active:scale-[0.98] font-brand"
                         >
                             <Save className="w-5 h-5" />
                             {isSaving ? "Guardando..." : "Agregar Promoción"}
@@ -199,7 +199,7 @@ export default function PromocionesPage() {
                                 const statusClass = !valid || !promo.isActive ? 'opacity-50 grayscale' : '';
 
                                 return (
-                                    <div key={promo.id} className={`bg-white dark:bg-slate-900 border ${promo.isActive && valid ? 'border-violet-100 dark:border-violet-500/30' : 'border-slate-200 dark:border-slate-800'} rounded-2xl p-4 flex items-center justify-between gap-4 shadow-sm transition-all ${statusClass}`}>
+                                    <div key={promo.id} className={`bg-white dark:bg-slate-900 border ${promo.isActive && valid ? 'border-violet-100 dark:border-violet-500/30' : 'border-slate-200 dark:border-slate-800'} rounded-2xl p-4 flex items-center justify-between gap-4 shadow-sm transition ${statusClass}`}>
                                         <div className="flex-1 truncate space-y-2">
                                             <div className="flex flex-wrap items-center gap-2">
                                                 <span className={`px-2 py-0.5 text-[10px] font-black uppercase tracking-widest rounded ${promo.isActive && valid ? 'bg-violet-100 text-violet-700 dark:bg-violet-500/20 dark:text-violet-400' : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'}`}>
@@ -224,7 +224,7 @@ export default function PromocionesPage() {
                                         </div>
                                         <button
                                             onClick={() => deletePromotion(promo.id)}
-                                            className="p-3 text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-xl transition-all"
+                                            className="p-3 text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-xl transition"
                                             title="Eliminar Promoción"
                                         >
                                             <Trash2 className="w-5 h-5" />

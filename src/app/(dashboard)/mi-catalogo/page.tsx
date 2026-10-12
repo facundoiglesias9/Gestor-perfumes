@@ -14,6 +14,7 @@ import { prepararFoto } from "@/lib/foto-cliente";
 import { extractBrand } from "@/lib/product-utils";
 import PaginationControls from "@/components/PaginationControls";
 import ConfirmModal from "@/components/ConfirmModal";
+import { Selector } from "@/components/Desplegable";
 
 const POR_PAGINA = 20;
 const EASE_OUT = [0.23, 1, 0.32, 1] as const;
@@ -270,18 +271,17 @@ export default function MiCatalogoPage() {
                     })}
                 </div>
                 <div className="flex gap-3 xl:ml-auto">
-                    <label className="relative flex items-center h-10 rounded-xl border border-[#E6DFD5] dark:border-[#353B33] bg-white dark:bg-[#242723] focus-within:ring-2 focus-within:ring-[#7D9878]/25">
-                        <span className="sr-only">Categoría</span>
-                        <Tags className="absolute left-3 w-4 h-4 text-[#2C2C2C]/45 dark:text-[#F4EFEA]/45 pointer-events-none" />
-                        <select
-                            value={categoria}
-                            onChange={(e) => irA(() => setCategoria(e.target.value))}
-                            className="appearance-none h-full bg-transparent pl-9 pr-4 text-sm font-semibold text-[#2C2C2C] dark:text-[#F4EFEA] focus:outline-none cursor-pointer dark:[&_option]:bg-[#242723]"
-                        >
-                            <option value="Todas">Todas las categorías</option>
-                            {categorias.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
-                        </select>
-                    </label>
+                    <Selector
+                        value={categoria}
+                        onChange={(e) => irA(() => setCategoria(e.target.value))}
+                        aria-label="Categoría"
+                        icono={<Tags className="w-4 h-4" />}
+                        resaltado={categoria !== "Todas"}
+                        className="h-10 bg-white w-60 shrink-0"
+                    >
+                        <option value="Todas">Todas las categorías</option>
+                        {categorias.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+                    </Selector>
                     <div className="relative flex-1 xl:w-72">
                         <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#2C2C2C]/45 dark:text-[#F4EFEA]/45 pointer-events-none" />
                         <input

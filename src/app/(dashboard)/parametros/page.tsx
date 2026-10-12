@@ -1,10 +1,11 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { Search, Plus, Trash2, X, Edit2, Users as UsersIcon, ListTree, Sparkles, Droplets, Car, Wind, Package, User, UserCheck, Users } from "lucide-react";
+import { Search, Plus, Trash2, X, Edit2, Users as UsersIcon, ListTree, Sparkles, Droplets, Car, Wind, Package, User, UserCheck, Users, Check } from "lucide-react";
 import { useAppContext } from "@/context/AppContext";
 import ConfirmModal from "@/components/ConfirmModal";
 import Ventana from "@/components/Ventana";
+import { PanelVentana, CabeceraVentana, CuerpoVentana, PieVentana, ETIQUETA_CAMPO, CAMPO, BOTON_PRINCIPAL, BOTON_SECUNDARIO } from "@/components/ventana-partes";
 
 type TabType = "proveedores" | "categorias" | "generos";
 
@@ -141,7 +142,7 @@ export default function ParametrosPage() {
     };
 
     return (
-        <div className="space-y-8 pb-12 animate-in fade-in duration-700 relative max-w-[1400px] mx-auto">
+        <div className="space-y-8 pb-12 anim-entrada relative max-w-[1400px] mx-auto">
             {/* Header */}
             <header className="relative text-center p-8 md:p-10 bg-white dark:bg-[#242723] rounded-[2.5rem] border border-[#E6DFD5] dark:border-[#353B33] shadow-sm flex flex-col items-center justify-center">
                 <div className="space-y-2 flex flex-col items-center">
@@ -168,7 +169,7 @@ export default function ParametrosPage() {
                                 setCategorias(defaultOfficialCategories);
                                 localStorage.setItem("categorias", JSON.stringify(defaultOfficialCategories));
                             }}
-                            className="px-5 py-3.5 rounded-2xl bg-[#F9F6F0] dark:bg-[#1B1D1A] text-[#2C2C2C] dark:text-[#F4EFEA] font-bold border border-[#E6DFD5] dark:border-[#353B33] hover:bg-[#7D9878]/10 transition-all text-sm"
+                            className="px-5 py-3.5 rounded-2xl bg-[#F9F6F0] dark:bg-[#1B1D1A] text-[#2C2C2C] dark:text-[#F4EFEA] font-bold border border-[#E6DFD5] dark:border-[#353B33] hover:bg-[#7D9878]/10 transition text-sm"
                         >
                             Cargar Categorías Oficiales
                         </button>
@@ -180,14 +181,14 @@ export default function ParametrosPage() {
                                 setGeneros(officialGeneros);
                                 localStorage.setItem("generos", JSON.stringify(officialGeneros));
                             }}
-                            className="px-5 py-3.5 rounded-2xl bg-[#F9F6F0] dark:bg-[#1B1D1A] text-[#2C2C2C] dark:text-[#F4EFEA] font-bold border border-[#E6DFD5] dark:border-[#353B33] hover:bg-[#7D9878]/10 transition-all text-sm"
+                            className="px-5 py-3.5 rounded-2xl bg-[#F9F6F0] dark:bg-[#1B1D1A] text-[#2C2C2C] dark:text-[#F4EFEA] font-bold border border-[#E6DFD5] dark:border-[#353B33] hover:bg-[#7D9878]/10 transition text-sm"
                         >
                             Cargar Géneros Oficiales
                         </button>
                     )}
                     <button
                         onClick={handleOpenAddModal}
-                        className="flex items-center justify-center gap-2.5 px-7 py-3.5 rounded-2xl bg-[#7D9878] hover:bg-[#6b8566] text-white font-bold transition-all shadow-lg shadow-[#7D9878]/20 active:scale-95 whitespace-nowrap"
+                        className="flex items-center justify-center gap-2.5 px-7 py-3.5 rounded-2xl bg-[#7D9878] hover:bg-[#6b8566] text-white font-bold transition shadow-lg shadow-[#7D9878]/20 active:scale-95 whitespace-nowrap"
                     >
                         <Plus className="w-5 h-5" strokeWidth={2.5} />
                         Nuevo {activeTab === "proveedores" ? "Proveedor" : activeTab === "categorias" ? "Categoría" : "Género"}
@@ -200,7 +201,7 @@ export default function ParametrosPage() {
                 <div className="bg-[#F9F6F0] dark:bg-[#1B1D1A] p-1.5 rounded-2xl flex items-center gap-1.5 border border-[#E6DFD5] dark:border-[#353B33] shadow-inner">
                     <button
                         onClick={() => { setActiveTab("proveedores"); setSearchTerm(""); }}
-                        className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-xs uppercase tracking-wider transition-all duration-300 ${
+                        className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-xs uppercase tracking-wider transition duration-200 ${
                             activeTab === "proveedores"
                                 ? "bg-[#7D9878] text-white shadow-lg shadow-[#7D9878]/30 scale-[1.02]"
                                 : "text-[#2C2C2C]/70 dark:text-[#F4EFEA]/70 hover:text-[#7D9878] dark:hover:text-[#A3B69B]"
@@ -211,7 +212,7 @@ export default function ParametrosPage() {
                     </button>
                     <button
                         onClick={() => { setActiveTab("categorias"); setSearchTerm(""); }}
-                        className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-xs uppercase tracking-wider transition-all duration-300 ${
+                        className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-xs uppercase tracking-wider transition duration-200 ${
                             activeTab === "categorias"
                                 ? "bg-[#7D9878] text-white shadow-lg shadow-[#7D9878]/30 scale-[1.02]"
                                 : "text-[#2C2C2C]/70 dark:text-[#F4EFEA]/70 hover:text-[#7D9878] dark:hover:text-[#A3B69B]"
@@ -222,7 +223,7 @@ export default function ParametrosPage() {
                     </button>
                     <button
                         onClick={() => { setActiveTab("generos"); setSearchTerm(""); }}
-                        className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-xs uppercase tracking-wider transition-all duration-300 ${
+                        className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-xs uppercase tracking-wider transition duration-200 ${
                             activeTab === "generos"
                                 ? "bg-[#7D9878] text-white shadow-lg shadow-[#7D9878]/30 scale-[1.02]"
                                 : "text-[#2C2C2C]/70 dark:text-[#F4EFEA]/70 hover:text-[#7D9878] dark:hover:text-[#A3B69B]"
@@ -243,7 +244,7 @@ export default function ParametrosPage() {
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                         placeholder={`Buscar ${activeTab}...`}
-                        className="w-full bg-[#F9F6F0] dark:bg-[#1B1D1A] border border-[#E6DFD5] dark:border-[#353B33] rounded-2xl py-3.5 pl-14 pr-6 text-[#2C2C2C] dark:text-[#F4EFEA] placeholder:text-[#2C2C2C]/50 dark:placeholder:text-[#F4EFEA]/60 focus:outline-none focus:border-[#7D9878] transition-all font-semibold"
+                        className="w-full bg-[#F9F6F0] dark:bg-[#1B1D1A] border border-[#E6DFD5] dark:border-[#353B33] rounded-2xl py-3.5 pl-14 pr-6 text-[#2C2C2C] dark:text-[#F4EFEA] placeholder:text-[#2C2C2C]/50 dark:placeholder:text-[#F4EFEA]/60 focus:outline-none focus:border-[#7D9878] transition font-semibold"
                     />
                 </div>
             </div>
@@ -317,7 +318,7 @@ export default function ParametrosPage() {
                     {filteredCategorias.map((cat) => (
                         <div
                             key={cat.id}
-                            className="bg-white dark:bg-[#242723] rounded-3xl p-6 border border-[#E6DFD5] dark:border-[#353B33] shadow-sm hover:border-[#7D9878]/50 transition-all flex items-center justify-between"
+                            className="bg-white dark:bg-[#242723] rounded-3xl p-6 border border-[#E6DFD5] dark:border-[#353B33] shadow-sm hover:border-[#7D9878]/50 transition flex items-center justify-between"
                         >
                             <div className="flex items-center gap-4">
                                 <div className="p-3 bg-[#7D9878]/10 text-[#7D9878] dark:text-[#A3B69B] rounded-2xl">
@@ -358,7 +359,7 @@ export default function ParametrosPage() {
                     {filteredGeneros.map((name, idx) => (
                         <div
                             key={idx}
-                            className="bg-white dark:bg-[#242723] rounded-3xl p-6 border border-[#E6DFD5] dark:border-[#353B33] shadow-sm hover:border-[#7D9878]/50 transition-all flex items-center justify-between"
+                            className="bg-white dark:bg-[#242723] rounded-3xl p-6 border border-[#E6DFD5] dark:border-[#353B33] shadow-sm hover:border-[#7D9878]/50 transition flex items-center justify-between"
                         >
                             <div className="flex items-center gap-4">
                                 <div className="p-3 bg-[#7D9878]/10 text-[#7D9878] dark:text-[#A3B69B] rounded-2xl">
@@ -393,65 +394,60 @@ export default function ParametrosPage() {
                 </div>
             )}
 
-            {/* Modal de Crear / Editar */}
-            <Ventana abierta={isAddModalOpen} onCerrar={handleCloseModal} cerrarAlTocarFondo={false}>
-            {isAddModalOpen && (
-                    <div className="bg-white dark:bg-[#242723] border border-[#E6DFD5] dark:border-[#353B33] rounded-3xl p-8 max-w-md w-full shadow-2xl space-y-6 max-h-[calc(100vh-8rem)] flex flex-col overflow-y-auto custom-scrollbar">
-                        <div className="flex items-center justify-between border-b border-[#E6DFD5] dark:border-[#353B33] pb-4 bg-[#F9F6F0] dark:bg-[#1B1D1A] -mx-8 -mt-8 p-6 rounded-t-3xl">
-                            <h3 className="text-xl font-extrabold text-[#2C2C2C] dark:text-[#F4EFEA] font-brand">
-                                {editingId !== null ? "Editar" : "Nuevo"} {activeTab === "proveedores" ? "Proveedor" : activeTab === "categorias" ? "Categoría" : "Género"}
-                            </h3>
-                            <button
-                                onClick={handleCloseModal}
-                                className="p-2.5 rounded-full bg-[#1B1D1A] text-white hover:bg-rose-600 hover:text-white hover:rotate-90 hover:scale-110 active:scale-95 transition-all duration-300 shadow-sm border border-[#353B33] flex items-center justify-center shrink-0 cursor-pointer"
-                                title="Cerrar"
-                            >
-                                <X className="w-5 h-5" />
-                            </button>
-                        </div>
+            {/* Crear / editar proveedor, categoría o género */}
+            <Ventana abierta={isAddModalOpen} onCerrar={handleCloseModal} cerrarAlTocarFondo={false} etiqueta="Parámetros">
+            {isAddModalOpen && (() => {
+                    const cosa = activeTab === "proveedores" ? "proveedor" : activeTab === "categorias" ? "categoría" : "género";
+                    const nuevo = activeTab === "categorias" ? "Nueva" : "Nuevo";
+                    return (
+                    <PanelVentana ancho="sm">
+                        <CabeceraVentana
+                            etiqueta={editingId !== null ? `Editar ${cosa}` : `${nuevo} ${cosa}`}
+                            titulo={formData.name.trim() || "Sin nombre"}
+                            icono={activeTab === "proveedores" ? UsersIcon : activeTab === "categorias" ? ListTree : Users}
+                            onCerrar={handleCloseModal}
+                        />
 
-                        <form onSubmit={handleSubmit} className="space-y-4">
-                            <div className="space-y-1.5">
-                                <label className="text-xs font-bold text-[#2C2C2C]/50 dark:text-[#F4EFEA]/50">Nombre</label>
-                                <input
-                                    type="text"
-                                    required
-                                    value={formData.name}
-                                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                                    className="w-full bg-[#F9F6F0] dark:bg-[#1B1D1A] border border-[#E6DFD5] dark:border-[#353B33] rounded-xl p-3 text-[#2C2C2C] dark:text-[#F4EFEA] focus:outline-none focus:ring-2 focus:ring-[#7D9878] font-bold"
-                                />
-                            </div>
-
-                            {activeTab === "proveedores" && (
-                                <div className="space-y-1.5">
-                                    <label className="text-xs font-bold text-[#2C2C2C]/50 dark:text-[#F4EFEA]/50">Contacto / Teléfono</label>
+                        <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
+                            <CuerpoVentana className="space-y-5">
+                                <label className="block">
+                                    <span className={ETIQUETA_CAMPO}>Nombre</span>
                                     <input
                                         type="text"
-                                        value={formData.contact}
-                                        onChange={(e) => setFormData({ ...formData, contact: e.target.value })}
-                                        className="w-full bg-[#F9F6F0] dark:bg-[#1B1D1A] border border-[#E6DFD5] dark:border-[#353B33] rounded-xl p-3 text-[#2C2C2C] dark:text-[#F4EFEA] focus:outline-none focus:ring-2 focus:ring-[#7D9878] font-bold"
+                                        required
+                                        autoFocus
+                                        value={formData.name}
+                                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                                        className={CAMPO}
                                     />
-                                </div>
-                            )}
+                                </label>
 
-                            <div className="flex justify-end gap-3 pt-4 border-t border-[#E6DFD5] dark:border-[#353B33]">
-                                <button
-                                    type="button"
-                                    onClick={handleCloseModal}
-                                    className="px-5 py-2.5 rounded-xl border border-[#E6DFD5] dark:border-[#353B33] text-[#2C2C2C]/60 dark:text-[#F4EFEA]/60 font-bold hover:bg-[#7D9878]/10 transition-colors"
-                                >
+                                {activeTab === "proveedores" && (
+                                    <label className="block">
+                                        <span className={ETIQUETA_CAMPO}>Contacto o teléfono</span>
+                                        <input
+                                            type="text"
+                                            value={formData.contact}
+                                            onChange={(e) => setFormData({ ...formData, contact: e.target.value })}
+                                            className={CAMPO}
+                                        />
+                                    </label>
+                                )}
+                            </CuerpoVentana>
+
+                            <PieVentana>
+                                <button type="button" onClick={handleCloseModal} className={BOTON_SECUNDARIO}>
                                     Cancelar
                                 </button>
-                                <button
-                                    type="submit"
-                                    className="px-5 py-2.5 rounded-xl bg-[#7D9878] text-white font-bold hover:bg-[#6b8566] transition-colors shadow-md shadow-[#7D9878]/20"
-                                >
-                                    Guardar
+                                <button type="submit" className={BOTON_PRINCIPAL}>
+                                    <Check className="w-4 h-4" strokeWidth={2.5} />
+                                    {editingId !== null ? "Guardar cambios" : "Crear"}
                                 </button>
-                            </div>
+                            </PieVentana>
                         </form>
-                    </div>
-            )}
+                    </PanelVentana>
+                    );
+            })()}
             </Ventana>
 
             {/* Modal de Confirmación de Borrado */}

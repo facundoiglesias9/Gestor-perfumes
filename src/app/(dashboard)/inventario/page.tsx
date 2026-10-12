@@ -1,13 +1,15 @@
 "use client";
 
-import { Search, Filter, Plus, Archive, MoveUpRight, AlertCircle, Trash2, X, FlaskConical, ChevronDown, Edit2, ListTree, Sparkles, Layers, Package } from "lucide-react";
+import { Search, Plus, MoveUpRight, AlertCircle, Trash2, FlaskConical, Edit2, ListTree, Sparkles, Layers, Package, Check } from "lucide-react";
 import { useState, useMemo, useEffect } from "react";
-import { useAppContext } from "@/context/AppContext";
+import { useAppContext, buscarPerfumeHecho } from "@/context/AppContext";
 import ConfirmModal from "@/components/ConfirmModal";
 import Ventana from "@/components/Ventana";
+import { PanelVentana, CabeceraVentana, CuerpoVentana, PieVentana, ETIQUETA_CAMPO, AYUDA_CAMPO, CAMPO, BOTON_PRINCIPAL, BOTON_SECUNDARIO } from "@/components/ventana-partes";
+import IngresarStock from "@/components/IngresarStock";
 
 export default function InventarioPage() {
-    const { inventario, esencias, insumos, productos, categorias, getNextId, addInventarioItem, deleteInventarioItem, updateInventarioItem, clearAllInventario } = useAppContext();
+    const { inventario, esencias, insumos, productos, deleteInventarioItem, updateInventarioItem, clearAllInventario } = useAppContext();
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [itemToDelete, setItemToDelete] = useState<string | null>(null);
@@ -15,15 +17,6 @@ export default function InventarioPage() {
     const [editQty, setEditQty] = useState("");
 
     const [typeFilter, setTypeFilter] = useState("Todos");
-
-    const [formData, setFormData] = useState({
-        type: "Esencia" as "Esencia" | "Insumo" | "Perfume Hecho",
-        item_id: "",
-        custom_name: "",
-        category: "Frascos de 50 ML",
-        gender: "Femenino",
-        qty: ""
-    });
 
     const [alertThresholds, setAlertThresholds] = useState<Record<string, number>>({});
     const [isAlertModalOpen, setIsAlertModalOpen] = useState(false);
@@ -102,79 +95,17 @@ export default function InventarioPage() {
     };
 
     const [searchTerm, setSearchTerm] = useState("");
-    const [isEsenciaSearchOpen, setIsEsenciaSearchOpen] = useState(false);
-    const [esenciaSearch, setEsenciaSearch] = useState("");
-    const [esenciaGenderFilter, setEsenciaGenderFilter] = useState("Todos");
-
-    const filteredEsencias = useMemo(() => {
-        return esencias.filter(e => {
-            const matchesSearch = e.name.toLowerCase().includes(esenciaSearch.toLowerCase());
-            const genderValue = e.gender || (e.category.toLowerCase().includes("femenina") ? "Femenino" : "Masculino");
-            const matchesGender = esenciaGenderFilter === "Todos" || genderValue === esenciaGenderFilter;
-            return matchesSearch && matchesGender;
-        });
-    }, [esencias, esenciaSearch, esenciaGenderFilter]);
-
     const filteredInventario = useMemo(() => {
+        // Sin importar tildes ni mayúsculas, y cada palabra por separado: "212 vip masculino"
+        const normalizar = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+        const palabras = normalizar(searchTerm).split(/\s+/).filter(Boolean);
         return inventario.filter(item => {
-            const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                item.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                item.type.toLowerCase().includes(searchTerm.toLowerCase());
+            const texto = normalizar(`${item.name} ${item.category} ${item.type} ${item.gender ?? ""}`);
+            const matchesSearch = palabras.every(p => texto.includes(p));
             const matchesType = typeFilter === "Todos" || item.type === typeFilter;
             return matchesSearch && matchesType;
         });
     }, [inventario, searchTerm, typeFilter]);
-
-    const getSelectedItemDetails = () => {
-        if (formData.type === "Esencia") {
-            return esencias.find(e => e.id === formData.item_id);
-        } else if (formData.type === "Insumo") {
-            return insumos.find(i => i.id === formData.item_id);
-        } else if (formData.type === "Perfume Hecho") {
-            const prod = productos.find(p => p.id === formData.item_id);
-            if (prod) {
-                return {
-                    name: prod.name,
-                    category: prod.category,
-                    gender: prod.gender || "Unisex",
-                    unit: "u."
-                };
-            }
-            return {
-                name: formData.custom_name.trim() || "Perfume Final",
-                category: formData.category,
-                gender: formData.gender,
-                unit: "u."
-            };
-        }
-        return null;
-    };
-
-    const handleAddSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        const details = getSelectedItemDetails();
-
-        if (!details) return;
-
-        addInventarioItem({
-            id: getNextId(inventario, "INV-"),
-            name: details.name,
-            type: formData.type,
-            category: details.category || "Frascos de 50 ML",
-            qty: parseFloat(formData.qty),
-            lastUpdate: new Date().toLocaleDateString("es-AR"),
-            unit: formData.type === "Esencia" ? "g" : (formData.type === "Perfume Hecho" ? "u." : (details as any).unit || "un."),
-            gender: (details as any).gender || (formData.type === "Esencia" ? ((details as any).gender || (details.category?.toLowerCase().includes("femenina") ? "Femenino" : "Masculino")) : undefined)
-        });
-
-        setFormData({ type: "Esencia", item_id: "", custom_name: "", category: "Frascos de 50 ML", gender: "Femenino", qty: "" });
-        setIsAddModalOpen(false);
-    };
-
-    const handleSelectEsencia = (esencia: any) => {
-        setFormData({ ...formData, item_id: esencia.id, type: "Esencia" });
-        setIsEsenciaSearchOpen(false);
-    };
 
     const confirmDelete = () => {
         if (itemToDelete) {
@@ -206,16 +137,19 @@ export default function InventarioPage() {
             if (item.type === "Esencia") {
                 const esc = esencias.find(e => e.name === item.name);
                 if (esc) itemCost = esc.cost * item.qty;
+            } else if (item.type === "Perfume Hecho") {
+                const prod = productos.find(p => buscarPerfumeHecho([item], p));
+                if (prod) itemCost = prod.cost * item.qty;
             } else {
                 const ins = insumos.find(i => i.name === item.name);
                 if (ins) itemCost = ins.cost * item.qty;
             }
             return acc + itemCost;
         }, 0);
-    }, [inventario, esencias, insumos]);
+    }, [inventario, esencias, insumos, productos]);
 
     return (
-        <div className="space-y-8 pb-12 animate-in fade-in duration-700 relative">
+        <div className="space-y-8 pb-12 anim-entrada relative">
             <header className="flex flex-col items-center text-center gap-6 bg-white dark:bg-[#242723] p-8 md:p-10 rounded-[2.5rem] shadow-sm border border-[#E6DFD5] dark:border-[#353B33] transition-colors duration-300">
                 <div className="flex flex-col items-center space-y-3 max-w-2xl mx-auto">
                     <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#7D9878]/10 text-[#7D9878] dark:text-[#A3B69B] text-xs font-bold tracking-widest uppercase">
@@ -233,14 +167,14 @@ export default function InventarioPage() {
                 <div className="flex flex-wrap items-center justify-center gap-3">
                     <button
                         onClick={clearAllInventario}
-                        className="flex items-center gap-2.5 px-7 py-3.5 rounded-2xl bg-[#F9F6F0] dark:bg-[#1B1D1A] text-[#C9866F] border border-[#E6DFD5] dark:border-[#353B33] font-bold hover:bg-[#C9866F]/10 transition-all"
+                        className="flex items-center gap-2.5 px-7 py-3.5 rounded-2xl bg-[#F9F6F0] dark:bg-[#1B1D1A] text-[#C9866F] border border-[#E6DFD5] dark:border-[#353B33] font-bold hover:bg-[#C9866F]/10 transition"
                     >
                         <Trash2 className="w-5 h-5" />
                         Vaciar Inventario
                     </button>
                     <button
                         onClick={() => setIsAddModalOpen(true)}
-                        className="flex items-center gap-2.5 px-7 py-3.5 rounded-2xl bg-[#7D9878] hover:bg-[#6b8566] text-white font-bold hover:shadow-xl hover:shadow-[#7D9878]/20 active:scale-95 transition-all"
+                        className="flex items-center gap-2.5 px-7 py-3.5 rounded-2xl bg-[#7D9878] hover:bg-[#6b8566] text-white font-bold hover:shadow-xl hover:shadow-[#7D9878]/20 active:scale-95 transition"
                     >
                         <Plus className="w-5 h-5" strokeWidth={2.5} />
                         Ingresar Stock
@@ -250,8 +184,8 @@ export default function InventarioPage() {
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {/* Total Productos */}
-                <div className="bg-white dark:bg-[#242723] border border-[#E6DFD5] dark:border-[#353B33] p-6 rounded-[2rem] shadow-sm flex items-center gap-5 hover:border-[#7D9878] transition-all group overflow-hidden relative">
-                    <div className="p-4 bg-[#7D9878]/10 rounded-2xl text-[#7D9878] dark:text-[#A3B69B] ring-4 ring-[#7D9878]/5 transition-all group-hover:scale-110">
+                <div className="bg-white dark:bg-[#242723] border border-[#E6DFD5] dark:border-[#353B33] p-6 rounded-[2rem] shadow-sm flex items-center gap-5 hover:border-[#7D9878] transition group overflow-hidden relative">
+                    <div className="p-4 bg-[#7D9878]/10 rounded-2xl text-[#7D9878] dark:text-[#A3B69B] ring-4 ring-[#7D9878]/5 transition">
                         <ListTree className="w-6 h-6" strokeWidth={2.5} />
                     </div>
                     <div className="relative z-10">
@@ -261,20 +195,20 @@ export default function InventarioPage() {
                 </div>
 
                 {/* Valorizado (Real) */}
-                <div className="bg-white dark:bg-[#242723] border border-[#E6DFD5] dark:border-[#353B33] p-6 rounded-[2rem] shadow-sm flex items-center gap-5 hover:border-[#7D9878] transition-all group overflow-hidden relative">
-                    <div className="p-4 bg-[#7D9878]/10 rounded-2xl text-[#7D9878] dark:text-[#A3B69B] ring-4 ring-[#7D9878]/5 transition-all group-hover:scale-110">
+                <div className="bg-white dark:bg-[#242723] border border-[#E6DFD5] dark:border-[#353B33] p-6 rounded-[2rem] shadow-sm flex items-center gap-5 hover:border-[#7D9878] transition group overflow-hidden relative">
+                    <div className="p-4 bg-[#7D9878]/10 rounded-2xl text-[#7D9878] dark:text-[#A3B69B] ring-4 ring-[#7D9878]/5 transition">
                         <MoveUpRight className="w-6 h-6" strokeWidth={2.5} />
                     </div>
                     <div className="relative z-10">
                         <p className="text-xs font-bold text-[#2C2C2C]/50 dark:text-[#F4EFEA]/50 uppercase tracking-widest mb-1">Valorizado Total</p>
-                        <p className="text-3xl font-black text-[#2C2C2C] dark:text-[#F4EFEA] tabular-nums font-brand">${valorizadoTotal.toLocaleString()}</p>
+                        <p className="text-3xl font-black text-[#2C2C2C] dark:text-[#F4EFEA] tabular-nums font-brand">${Math.round(valorizadoTotal).toLocaleString("es-AR")}</p>
                     </div>
                 </div>
 
                 {/* Alertas */}
-                <div className="bg-white dark:bg-[#242723] border border-[#E6DFD5] dark:border-[#353B33] p-6 rounded-[2rem] shadow-sm flex items-center justify-between gap-5 transition-all group overflow-hidden relative" style={{ borderColor: alertCount > 0 ? "rgba(201, 134, 111, 0.4)" : undefined }}>
+                <div className="bg-white dark:bg-[#242723] border border-[#E6DFD5] dark:border-[#353B33] p-6 rounded-[2rem] shadow-sm flex items-center justify-between gap-5 transition group overflow-hidden relative" style={{ borderColor: alertCount > 0 ? "rgba(201, 134, 111, 0.4)" : undefined }}>
                     <div className="flex items-center gap-5 relative z-10">
-                        <div className={`p-4 rounded-2xl ring-4 transition-all group-hover:scale-110 ${alertCount > 0 ? "bg-[#C9866F]/10 text-[#C9866F] ring-[#C9866F]/10" : "bg-[#F9F6F0] dark:bg-[#1B1D1A] text-[#2C2C2C]/40 ring-[#353B33]/20"}`}>
+                        <div className={`p-4 rounded-2xl ring-4 transition ${alertCount > 0 ? "bg-[#C9866F]/10 text-[#C9866F] ring-[#C9866F]/10" : "bg-[#F9F6F0] dark:bg-[#1B1D1A] text-[#2C2C2C]/40 ring-[#353B33]/20"}`}>
                             <AlertCircle className="w-6 h-6" strokeWidth={2.5} />
                         </div>
                         <div>
@@ -295,7 +229,7 @@ export default function InventarioPage() {
                     <div className="flex items-center gap-1.5 bg-[#F9F6F0] dark:bg-[#1B1D1A] p-1.5 rounded-2xl border border-[#E6DFD5] dark:border-[#353B33] w-full lg:w-auto overflow-x-auto">
                         <button
                             onClick={() => setTypeFilter("Todos")}
-                            className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-black transition-all whitespace-nowrap ${
+                            className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-black transition whitespace-nowrap ${
                                 typeFilter === "Todos"
                                     ? "bg-[#7D9878] text-white shadow-sm scale-105"
                                     : "text-[#2C2C2C]/60 dark:text-[#F4EFEA]/60 hover:text-[#7D9878]"
@@ -307,7 +241,7 @@ export default function InventarioPage() {
 
                         <button
                             onClick={() => setTypeFilter("Esencia")}
-                            className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-black transition-all whitespace-nowrap ${
+                            className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-black transition whitespace-nowrap ${
                                 typeFilter === "Esencia"
                                     ? "bg-[#7D9878] text-white shadow-sm scale-105"
                                     : "text-[#2C2C2C]/60 dark:text-[#F4EFEA]/60 hover:text-[#7D9878]"
@@ -319,7 +253,7 @@ export default function InventarioPage() {
 
                         <button
                             onClick={() => setTypeFilter("Insumo")}
-                            className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-black transition-all whitespace-nowrap ${
+                            className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-black transition whitespace-nowrap ${
                                 typeFilter === "Insumo"
                                     ? "bg-[#7D9878] text-white shadow-sm scale-105"
                                     : "text-[#2C2C2C]/60 dark:text-[#F4EFEA]/60 hover:text-[#7D9878]"
@@ -331,7 +265,7 @@ export default function InventarioPage() {
 
                         <button
                             onClick={() => setTypeFilter("Perfume Hecho")}
-                            className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-black transition-all whitespace-nowrap ${
+                            className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-black transition whitespace-nowrap ${
                                 typeFilter === "Perfume Hecho"
                                     ? "bg-[#7D9878] text-white shadow-sm scale-105"
                                     : "text-[#2C2C2C]/60 dark:text-[#F4EFEA]/60 hover:text-[#7D9878]"
@@ -349,7 +283,7 @@ export default function InventarioPage() {
                             placeholder="Buscar por nombre, categoría o tipo..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="w-full bg-[#F9F6F0] dark:bg-[#1B1D1A] border border-[#E6DFD5] dark:border-[#353B33] rounded-2xl py-3 pl-14 pr-6 text-[#2C2C2C] dark:text-[#F4EFEA] placeholder:text-[#2C2C2C]/50 dark:placeholder:text-[#F4EFEA]/60 focus:outline-none focus:border-[#7D9878] transition-all font-semibold text-sm"
+                            className="w-full bg-[#F9F6F0] dark:bg-[#1B1D1A] border border-[#E6DFD5] dark:border-[#353B33] rounded-2xl py-3 pl-14 pr-6 text-[#2C2C2C] dark:text-[#F4EFEA] placeholder:text-[#2C2C2C]/50 dark:placeholder:text-[#F4EFEA]/60 focus:outline-none focus:border-[#7D9878] transition font-semibold text-sm"
                         />
                     </div>
                 </div>
@@ -367,11 +301,11 @@ export default function InventarioPage() {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-[#E6DFD5] dark:divide-[#353B33]">
-                            {inventario.map((item, idx) => {
+                            {filteredInventario.map((item) => {
                                 const threshold = alertThresholds[item.name];
                                 const isAlert = threshold !== undefined && item.qty <= threshold;
                                 return (
-                                    <tr key={idx} className={`group hover:bg-[#7D9878]/5 transition-colors relative ${isAlert ? "bg-[#C9866F]/10" : ""}`}>
+                                    <tr key={item.id} className={`group hover:bg-[#7D9878]/5 transition-colors relative ${isAlert ? "bg-[#C9866F]/10" : ""}`}>
                                         <td className="px-6 py-6 text-center relative overflow-hidden">
                                             {isAlert && <div className="absolute left-0 top-0 bottom-0 w-1 bg-[#C9866F]" title="¡Stock crítico!" />}
                                             <span className={`inline-flex items-center px-2.5 py-1 rounded-md font-bold text-[11px] uppercase tracking-wider border whitespace-nowrap w-max mx-auto ${getColorClass(item.type, true)}`}>
@@ -448,6 +382,22 @@ export default function InventarioPage() {
                             })}
                         </tbody>
                     </table>
+                    {filteredInventario.length === 0 && (
+                        <div className="px-6 py-16 text-center">
+                            <p className="text-sm font-medium text-[#2C2C2C]/60 dark:text-[#F4EFEA]/55">
+                                {inventario.length === 0 ? "Todavía no cargaste stock." : "No hay nada que coincida con la búsqueda."}
+                            </p>
+                            {inventario.length === 0 ? (
+                                <button onClick={() => setIsAddModalOpen(true)} className="mt-3 text-sm font-semibold text-[#5A7356] dark:text-[#A3B69B] hover:underline">
+                                    Ingresar stock
+                                </button>
+                            ) : (
+                                <button onClick={() => { setSearchTerm(""); setTypeFilter("Todos"); }} className="mt-3 text-sm font-semibold text-[#5A7356] dark:text-[#A3B69B] hover:underline">
+                                    Ver todo
+                                </button>
+                            )}
+                        </div>
+                    )}
                 </div>
             </div>
 
@@ -459,361 +409,91 @@ export default function InventarioPage() {
                 onCancel={() => setItemToDelete(null)}
             />
 
-            {/* Modal Editar Alerta */}
-            <Ventana abierta={isAlertModalOpen} onCerrar={() => setIsAlertModalOpen(false)}>
+            {/* Aviso de stock bajo */}
+            <Ventana abierta={isAlertModalOpen} onCerrar={() => setIsAlertModalOpen(false)} etiqueta="Aviso de stock bajo">
             {isAlertModalOpen && (
-                    <div className="bg-white dark:bg-[#242723] rounded-[2rem] shadow-2xl w-full max-w-sm overflow-hidden border border-[#E6DFD5] dark:border-[#353B33]">
-                        <div className="p-6 pb-4 border-b border-[#E6DFD5] dark:border-[#353B33] flex justify-between items-center bg-[#F9F6F0] dark:bg-[#1B1D1A]">
-                            <div>
-                                <h2 className="text-lg font-black text-[#2C2C2C] dark:text-[#F4EFEA] flex items-center gap-2 font-brand">
-                                    <AlertCircle className="w-5 h-5 text-[#C9866F]" />
-                                    Alerta para: <span className="text-[#7D9878] dark:text-[#A3B69B]">{editingAlertItem}</span>
-                                </h2>
-                            </div>
-                            <button
-                                onClick={() => setIsAlertModalOpen(false)}
-                                className="p-2.5 rounded-full bg-[#1B1D1A] text-white hover:bg-rose-600 hover:text-white hover:rotate-90 hover:scale-110 active:scale-95 transition-all duration-300 shadow-sm border border-[#353B33] flex items-center justify-center shrink-0 cursor-pointer"
-                                title="Cerrar"
-                            >
-                                <X className="w-5 h-5" />
-                            </button>
-                        </div>
-                        <form onSubmit={saveAlertThreshold} className="p-6 space-y-6">
-                            <div className="space-y-3">
-                                <label className="text-[11px] font-black text-[#2C2C2C]/60 dark:text-[#F4EFEA]/60 uppercase tracking-widest block text-center">
-                                    Avisarme cuando este stock baje o iguale a:
-                                    <br /><span className="text-[10px] font-normal lowercase opacity-70">(Dejá vacío o en 0 para no recibir alertas)</span>
-                                </label>
-                                <div className="flex justify-center">
+                    <PanelVentana ancho="sm">
+                        <CabeceraVentana
+                            etiqueta="Aviso de stock bajo"
+                            titulo={editingAlertItem}
+                            icono={AlertCircle}
+                            tono="terracota"
+                            onCerrar={() => setIsAlertModalOpen(false)}
+                        />
+                        <form onSubmit={saveAlertThreshold} className="flex flex-col flex-1 min-h-0">
+                            <CuerpoVentana>
+                                <label className="block">
+                                    <span className={ETIQUETA_CAMPO}>Avisarme cuando queden</span>
                                     <input
                                         type="number"
                                         min="0"
                                         value={tempThreshold}
                                         onChange={(e) => setTempThreshold(e.target.value)}
-                                        className="w-32 bg-[#F9F6F0] dark:bg-[#1B1D1A] border border-[#E6DFD5] dark:border-[#353B33] rounded-2xl py-4 px-4 text-center text-3xl font-black text-[#2C2C2C] dark:text-[#F4EFEA] focus:outline-none focus:ring-2 focus:ring-[#C9866F]/30 focus:border-[#C9866F] transition-all custom-number-input"
-                                        autoFocus
-                                    />
-                                </div>
-                            </div>
-                            <button
-                                type="submit"
-                                className="w-full py-4 rounded-xl font-bold bg-[#C9866F] text-white hover:bg-[#b5735c] transition-colors shadow-lg shadow-[#C9866F]/20 flex items-center justify-center gap-2 font-brand"
-                            >
-                                Guardar Configuración
-                            </button>
-                        </form>
-                    </div>
-            )}
-            </Ventana>
-
-            <Ventana abierta={isAddModalOpen} onCerrar={() => setIsAddModalOpen(false)} cerrarAlTocarFondo={false}>
-            {isAddModalOpen && (
-                    <div className="bg-white dark:bg-[#242723] rounded-[2rem] shadow-2xl w-full max-w-md overflow-hidden border border-[#E6DFD5] dark:border-[#353B33]">
-                        <div className="p-6 pb-4 border-b border-[#E6DFD5] dark:border-[#353B33] flex justify-between items-center bg-[#F9F6F0] dark:bg-[#1B1D1A]">
-                            <div>
-                                <h2 className="text-xl font-black text-[#2C2C2C] dark:text-[#F4EFEA] font-brand">Ingresar Stock</h2>
-                                <p className="text-xs text-[#2C2C2C]/60 dark:text-[#F4EFEA]/60 font-bold mt-0.5">Sincronizá el stock físico real.</p>
-                            </div>
-                            <button
-                                onClick={() => setIsAddModalOpen(false)}
-                                className="p-2.5 rounded-full bg-[#1B1D1A] text-white hover:bg-rose-600 hover:text-white hover:rotate-90 hover:scale-110 active:scale-95 transition-all duration-300 shadow-sm border border-[#353B33] flex items-center justify-center shrink-0 cursor-pointer"
-                                title="Cerrar"
-                            >
-                                <X className="w-5 h-5" />
-                            </button>
-                        </div>
-
-                        <form onSubmit={handleAddSubmit} className="p-6 space-y-5">
-                            <div className="space-y-4">
-                                <div className="space-y-1.5">
-                                    <label className="text-[10px] font-black text-[#2C2C2C]/60 dark:text-[#F4EFEA]/60 uppercase tracking-widest pl-1">Seleccionar Tipo</label>
-                                    <div className="grid grid-cols-3 gap-2">
-                                        <button
-                                            type="button"
-                                            onClick={() => setFormData({ ...formData, type: "Esencia", item_id: "" })}
-                                            className={`py-2.5 rounded-xl font-bold text-xs transition-all border-2 flex items-center justify-center gap-1.5 ${formData.type === "Esencia"
-                                                ? "bg-[#7D9878]/15 text-[#7D9878] dark:text-[#A3B69B] border-[#7D9878]"
-                                                : "bg-[#F9F6F0] dark:bg-[#1B1D1A] text-[#2C2C2C]/50 dark:text-[#F4EFEA]/50 border-[#E6DFD5] dark:border-[#353B33]"
-                                                }`}
-                                        >
-                                            <FlaskConical className="w-3.5 h-3.5 text-[#7D9878]" />
-                                            Esencia
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={() => setFormData({ ...formData, type: "Insumo", item_id: "" })}
-                                            className={`py-2.5 rounded-xl font-bold text-xs transition-all border-2 flex items-center justify-center gap-1.5 ${formData.type === "Insumo"
-                                                ? "bg-[#7D9878]/15 text-[#7D9878] dark:text-[#A3B69B] border-[#7D9878]"
-                                                : "bg-[#F9F6F0] dark:bg-[#1B1D1A] text-[#2C2C2C]/50 dark:text-[#F4EFEA]/50 border-[#E6DFD5] dark:border-[#353B33]"
-                                                }`}
-                                        >
-                                            <Package className="w-3.5 h-3.5 text-[#7D9878]" />
-                                            Insumo
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={() => setFormData({ ...formData, type: "Perfume Hecho", item_id: "" })}
-                                            className={`py-2.5 rounded-xl font-bold text-xs transition-all border-2 flex items-center justify-center gap-1.5 ${formData.type === "Perfume Hecho"
-                                                ? "bg-[#A3B69B]/15 text-[#7D9878] dark:text-[#A3B69B] border-[#A3B69B]"
-                                                : "bg-[#F9F6F0] dark:bg-[#1B1D1A] text-[#2C2C2C]/50 dark:text-[#F4EFEA]/50 border-[#E6DFD5] dark:border-[#353B33]"
-                                                }`}
-                                        >
-                                            <Sparkles className="w-3.5 h-3.5 text-[#A3B69B]" />
-                                            Perfume Hecho
-                                        </button>
-                                    </div>
-                                </div>
-
-                                {formData.type === "Esencia" ? (
-                                    <div className="space-y-1.5 animate-in slide-in-from-top-1">
-                                        <label className="text-[10px] font-black text-[#2C2C2C]/60 dark:text-[#F4EFEA]/60 uppercase tracking-widest pl-1">Esencia</label>
-                                        <button
-                                            type="button"
-                                            onClick={() => setIsEsenciaSearchOpen(true)}
-                                            className={`w-full flex items-center justify-between px-4 py-3 rounded-xl bg-[#F9F6F0] dark:bg-[#1B1D1A] border-2 transition-all ${formData.item_id ? 'border-[#7D9878] text-[#7D9878]' : 'border-[#E6DFD5] dark:border-[#353B33] text-[#2C2C2C]/50 hover:border-[#7D9878]/50'
-                                                }`}
-                                        >
-                                            <span className="font-bold text-sm truncate pr-2 text-[#2C2C2C] dark:text-[#F4EFEA]">
-                                                {formData.item_id ? esencias.find(e => e.id === formData.item_id)?.name : "Buscar Esencia..."}
-                                            </span>
-                                            <Search className="w-4 h-4 flex-shrink-0 text-[#2C2C2C]/40" />
-                                        </button>
-                                    </div>
-                                ) : formData.type === "Insumo" ? (
-                                    <div className="space-y-1.5 animate-in slide-in-from-top-1">
-                                        <label className="text-[10px] font-black text-[#2C2C2C]/60 dark:text-[#F4EFEA]/60 uppercase tracking-widest pl-1">Seleccionar Insumo</label>
-                                        <select
-                                            required
-                                            value={formData.item_id}
-                                            onChange={e => setFormData({ ...formData, item_id: e.target.value })}
-                                            className="w-full bg-[#F9F6F0] dark:bg-[#1B1D1A] border border-[#E6DFD5] dark:border-[#353B33] rounded-xl py-3 px-4 text-[#2C2C2C] dark:text-[#F4EFEA] font-bold text-sm focus:outline-none focus:border-[#7D9878] transition-all appearance-none"
-                                        >
-                                            <option value="" disabled>Elegí un ítem</option>
-                                            {insumos.map(i => (
-                                                <option key={i.id} value={i.id}>{i.name}</option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                ) : (
-                                    <div className="space-y-4 animate-in slide-in-from-top-1">
-                                        {productos.length > 0 && (
-                                            <div className="space-y-1.5">
-                                                <label className="text-[10px] font-black text-[#2C2C2C]/60 dark:text-[#F4EFEA]/60 uppercase tracking-widest pl-1">Seleccionar de Lista de Precios</label>
-                                                <select
-                                                    value={formData.item_id}
-                                                    onChange={e => setFormData({ ...formData, item_id: e.target.value })}
-                                                    className="w-full bg-[#F9F6F0] dark:bg-[#1B1D1A] border border-[#E6DFD5] dark:border-[#353B33] rounded-xl py-3 px-4 text-[#2C2C2C] dark:text-[#F4EFEA] font-bold text-sm focus:outline-none focus:border-[#7D9878] transition-all appearance-none"
-                                                >
-                                                    <option value="">-- O escribir nombre manual --</option>
-                                                    {productos.map(p => (
-                                                        <option key={p.id} value={p.id}>{p.name} ({p.category})</option>
-                                                    ))}
-                                                </select>
-                                            </div>
-                                        )}
-
-                                        {!formData.item_id && (
-                                            <div className="space-y-1.5">
-                                                <label className="text-[10px] font-black text-[#2C2C2C]/60 dark:text-[#F4EFEA]/60 uppercase tracking-widest pl-1">Nombre del Perfume Hecho</label>
-                                                <input
-                                                    type="text"
-                                                    value={formData.custom_name}
-                                                    onChange={e => setFormData({ ...formData, custom_name: e.target.value })}
-                                                    placeholder="Ej: CAROLINA HERRERA 50 ML"
-                                                    className="w-full bg-[#F9F6F0] dark:bg-[#1B1D1A] border border-[#E6DFD5] dark:border-[#353B33] rounded-xl py-3 px-4 text-[#2C2C2C] dark:text-[#F4EFEA] font-bold text-sm focus:outline-none focus:border-[#7D9878] transition-all"
-                                                />
-                                            </div>
-                                        )}
-                                    </div>
-                                )}
-
-                                <div className="grid grid-cols-2 gap-3 pt-1">
-                                    <div className="space-y-1.5">
-                                        <label className="text-[10px] font-black text-[#2C2C2C]/60 dark:text-[#F4EFEA]/60 uppercase tracking-widest pl-1">Categoría / Frasco</label>
-                                        <select
-                                            value={formData.category}
-                                            onChange={e => setFormData({ ...formData, category: e.target.value })}
-                                            className="w-full bg-[#F9F6F0] dark:bg-[#1B1D1A] border border-[#E6DFD5] dark:border-[#353B33] rounded-xl py-2.5 px-3 text-[#2C2C2C] dark:text-[#F4EFEA] font-bold text-xs focus:outline-none focus:border-[#7D9878] transition-all appearance-none"
-                                        >
-                                            <option value="Todas">Todas las Categorías</option>
-                                            <option value="Frascos de 50 ML">Frascos de 50 ML</option>
-                                            <option value="Frascos de 30 ML">Frascos de 30 ML</option>
-                                            <option value="Frascos Difusores">Frascos Difusores</option>
-                                            <option value="Frascos de Auto">Frascos de Auto</option>
-                                            <option value="Insumos">Insumos General</option>
-                                            <option value="Esencias">Esencias General</option>
-                                        </select>
-                                    </div>
-
-                                    <div className="space-y-1.5">
-                                        <label className="text-[10px] font-black text-[#2C2C2C]/60 dark:text-[#F4EFEA]/60 uppercase tracking-widest pl-1">Género / Variante</label>
-                                        <select
-                                            value={formData.gender}
-                                            onChange={e => setFormData({ ...formData, gender: e.target.value })}
-                                            className="w-full bg-[#F9F6F0] dark:bg-[#1B1D1A] border border-[#E6DFD5] dark:border-[#353B33] rounded-xl py-2.5 px-3 text-[#2C2C2C] dark:text-[#F4EFEA] font-bold text-xs focus:outline-none focus:border-[#7D9878] transition-all appearance-none"
-                                        >
-                                            <option value="Femenino">Femenino</option>
-                                            <option value="Masculino">Masculino</option>
-                                            <option value="Unisex">Unisex</option>
-                                            <option value="Ambiente">Ambiente</option>
-                                        </select>
-                                    </div>
-                                </div>
-
-                                <div className="space-y-1.5 relative">
-                                    <label className="text-[10px] font-black text-[#2C2C2C]/60 dark:text-[#F4EFEA]/60 uppercase tracking-widest pl-1">Cantidad</label>
-                                    <div className="relative">
-                                        <input
-                                            required
-                                            type="number"
-                                            value={formData.qty}
-                                            onFocus={(e) => e.target.select()}
-                                            onChange={e => setFormData({ ...formData, qty: e.target.value })}
-                                            placeholder="0.00"
-                                            className="w-full bg-[#F9F6F0] dark:bg-[#1B1D1A] border-2 border-[#E6DFD5] dark:border-[#353B33] rounded-xl py-3 px-4 text-[#2C2C2C] dark:text-[#F4EFEA] focus:outline-none focus:border-[#7D9878] transition-all font-black text-lg"
-                                        />
-                                        <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[#2C2C2C]/40 font-black text-sm pointer-events-none">
-                                            {formData.type === "Esencia" ? "g" : (getSelectedItemDetails() as any)?.unit || "un."}
-                                        </span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <button
-                                type="submit"
-                                disabled={(!formData.item_id && !formData.custom_name) || !formData.qty}
-                                className="w-full py-3.5 rounded-xl bg-[#7D9878] text-white font-black text-sm flex items-center justify-center gap-2 shadow-lg hover:bg-[#6b8566] active:scale-[0.98] disabled:opacity-50 transition-all mt-2 font-brand"
-                            >
-                                <Archive className="w-4 h-4" />
-                                Confirmar Ingreso
-                            </button>
-                        </form>
-                    </div>
-            )}
-            </Ventana>
-
-            {/* Modal de Búsqueda de Esencias (Igual que en Pedidos) */}
-            <Ventana abierta={isEsenciaSearchOpen} onCerrar={() => setIsEsenciaSearchOpen(false)} z={210}>
-            {isEsenciaSearchOpen && (
-                    <div className="bg-white dark:bg-[#242723] rounded-[2rem] shadow-2xl w-full max-w-2xl max-h-[calc(100vh-8rem)] flex flex-col overflow-hidden border border-[#E6DFD5] dark:border-[#353B33]">
-                        <div className="p-6 border-b border-[#E6DFD5] dark:border-[#353B33] flex justify-between items-center bg-[#F9F6F0] dark:bg-[#1B1D1A]">
-                            <div>
-                                <h2 className="text-xl font-black text-[#2C2C2C] dark:text-[#F4EFEA] flex items-center gap-2 font-brand">
-                                    <FlaskConical className="w-5 h-5 text-[#7D9878]" />
-                                    Buscar Esencia
-                                </h2>
-                            </div>
-                            <button
-                                onClick={() => setIsEsenciaSearchOpen(false)}
-                                className="p-2.5 rounded-full bg-[#1B1D1A] text-white hover:bg-rose-600 hover:text-white hover:rotate-90 hover:scale-110 active:scale-95 transition-all duration-300 shadow-sm border border-[#353B33] flex items-center justify-center shrink-0 cursor-pointer"
-                                title="Cerrar"
-                            >
-                                <X className="w-5 h-5" />
-                            </button>
-                        </div>
-
-                        <div className="p-4 bg-[#F9F6F0] dark:bg-[#1B1D1A] flex gap-3 border-b border-[#E6DFD5] dark:border-[#353B33]">
-                            <div className="relative flex-1 group">
-                                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#2C2C2C]/40" />
-                                <input
-                                    autoFocus
-                                    type="text"
-                                    placeholder="Escribí para buscar..."
-                                    value={esenciaSearch}
-                                    onChange={e => setEsenciaSearch(e.target.value)}
-                                    className="w-full bg-white dark:bg-[#242723] border border-[#E6DFD5] dark:border-[#353B33] text-[#2C2C2C] dark:text-[#F4EFEA] rounded-xl py-2.5 pl-10 pr-4 text-sm font-bold focus:outline-none focus:border-[#7D9878] transition-all"
-                                />
-                            </div>
-                            <select
-                                value={esenciaGenderFilter}
-                                onChange={e => setEsenciaGenderFilter(e.target.value)}
-                                className="bg-white dark:bg-[#242723] border border-[#E6DFD5] dark:border-[#353B33] text-[#2C2C2C] dark:text-[#F4EFEA] rounded-xl px-4 py-2 text-xs font-black focus:outline-none appearance-none cursor-pointer"
-                            >
-                                <option value="Todos">Todos</option>
-                                <option value="Femenino">Femenino</option>
-                                <option value="Masculino">Masculino</option>
-                            </select>
-                        </div>
-
-                        <div className="flex-1 overflow-y-auto p-4 custom-scrollbar space-y-2">
-                            {filteredEsencias.slice(0, 40).map(e => {
-                                const gender = e.gender || (e.category.toLowerCase().includes("femenina") ? "Femenino" : "Masculino");
-                                const isFemale = gender === "Femenino";
-                                return (
-                                    <button
-                                        key={e.id}
-                                        type="button"
-                                        onClick={() => handleSelectEsencia(e)}
-                                        className="w-full text-left bg-white dark:bg-[#1B1D1A] p-4 rounded-xl border border-[#E6DFD5] dark:border-[#353B33] hover:border-[#7D9878] transition-all flex flex-col gap-1 group"
-                                    >
-                                        <div className="flex items-center gap-2">
-                                            <span className={`text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded ${isFemale ? 'bg-[#C9866F]/10 text-[#C9866F]' : 'bg-[#7D9878]/10 text-[#7D9878]'
-                                                }`}>
-                                                {isFemale ? 'F' : 'M'}
-                                            </span>
-                                            <span className="text-[9px] text-[#2C2C2C]/50 dark:text-[#F4EFEA]/50 font-bold uppercase tracking-widest">Perfumería Fina</span>
-                                        </div>
-                                        <h4 className="text-sm font-bold text-[#2C2C2C] dark:text-[#F4EFEA] truncate">{e.name}</h4>
-                                    </button>
-                                );
-                            })}
-                            {filteredEsencias.length > 40 && (
-                                <p className="text-center text-[10px] text-[#2C2C2C]/40 dark:text-[#F4EFEA]/40 font-bold py-2">
-                                    Mostrando los primeros 40 de {filteredEsencias.length} resultados. Refiná la búsqueda para ver más.
-                                </p>
-                            )}
-                            {filteredEsencias.length === 0 && (
-                                <div className="py-10 text-center text-[#2C2C2C]/40 dark:text-[#F4EFEA]/40 text-sm font-bold">
-                                    No se encontraron resultados.
-                                </div>
-                            )}
-                        </div>
-                    </div>
-            )}
-            </Ventana>
-
-            {/* Modal Editar Cantidad (Lápiz) */}
-            <Ventana abierta={isEditModalOpen} onCerrar={() => setIsEditModalOpen(false)} cerrarAlTocarFondo={false}>
-            {isEditModalOpen && (
-                    <div className="bg-white dark:bg-[#242723] rounded-[2rem] shadow-2xl w-full max-w-sm overflow-hidden border border-[#E6DFD5] dark:border-[#353B33]">
-                        <div className="p-6 pb-4 border-b border-[#E6DFD5] dark:border-[#353B33] flex justify-between items-center bg-[#F9F6F0] dark:bg-[#1B1D1A]">
-                            <div>
-                                <h2 className="text-lg font-black text-[#2C2C2C] dark:text-[#F4EFEA] font-brand">Ajustar Stock</h2>
-                                <p className="text-[10px] text-[#2C2C2C]/60 dark:text-[#F4EFEA]/60 font-bold uppercase tracking-widest">{editingItem?.name}</p>
-                            </div>
-                            <button
-                                onClick={() => setIsEditModalOpen(false)}
-                                className="p-2.5 rounded-full bg-[#1B1D1A] text-white hover:bg-rose-600 hover:text-white hover:rotate-90 hover:scale-110 active:scale-95 transition-all duration-300 shadow-sm border border-[#353B33] flex items-center justify-center shrink-0 cursor-pointer"
-                                title="Cerrar"
-                            >
-                                <X className="w-5 h-5" />
-                            </button>
-                        </div>
-                        <form onSubmit={handleEditSubmit} className="p-6 space-y-6">
-                            <div className="space-y-3">
-                                <label className="text-[11px] font-black text-[#2C2C2C]/60 dark:text-[#F4EFEA]/60 uppercase tracking-widest block text-center">
-                                    Cantidad actual en stock ({editingItem?.unit}):
-                                </label>
-                                <div className="flex justify-center">
-                                    <input
-                                        type="number"
-                                        step="0.01"
-                                        value={editQty}
-                                        onChange={(e) => setEditQty(e.target.value)}
-                                        className="w-40 bg-[#F9F6F0] dark:bg-[#1B1D1A] border border-[#E6DFD5] dark:border-[#353B33] rounded-2xl py-4 px-4 text-center text-3xl font-black text-[#2C2C2C] dark:text-[#F4EFEA] focus:outline-none focus:ring-2 focus:ring-[#7D9878]/30 focus:border-[#7D9878] transition-all"
+                                        className={`${CAMPO.replace("h-11", "h-14").replace("text-sm", "text-2xl")} font-semibold tabular-nums`}
                                         autoFocus
                                         onFocus={(e) => e.target.select()}
                                     />
-                                </div>
-                            </div>
-                            <button
-                                type="submit"
-                                className="w-full py-4 rounded-xl font-bold bg-[#7D9878] text-white hover:bg-[#6b8566] transition-colors shadow-lg shadow-[#7D9878]/20 flex items-center justify-center gap-2 font-brand"
-                            >
-                                Actualizar Stock
-                            </button>
+                                    <span className={`block ${AYUDA_CAMPO}`}>Avisa cuando el stock baja a esta cantidad o menos. Dejalo en 0 para no recibir avisos.</span>
+                                </label>
+                            </CuerpoVentana>
+                            <PieVentana>
+                                <button type="button" onClick={() => setIsAlertModalOpen(false)} className={BOTON_SECUNDARIO}>
+                                    Cancelar
+                                </button>
+                                <button type="submit" className={BOTON_PRINCIPAL}>
+                                    <Check className="w-4 h-4" strokeWidth={2.5} />
+                                    Guardar aviso
+                                </button>
+                            </PieVentana>
                         </form>
-                    </div>
+                    </PanelVentana>
+            )}
+            </Ventana>
+
+            <IngresarStock abierta={isAddModalOpen} onCerrar={() => setIsAddModalOpen(false)} />
+
+            {/* Ajustar stock (lápiz) */}
+            <Ventana abierta={isEditModalOpen} onCerrar={() => setIsEditModalOpen(false)} cerrarAlTocarFondo={false} etiqueta="Ajustar stock">
+            {isEditModalOpen && (
+                    <PanelVentana ancho="sm">
+                        <CabeceraVentana
+                            etiqueta="Ajustar stock"
+                            titulo={editingItem?.name}
+                            icono={Edit2}
+                            onCerrar={() => setIsEditModalOpen(false)}
+                        />
+                        <form onSubmit={handleEditSubmit} className="flex flex-col flex-1 min-h-0">
+                            <CuerpoVentana>
+                                <label className="block">
+                                    <span className={ETIQUETA_CAMPO}>Cantidad que hay ahora</span>
+                                    <span className="relative block">
+                                        <input
+                                            type="number"
+                                            step="0.01"
+                                            value={editQty}
+                                            onChange={(e) => setEditQty(e.target.value)}
+                                            className={`${CAMPO.replace("h-11", "h-14").replace("text-sm", "text-2xl")} pr-14 font-semibold tabular-nums`}
+                                            autoFocus
+                                            onFocus={(e) => e.target.select()}
+                                        />
+                                        <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-[#2C2C2C]/45 dark:text-[#F4EFEA]/45 pointer-events-none">
+                                            {editingItem?.unit}
+                                        </span>
+                                    </span>
+                                    <span className={`block ${AYUDA_CAMPO}`}>Reemplaza la cantidad anterior por esta.</span>
+                                </label>
+                            </CuerpoVentana>
+                            <PieVentana>
+                                <button type="button" onClick={() => setIsEditModalOpen(false)} className={BOTON_SECUNDARIO}>
+                                    Cancelar
+                                </button>
+                                <button type="submit" className={BOTON_PRINCIPAL}>
+                                    <Check className="w-4 h-4" strokeWidth={2.5} />
+                                    Guardar
+                                </button>
+                            </PieVentana>
+                        </form>
+                    </PanelVentana>
             )}
             </Ventana>
         </div>

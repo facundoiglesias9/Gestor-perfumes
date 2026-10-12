@@ -276,6 +276,8 @@ interface AppContextProps {
     updateInsumo: (insumo: Insumo) => Promise<void>;
     deleteInsumo: (id: string) => Promise<void>;
     addInventarioItem: (item: InventarioItem) => Promise<void>;
+    /** Suma stock de varios ítems a la vez. Con descontarLoUsado, los perfumes hechos restan su receta (esencia, alcohol, frasco…). */
+    ingresarStock: (lineas: LineaIngresoStock[], opciones?: { descontarLoUsado?: boolean }) => void;
     deleteInventarioItem: (id: string) => Promise<void>;
     updateInventarioItem: (id: string, qty: number) => Promise<void>;
     runScraper: () => Promise<void>;
@@ -354,6 +356,19 @@ function buscarIndiceStock<T extends { id: string; name: string }>(lista: T[], c
     const porId = lista.findIndex(x => x.id === comp.id);
     return porId !== -1 ? porId : lista.findIndex(x => mismoNombre(x.name, comp.name));
 }
+
+// Perfumes ya preparados: una fila de inventario por producto, con código fijo "PH-<código del producto>".
+export const idPerfumeHecho = (productoId: string) => `PH-${productoId}`;
+
+// Fila de perfumes hechos de un producto (las cargadas antes de usar el código se buscan por nombre, presentación y género).
+export function buscarPerfumeHecho(inventario: InventarioItem[], producto: { id: string; name: string; category: string; gender?: string }) {
+    return inventario.find(i => i.id === idPerfumeHecho(producto.id))
+        ?? inventario.find(i => i.type === "Perfume Hecho" && !i.id.startsWith("PH-")
+            && mismoNombre(i.name, producto.name) && mismoNombre(i.category, producto.category)
+            && (!i.gender || !producto.gender || mismoNombre(i.gender, producto.gender)));
+}
+
+export type LineaIngresoStock = { tipo: "Esencia" | "Insumo" | "Perfume Hecho"; id: string; cantidad: number };
 
 function getNextSequenceId(items: any[], prefix: string) {
     let max = 0;
@@ -1413,6 +1428,67 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         addSystemLog("info", `Ingreso de stock: ${item.name} (${item.qty} ${item.unit})`);
     };
 
+    const ingresarStock: AppContextProps["ingresarStock"] = (lineas, { descontarLoUsado = false } = {}) => {
+        const sumarPorId = (tipo: LineaIngresoStock["tipo"]) => {
+            const m = new Map<string, number>();
+            lineas.forEach(l => { if (l.tipo === tipo && l.cantidad > 0) m.set(l.id, (m.get(l.id) || 0) + l.cantidad); });
+            return m;
+        };
+        const masEsencias = sumarPorId("Esencia");
+        const masInsumos = sumarPorId("Insumo");
+        const masHechos = sumarPorId("Perfume Hecho");
+        if (masEsencias.size + masInsumos.size + masHechos.size === 0) return;
+        const hoy = new Date().toLocaleDateString("es-AR");
+
+        // 1. Esencias e insumos: se suma en su ficha, que es la que manda.
+        if (masEsencias.size > 0) _setEsencias(prev => prev.map(e => masEsencias.has(e.id) ? { ...e, qty: Number(e.qty || 0) + masEsencias.get(e.id)! } : e));
+        if (masInsumos.size > 0) _setInsumos(prev => prev.map(i => masInsumos.has(i.id) ? { ...i, stock: Number(i.stock || 0) + masInsumos.get(i.id)! } : i));
+
+        // 2. Lista de inventario: se actualiza la fila que ya existe o se crea una.
+        _setInventario(prev => {
+            const next = [...prev];
+            const nuevas: InventarioItem[] = [];
+            let siguiente = Number(getNextSequenceId(prev, "INV-").slice(4));
+            const nuevoId = () => `INV-${String(siguiente++).padStart(3, "0")}`;
+
+            masEsencias.forEach((cant, id) => {
+                const e = esencias.find(x => x.id === id);
+                if (!e) return;
+                const total = Number(e.qty || 0) + cant;
+                const idx = next.findIndex(i => i.type === "Esencia" && mismoNombre(i.name, e.name));
+                if (idx !== -1) next[idx] = { ...next[idx], qty: total, lastUpdate: hoy };
+                else nuevas.push({ id: nuevoId(), name: e.name, type: "Esencia", category: e.category, qty: total, lastUpdate: hoy, unit: "g", gender: e.gender });
+            });
+            masInsumos.forEach((cant, id) => {
+                const ins = insumos.find(x => x.id === id);
+                if (!ins) return;
+                const total = Number(ins.stock || 0) + cant;
+                const idx = next.findIndex(i => i.type === "Insumo" && mismoNombre(i.name, ins.name));
+                if (idx !== -1) next[idx] = { ...next[idx], qty: total, lastUpdate: hoy };
+                else nuevas.push({ id: nuevoId(), name: ins.name, type: "Insumo", category: ins.category, qty: total, lastUpdate: hoy, unit: ins.unit || "un." });
+            });
+            masHechos.forEach((cant, id) => {
+                const p = productos.find(x => x.id === id);
+                if (!p) return;
+                const fila = buscarPerfumeHecho(next, p);
+                const idx = fila ? next.indexOf(fila) : -1;
+                if (idx !== -1) next[idx] = { ...next[idx], qty: Number(next[idx].qty || 0) + cant, lastUpdate: hoy };
+                else nuevas.push({ id: idPerfumeHecho(p.id), name: p.name, type: "Perfume Hecho", category: p.category, qty: cant, lastUpdate: hoy, unit: "u.", gender: p.gender || undefined });
+            });
+            return [...nuevas, ...next];
+        });
+
+        // 3. Si los perfumes se prepararon con el stock propio, sale lo que usó cada receta.
+        if (descontarLoUsado && masHechos.size > 0) {
+            const preparados = [...masHechos]
+                .map(([id, cantidad]) => ({ producto: productos.find(p => p.id === id), cantidad }))
+                .filter((l): l is { producto: Producto; cantidad: number } => !!l.producto);
+            avisarMateriales(descontarMateriales(preparados));
+        }
+
+        addSystemLog("info", `Ingreso de stock: ${lineas.filter(l => l.cantidad > 0).length} ítems`, { lineas, descontarLoUsado });
+    };
+
     const updateInventarioItem = async (id: string, qty: number) => {
         let itemName = "";
         let itemType = "";
@@ -1564,6 +1640,85 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         }
     };
 
+    // Resta de esencias e insumos lo que usan las recetas: se junta todo y se resta una sola vez por ítem.
+    const descontarMateriales = (lineas: { producto: Producto; cantidad: number }[]) => {
+        const usoEsencias = new Map<string, number>();
+        const usoInsumos = new Map<string, number>();
+        const noEncontrados = new Set<string>();
+        for (const { producto, cantidad } of lineas) {
+            if (!(cantidad > 0)) continue;
+            for (const comp of producto.components || []) {
+                const esEsencia = comp.type === "Esencia";
+                const lista: { id: string; name: string }[] = esEsencia ? esencias : insumos;
+                const idx = buscarIndiceStock(lista, comp);
+                if (idx === -1) { noEncontrados.add(comp.name); continue; }
+                const uso = esEsencia ? usoEsencias : usoInsumos;
+                const idStock = lista[idx].id;
+                uso.set(idStock, (uso.get(idStock) || 0) + comp.qty * cantidad);
+            }
+        }
+        const sinStock: string[] = [];
+        usoEsencias.forEach((cant, id) => { const e = esencias.find(x => x.id === id); if (e && Number(e.qty || 0) < cant) sinStock.push(e.name); });
+        usoInsumos.forEach((cant, id) => { const i = insumos.find(x => x.id === id); if (i && Number(i.stock || 0) < cant) sinStock.push(i.name); });
+
+        if (usoEsencias.size > 0) {
+            _setEsencias(prev => prev.map(e => usoEsencias.has(e.id)
+                ? { ...e, qty: Math.max(0, Number(e.qty || 0) - usoEsencias.get(e.id)!) }
+                : e));
+        }
+        if (usoInsumos.size > 0) {
+            _setInsumos(prev => prev.map(i => usoInsumos.has(i.id)
+                ? { ...i, stock: Math.max(0, Number(i.stock || 0) - usoInsumos.get(i.id)!) }
+                : i));
+        }
+        return { noEncontrados: [...noEncontrados], sinStock };
+    };
+
+    const avisarMateriales = ({ noEncontrados, sinStock }: { noEncontrados: string[]; sinStock: string[] }) => {
+        if (noEncontrados.length > 0) {
+            toast.warning("No se descontó stock de algunos componentes", {
+                description: `No existen como esencia o insumo con ese nombre: ${noEncontrados.join(", ")}`,
+                duration: 12000,
+            });
+        }
+        if (sinStock.length > 0) {
+            toast.warning("Stock insuficiente", {
+                description: `Quedaron en 0: ${sinStock.join(", ")}`,
+                duration: 12000,
+            });
+        }
+    };
+
+    // Cuántas unidades de cada línea salen de perfumes ya hechos. Lo que no alcanza hay que prepararlo
+    // (y de eso sí se descuenta la receta: esencia, alcohol, frasco…).
+    const separarHechos = (lineas: { producto: Producto; quantity: number }[]) => {
+        const disponibles = new Map<string, number>();
+        const usoHechos = new Map<string, number>();
+        const aPreparar: { producto: Producto; cantidad: number }[] = [];
+        let totalHechos = 0;
+        for (const { producto, quantity } of lineas) {
+            const fila = buscarPerfumeHecho(inventario, producto);
+            let deHechos = 0;
+            if (fila) {
+                const hay = disponibles.get(fila.id) ?? Math.max(0, Number(fila.qty || 0));
+                deHechos = Math.min(hay, quantity);
+                disponibles.set(fila.id, hay - deHechos);
+                if (deHechos > 0) usoHechos.set(fila.id, (usoHechos.get(fila.id) || 0) + deHechos);
+            }
+            totalHechos += deHechos;
+            aPreparar.push({ producto, cantidad: quantity - deHechos });
+        }
+        return { usoHechos, aPreparar, totalHechos };
+    };
+
+    const descontarHechos = (usoHechos: Map<string, number>) => {
+        if (usoHechos.size === 0) return;
+        const hoy = new Date().toLocaleDateString("es-AR");
+        _setInventario(prev => prev.map(i => usoHechos.has(i.id)
+            ? { ...i, qty: Math.max(0, Number(i.qty || 0) - usoHechos.get(i.id)!), lastUpdate: hoy }
+            : i));
+    };
+
     // Venta hecha por el admin: queda terminada en el momento (entregada y pagada),
     // con el precio final de cada ítem (descuentos incluidos), descuento de stock e ingreso en Caja.
     const registrarVenta: AppContextProps["registrarVenta"] = async ({ items, customerName, paymentMethod = "efectivo" }) => {
@@ -1604,35 +1759,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         }
         setOrders(prev => [order, ...prev]);
 
-        // 2. Descontar stock: se junta lo que usa cada receta y se resta una sola vez por ítem.
-        const usoEsencias = new Map<string, number>();
-        const usoInsumos = new Map<string, number>();
-        const noEncontrados = new Set<string>();
-        for (const item of items) {
-            for (const comp of item.producto.components || []) {
-                const esEsencia = comp.type === "Esencia";
-                const lista: { id: string; name: string }[] = esEsencia ? esencias : insumos;
-                const idx = buscarIndiceStock(lista, comp);
-                if (idx === -1) { noEncontrados.add(comp.name); continue; }
-                const uso = esEsencia ? usoEsencias : usoInsumos;
-                const idStock = lista[idx].id;
-                uso.set(idStock, (uso.get(idStock) || 0) + comp.qty * item.quantity);
-            }
-        }
-        const sinStock: string[] = [];
-        usoEsencias.forEach((cant, id) => { const e = esencias.find(x => x.id === id); if (e && Number(e.qty || 0) < cant) sinStock.push(e.name); });
-        usoInsumos.forEach((cant, id) => { const i = insumos.find(x => x.id === id); if (i && Number(i.stock || 0) < cant) sinStock.push(i.name); });
-
-        if (usoEsencias.size > 0) {
-            _setEsencias(prev => prev.map(e => usoEsencias.has(e.id)
-                ? { ...e, qty: Math.max(0, Number(e.qty || 0) - usoEsencias.get(e.id)!) }
-                : e));
-        }
-        if (usoInsumos.size > 0) {
-            _setInsumos(prev => prev.map(i => usoInsumos.has(i.id)
-                ? { ...i, stock: Math.max(0, Number(i.stock || 0) - usoInsumos.get(i.id)!) }
-                : i));
-        }
+        // 2. Descontar stock: primero de los perfumes ya hechos; lo que falta se prepara y se descuenta su receta.
+        const { usoHechos, aPreparar, totalHechos } = separarHechos(items);
+        descontarHechos(usoHechos);
+        const materiales = descontarMateriales(aPreparar);
 
         // 3. Ingreso en Caja.
         const transaccion: Transaccion = {
@@ -1658,19 +1788,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         // 4. Sacar del carrito lo que se vendió.
         setCart(prev => prev.filter(c => !items.some(i => i.producto.id === c.producto.id && i.priceType === c.priceType)));
 
-        addSystemLog("info", `Venta ${orderId} registrada`, { total, items: items.length, cliente });
-        if (noEncontrados.size > 0) {
-            toast.warning("No se descontó stock de algunos componentes", {
-                description: `No existen como esencia o insumo con ese nombre: ${[...noEncontrados].join(", ")}`,
-                duration: 12000,
+        addSystemLog("info", `Venta ${orderId} registrada`, { total, items: items.length, cliente, deperfumesHechos: totalHechos });
+        if (totalHechos > 0) {
+            toast.info(totalHechos === 1 ? "1 perfume salió de los ya hechos" : `${totalHechos} perfumes salieron de los ya hechos`, {
+                description: "De esos no se descontó esencia, alcohol ni frasco.",
+                duration: 8000,
             });
         }
-        if (sinStock.length > 0) {
-            toast.warning("Stock insuficiente", {
-                description: `Quedaron en 0: ${sinStock.join(", ")}`,
-                duration: 12000,
-            });
-        }
+        avisarMateriales(materiales);
         return { ok: true, orderId, total };
     };
 
@@ -1680,11 +1805,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
         // Requirement 5: Check stock before ANY transition (except cancellation or revert to received)
         if (status !== "solicitud recibida" && status !== "cancelado" && order.status !== "entregado") {
+            // Lo que sale de perfumes ya hechos no necesita materiales.
             const requiredStock: Record<string, number> = {};
-            order.items.forEach(cartItem => {
-                cartItem.producto.components.forEach(comp => {
+            separarHechos(order.items).aPreparar.forEach(({ producto, cantidad }) => {
+                if (cantidad <= 0) return;
+                (producto.components || []).forEach(comp => {
                     const key = comp.name.toLowerCase();
-                    requiredStock[key] = (requiredStock[key] || 0) + (comp.qty * cartItem.quantity);
+                    requiredStock[key] = (requiredStock[key] || 0) + (comp.qty * cantidad);
                 });
             });
 
@@ -1707,52 +1834,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
         // Requirement 6: Deduct stock ONLY when moving to "entregado"
         if (order && status === "entregado" && order.status !== "entregado") {
-            // We use functional updates to ensure we are using the ABSOLUTE LATEST state
-            // to avoid race conditions and inadvertent state reverts.
-            
-            // 1. Update Esencias
-            _setEsencias(prev => {
-                const updated = [...prev];
-                order.items.forEach(cartItem => {
-                    cartItem.producto.components.forEach(comp => {
-                        if (comp.type === "Esencia") {
-                            const totalToDeduct = comp.qty * cartItem.quantity;
-                            const idx = buscarIndiceStock(updated, comp);
-                            if (idx !== -1) {
-                                updated[idx] = {
-                                    ...updated[idx],
-                                    qty: Math.max(0, Number(updated[idx].qty || 0) - totalToDeduct)
-                                };
-                            }
-                        }
-                    });
-                });
-                return updated;
-            });
+            // Primero de los perfumes ya hechos; lo que falta se descuenta de la receta.
+            const { usoHechos, aPreparar, totalHechos } = separarHechos(order.items);
+            descontarHechos(usoHechos);
+            descontarMateriales(aPreparar);
 
-            // 2. Update Insumos
-            _setInsumos(prev => {
-                const updated = [...prev];
-                order.items.forEach(cartItem => {
-                    cartItem.producto.components.forEach(comp => {
-                        if (comp.type === "Insumo") {
-                            const totalToDeduct = comp.qty * cartItem.quantity;
-                            const idx = buscarIndiceStock(updated, comp);
-                            if (idx !== -1) {
-                                updated[idx] = {
-                                    ...updated[idx],
-                                    stock: Math.max(0, Number(updated[idx].stock || 0) - totalToDeduct)
-                                };
-                            }
-                        }
-                    });
-                });
-                return updated;
-            });
-
-
-            
-            addSystemLog("info", `Stock descontado para pedido #${orderId}`, { items: order.items.length });
+            addSystemLog("info", `Stock descontado para pedido #${orderId}`, { items: order.items.length, deperfumesHechos: totalHechos });
         }
 
         setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status } : o));
@@ -2462,6 +2549,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         updateInsumo,
         deleteInsumo,
         addInventarioItem,
+        ingresarStock,
         deleteInventarioItem,
         updateInventarioItem,
         runScraper,

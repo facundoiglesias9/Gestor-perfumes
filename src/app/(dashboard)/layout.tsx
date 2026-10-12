@@ -67,7 +67,7 @@ function DashboardContent({ children }: { children: ReactNode }) {
                 {/* Background Grid Pattern */}
                 <div className="absolute inset-0 bg-[radial-gradient(#DAC4AA_1px,transparent_1px)] dark:bg-[radial-gradient(#353B33_1px,transparent_1px)] [background-size:24px_24px] opacity-40 dark:opacity-20 pointer-events-none print:hidden"></div>
 
-                <div className="p-6 md:p-10 max-w-[1800px] mx-auto relative z-10 w-full transition-all print:p-0 print:max-w-none print:m-0">
+                <div className="p-6 md:p-10 max-w-[1800px] mx-auto relative z-10 w-full transition print:p-0 print:max-w-none print:m-0">
                     {children}
                 </div>
             </main>

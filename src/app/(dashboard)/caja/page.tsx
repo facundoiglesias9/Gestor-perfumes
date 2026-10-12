@@ -1,6 +1,6 @@
 "use client";
 
-import { Wallet, TrendingUp, TrendingDown, ArrowDownLeft, ArrowUpRight, Plus, Trash2, X, Loader2 } from "lucide-react";
+import { Wallet, TrendingUp, TrendingDown, ArrowDownLeft, ArrowUpRight, Plus, Trash2, X, Loader2, Check } from "lucide-react";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { AnimatePresence, animate, motion, useReducedMotion } from "framer-motion";
 import { toast } from "sonner";
@@ -8,6 +8,7 @@ import { useAppContext, type Transaccion } from "@/context/AppContext";
 import { formatCurrency } from "@/lib/format-utils";
 import ConfirmModal from "@/components/ConfirmModal";
 import Ventana from "@/components/Ventana";
+import { PanelVentana, CabeceraVentana, PieVentana, ETIQUETA_CAMPO, CAMPO, BOTON_PRINCIPAL, BOTON_SECUNDARIO } from "@/components/ventana-partes";
 import { upsertRecord, deleteRecord } from "@/lib/db-actions";
 
 type Tipo = "Ingreso" | "Egreso";
@@ -191,7 +192,7 @@ export default function CajaPage() {
     const montoValido = parseFloat(formData.amount) > 0;
 
     return (
-        <div className="space-y-8 pb-12 animate-in fade-in duration-300 relative">
+        <div className="space-y-8 pb-12 anim-entrada relative">
             <header className="relative text-center p-8 md:p-10 bg-white dark:bg-[#242723] rounded-[2.5rem] border border-[#E6DFD5] dark:border-[#353B33] shadow-sm flex flex-col items-center justify-center">
                 <div className="space-y-3 flex flex-col items-center">
                     <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#7D9878]/10 text-[#7D9878] dark:text-[#A3B69B] text-xs font-bold tracking-widest uppercase mb-1 border border-[#7D9878]/20">
@@ -373,127 +374,129 @@ export default function CajaPage() {
 
             {/* Ventana para cargar un movimiento */}
             <Ventana abierta={isAddModalOpen} onCerrar={guardando ? undefined : cerrarModal} cerrarAlTocarFondo={!!guardado} etiqueta="Cargar movimiento">
-                <div className="bg-white dark:bg-[#242723] rounded-[2rem] shadow-2xl w-full max-w-md overflow-hidden border border-[#E6DFD5] dark:border-[#353B33]">
+                <PanelVentana ancho="sm">
                     <AnimatePresence mode="wait" initial={false}>
                         {guardado ? (
                             // Confirmación: tilde que se dibuja y el monto contando
                             <motion.div
                                 key="listo"
-                                className="px-8 pt-10 pb-8 flex flex-col items-center text-center"
+                                className="flex flex-col flex-1 min-h-0"
                                 initial={{ opacity: 0, scale: 0.97 }}
                                 animate={{ opacity: 1, scale: 1, transition: { duration: 0.25, ease: EASE_OUT } }}
                             >
-                                <TildeAnimado tipo={guardado.type} />
-                                <p className="mt-5 text-sm font-semibold text-[#2C2C2C]/60 dark:text-[#F4EFEA]/60">
-                                    {guardado.type === "Ingreso" ? "Ingreso guardado" : "Egreso guardado"}
-                                </p>
-                                <p className={`mt-1 text-4xl font-black tracking-tight ${TONO[guardado.type].texto}`}>
-                                    {guardado.type === "Ingreso" ? "+" : "−"}<NumeroAnimado valor={Number(guardado.amount)} desde={0} duracion={0.8} />
-                                </p>
-                                <p className="mt-2 text-sm text-[#2C2C2C]/70 dark:text-[#F4EFEA]/65 max-w-xs truncate">{guardado.description}</p>
-                                <button
-                                    onClick={cerrarModal}
-                                    className="mt-7 h-10 px-5 rounded-xl text-sm font-semibold text-[#2C2C2C]/70 dark:text-[#F4EFEA]/70 hover:bg-[#F4EFEA] dark:hover:bg-[#1B1D1A] active:scale-[0.97] transition-[background-color,transform] duration-150"
-                                >
-                                    Listo
-                                </button>
+                                <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar px-7 pt-10 pb-8 flex flex-col items-center text-center">
+                                    <TildeAnimado tipo={guardado.type} />
+                                    <p className="mt-5 text-sm font-semibold text-[#2C2C2C]/60 dark:text-[#F4EFEA]/60">
+                                        {guardado.type === "Ingreso" ? "Ingreso guardado" : "Egreso guardado"}
+                                    </p>
+                                    <p className={`mt-1 text-4xl font-bold tracking-tight tabular-nums ${TONO[guardado.type].texto}`}>
+                                        {guardado.type === "Ingreso" ? "+" : "−"}<NumeroAnimado valor={Number(guardado.amount)} desde={0} duracion={0.8} />
+                                    </p>
+                                    <p className="mt-2 text-sm text-[#2C2C2C]/70 dark:text-[#F4EFEA]/65 max-w-xs truncate">{guardado.description}</p>
+                                </div>
+                                <PieVentana className="justify-end">
+                                    <button type="button" autoFocus onClick={cerrarModal} className={BOTON_SECUNDARIO}>
+                                        Listo
+                                    </button>
+                                </PieVentana>
                             </motion.div>
                         ) : (
                             <motion.div
                                 key="formulario"
+                                className="flex flex-col flex-1 min-h-0"
                                 exit={{ opacity: 0, scale: 0.98, transition: { duration: 0.12 } }}
                             >
-                                <div className="px-6 sm:px-7 pt-6 pb-5 border-b border-[#E6DFD5] dark:border-[#353B33] flex justify-between items-start gap-4 bg-[#F9F6F0] dark:bg-[#1B1D1A]">
-                                    <div>
-                                        <h2 className="text-2xl font-extrabold text-[#2C2C2C] dark:text-[#F4EFEA] font-brand">Cargar Movimiento</h2>
-                                        <p className="text-sm text-[#2C2C2C]/60 dark:text-[#F4EFEA]/60 mt-1">Registrá un ingreso o un gasto que no sea una venta.</p>
-                                    </div>
-                                    <button
-                                        onClick={cerrarModal}
-                                        className="w-9 h-9 shrink-0 rounded-full flex items-center justify-center text-[#2C2C2C]/60 dark:text-[#F4EFEA]/60 hover:text-[#2C2C2C] dark:hover:text-[#F4EFEA] hover:bg-[#E6DFD5]/70 dark:hover:bg-[#353B33] active:scale-[0.94] transition-[background-color,color,transform] duration-150"
-                                        aria-label="Cerrar"
-                                    >
-                                        <X className="w-5 h-5" />
-                                    </button>
-                                </div>
+                                <CabeceraVentana
+                                    etiqueta="Caja"
+                                    titulo="Cargar movimiento"
+                                    descripcion="Un ingreso o un gasto que no sea una venta."
+                                    icono={Wallet}
+                                    onCerrar={cerrarModal}
+                                    cerrarDeshabilitado={guardando}
+                                />
 
-                                <form onSubmit={handleAddSubmit} className="p-6 sm:p-7 space-y-5">
-                                    {/* Tipo: la pastilla se desliza de Ingreso a Egreso */}
-                                    <div role="radiogroup" aria-label="Tipo de movimiento" className="grid grid-cols-2 gap-1 p-1 rounded-2xl bg-[#F4EFEA] dark:bg-[#1B1D1A] border border-[#E6DFD5] dark:border-[#353B33]">
-                                        {(["Ingreso", "Egreso"] as Tipo[]).map(t => {
-                                            const activo = formData.type === t;
-                                            const Icono = t === "Ingreso" ? ArrowDownLeft : ArrowUpRight;
-                                            return (
-                                                <button
-                                                    key={t}
-                                                    type="button"
-                                                    role="radio"
-                                                    aria-checked={activo}
-                                                    onClick={() => setFormData({ ...formData, type: t })}
-                                                    className={`relative h-11 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-colors duration-150 active:scale-[0.98] ${activo ? TONO[t].texto : "text-[#2C2C2C]/55 dark:text-[#F4EFEA]/50 hover:text-[#2C2C2C] dark:hover:text-[#F4EFEA]"}`}
-                                                >
-                                                    {activo && (
-                                                        <motion.span
-                                                            layoutId="caja-tipo"
-                                                            transition={{ type: "spring", bounce: 0.15, duration: 0.35 }}
-                                                            className={`absolute inset-0 rounded-xl shadow-sm ring-1 ${TONO[t].pastilla}`}
-                                                        />
-                                                    )}
-                                                    <span className="relative flex items-center gap-2">
-                                                        <Icono className="w-4 h-4" /> {t}
-                                                    </span>
-                                                </button>
-                                            );
-                                        })}
-                                    </div>
-
-                                    <div>
-                                        <label htmlFor="caja-monto" className="block text-xs font-bold text-[#2C2C2C]/70 dark:text-[#F4EFEA]/65 mb-1.5">Monto</label>
-                                        <div className="relative">
-                                            <span className={`absolute left-4 top-1/2 -translate-y-1/2 text-2xl font-black transition-colors duration-150 ${montoValido ? tono.texto : "text-[#2C2C2C]/30 dark:text-[#F4EFEA]/30"}`}>$</span>
-                                            <input
-                                                id="caja-monto"
-                                                required
-                                                type="number"
-                                                inputMode="decimal"
-                                                min="0"
-                                                step="any"
-                                                autoFocus
-                                                value={formData.amount}
-                                                onFocus={(e) => e.target.select()}
-                                                onChange={e => setFormData({ ...formData, amount: e.target.value })}
-                                                placeholder="0"
-                                                className="w-full h-16 bg-[#F9F6F0] dark:bg-[#1B1D1A] border border-[#E6DFD5] dark:border-[#353B33] rounded-2xl pl-11 pr-4 text-3xl font-black tracking-tight text-[#2C2C2C] dark:text-[#F4EFEA] placeholder:text-[#2C2C2C]/25 dark:placeholder:text-[#F4EFEA]/25 focus:outline-none focus:border-[#7D9878] focus:ring-2 focus:ring-[#7D9878]/20 transition-[border-color,box-shadow] duration-150"
-                                            />
+                                <form onSubmit={handleAddSubmit} className="flex flex-col flex-1 min-h-0">
+                                    <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar px-7 py-6 space-y-5">
+                                        {/* Tipo: la pastilla se desliza de Ingreso a Egreso */}
+                                        <div role="radiogroup" aria-label="Tipo de movimiento" className="grid grid-cols-2 gap-1 p-1 rounded-2xl bg-[#F4EFEA] dark:bg-[#1B1D1A]">
+                                            {(["Ingreso", "Egreso"] as Tipo[]).map(t => {
+                                                const activo = formData.type === t;
+                                                const Icono = t === "Ingreso" ? ArrowDownLeft : ArrowUpRight;
+                                                return (
+                                                    <button
+                                                        key={t}
+                                                        type="button"
+                                                        role="radio"
+                                                        aria-checked={activo}
+                                                        onClick={() => setFormData({ ...formData, type: t })}
+                                                        className={`relative h-10 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-colors duration-150 active:scale-[0.98] ${activo ? TONO[t].texto : "text-[#2C2C2C]/55 dark:text-[#F4EFEA]/50 hover:text-[#2C2C2C] dark:hover:text-[#F4EFEA]"}`}
+                                                    >
+                                                        {activo && (
+                                                            <motion.span
+                                                                layoutId="caja-tipo"
+                                                                transition={{ type: "spring", bounce: 0.15, duration: 0.35 }}
+                                                                className={`absolute inset-0 rounded-xl shadow-sm ring-1 ${TONO[t].pastilla}`}
+                                                            />
+                                                        )}
+                                                        <span className="relative flex items-center gap-2">
+                                                            <Icono className="w-4 h-4" /> {t}
+                                                        </span>
+                                                    </button>
+                                                );
+                                            })}
                                         </div>
+
+                                        <label className="block">
+                                            <span className={ETIQUETA_CAMPO}>Monto</span>
+                                            <span className="relative block">
+                                                <span className={`absolute left-4 top-1/2 -translate-y-1/2 text-2xl font-semibold transition-colors duration-150 pointer-events-none ${montoValido ? tono.texto : "text-[#2C2C2C]/30 dark:text-[#F4EFEA]/30"}`}>$</span>
+                                                <input
+                                                    required
+                                                    type="number"
+                                                    inputMode="decimal"
+                                                    min="0"
+                                                    step="any"
+                                                    autoFocus
+                                                    value={formData.amount}
+                                                    onFocus={(e) => e.target.select()}
+                                                    onChange={e => setFormData({ ...formData, amount: e.target.value })}
+                                                    placeholder="0"
+                                                    className={`${CAMPO.replace("h-11", "h-16").replace("text-sm", "text-3xl")} pl-11 font-semibold tracking-tight tabular-nums`}
+                                                />
+                                            </span>
+                                        </label>
+
+                                        <label className="block">
+                                            <span className={ETIQUETA_CAMPO}>Descripción</span>
+                                            <input
+                                                required
+                                                type="text"
+                                                value={formData.description}
+                                                onChange={e => setFormData({ ...formData, description: e.target.value })}
+                                                placeholder={formData.type === "Ingreso" ? "Ej: Venta en la feria" : "Ej: Compra de frascos"}
+                                                className={CAMPO}
+                                            />
+                                        </label>
                                     </div>
 
-                                    <div>
-                                        <label htmlFor="caja-descripcion" className="block text-xs font-bold text-[#2C2C2C]/70 dark:text-[#F4EFEA]/65 mb-1.5">Descripción</label>
-                                        <input
-                                            id="caja-descripcion"
-                                            required
-                                            type="text"
-                                            value={formData.description}
-                                            onChange={e => setFormData({ ...formData, description: e.target.value })}
-                                            placeholder={formData.type === "Ingreso" ? "Ej: Venta en la feria" : "Ej: Compra de frascos"}
-                                            className="w-full h-12 bg-[#F9F6F0] dark:bg-[#1B1D1A] border border-[#E6DFD5] dark:border-[#353B33] rounded-2xl px-4 text-[#2C2C2C] dark:text-[#F4EFEA] placeholder:text-[#2C2C2C]/40 dark:placeholder:text-[#F4EFEA]/35 focus:outline-none focus:border-[#7D9878] focus:ring-2 focus:ring-[#7D9878]/20 transition-[border-color,box-shadow] duration-150 font-semibold"
-                                        />
-                                    </div>
-
-                                    <button
-                                        type="submit"
-                                        disabled={!montoValido || !formData.description.trim() || guardando}
-                                        className={`w-full h-14 rounded-2xl text-white font-extrabold text-base flex items-center justify-center gap-2 shadow-lg active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none transition-[background-color,transform,opacity] duration-150 ${tono.boton}`}
-                                    >
-                                        {guardando ? <Loader2 className="w-5 h-5 animate-spin" /> : <Wallet className="w-5 h-5" />}
-                                        {guardando ? "Guardando…" : formData.type === "Ingreso" ? "Guardar ingreso" : "Guardar egreso"}
-                                    </button>
+                                    <PieVentana>
+                                        <button type="button" onClick={cerrarModal} disabled={guardando} className={BOTON_SECUNDARIO}>
+                                            Cancelar
+                                        </button>
+                                        <button
+                                            type="submit"
+                                            disabled={!montoValido || !formData.description.trim() || guardando}
+                                            className={`${BOTON_PRINCIPAL.replace("bg-[#7D9878] ", "").replace("shadow-[#7D9878]/25 hover:bg-[#6B8566] ", "")} ${tono.boton}`}
+                                        >
+                                            {guardando ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" strokeWidth={2.5} />}
+                                            {guardando ? "Guardando…" : formData.type === "Ingreso" ? "Guardar ingreso" : "Guardar egreso"}
+                                        </button>
+                                    </PieVentana>
                                 </form>
                             </motion.div>
                         )}
                     </AnimatePresence>
-                </div>
+                </PanelVentana>
             </Ventana>
         </div>
     );

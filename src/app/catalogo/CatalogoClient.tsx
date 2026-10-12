@@ -2,8 +2,9 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, MotionConfig, motion } from "framer-motion";
-import { Search, Plus, Minus, ShoppingBag, X, MessageCircle, Clock, Trash2, Check, ChevronLeft, ChevronRight, Car, Wind, SprayCan, Sparkles } from "lucide-react";
+import { Search, Plus, Minus, ShoppingBag, X, MessageCircle, Clock, Trash2, Check, ChevronLeft, ChevronRight, ChevronDown, ArrowUpDown, LayoutGrid, Car, Wind, SprayCan, Sparkles } from "lucide-react";
 import { formatNumber } from "@/lib/format-utils";
+import Desplegable from "@/components/Desplegable";
 import { extractBrand } from "@/lib/product-utils";
 
 export type CatalogoProducto = {
@@ -25,6 +26,31 @@ const PAGE_SIZE = 12; // múltiplo de 2 y de 3: las filas quedan completas en ce
 // "Frascos de 50 ML" -> "50 ML", "Frascos Difusores" -> "Difusores": más corto para los botones de filtro.
 const etiquetaCategoria = (c: string) => c.replace(/^frascos\s+(de\s+)?/i, "");
 
+// Tipo de producto según su categoría: los frascos de 30/50 ML son perfumes
+type Tipo = "todo" | "perfumes" | "difusores" | "auto";
+const tipoDe = (p: { category: string }): Exclude<Tipo, "todo"> => {
+    const c = (p.category || "").toLowerCase();
+    if (c.includes("difusor")) return "difusores";
+    if (c.includes("auto")) return "auto";
+    return "perfumes";
+};
+const TIPOS: { id: Tipo; titulo: string; Icono: typeof SprayCan }[] = [
+    { id: "todo", titulo: "Todo", Icono: LayoutGrid },
+    { id: "perfumes", titulo: "Perfumes", Icono: SprayCan },
+    { id: "difusores", titulo: "Difusores", Icono: Wind },
+    { id: "auto", titulo: "Auto", Icono: Car },
+];
+const ORDEN_GENEROS = ["Femenino", "Masculino", "Unisex"];
+
+type Orden = "recomendados" | "precio-asc" | "precio-desc" | "nombre";
+const ORDENES: { id: Orden; titulo: string }[] = [
+    { id: "recomendados", titulo: "Recomendados" },
+    { id: "precio-asc", titulo: "Precio: menor a mayor" },
+    { id: "precio-desc", titulo: "Precio: mayor a menor" },
+    { id: "nombre", titulo: "Nombre: A a Z" },
+];
+const PESO_DISPONIBILIDAD: Record<CatalogoProducto["availability"], number> = { disponible: 0, demora: 1, "sin-stock": 2 };
+
 // Números de página a mostrar: siempre la primera y la última, y dos a cada lado de la actual.
 function paginasVisibles(actual: number, total: number): (number | "…")[] {
     const out: (number | "…")[] = [];
@@ -41,8 +67,11 @@ const whatsappUrl = (text: string) => `https://wa.me/${WHATSAPP_NUMBER}?text=${e
 
 export default function CatalogoClient({ productos }: { productos: CatalogoProducto[] | null }) {
     const [search, setSearch] = useState("");
-    const [gender, setGender] = useState("Todos");
-    const [category, setCategory] = useState("Todas");
+    // Primero el tipo de producto; género y tamaño solo existen para los perfumes
+    const [tipo, setTipo] = useState<Tipo>("todo");
+    const [genero, setGenero] = useState("Todos");
+    const [tamano, setTamano] = useState("Todos");
+    const [orden, setOrden] = useState<Orden>("recomendados");
     const [page, setPage] = useState(1);
     const gridRef = useRef<HTMLDivElement>(null);
     const [consulta, setConsulta] = useState<Consulta>({});
@@ -76,48 +105,71 @@ export default function CatalogoClient({ productos }: { productos: CatalogoProdu
     const lista = productos ?? [];
     const byId = useMemo(() => new Map(lista.map(p => [p.id, p])), [lista]);
 
-    const genders = useMemo(() => {
-        const set = new Set(lista.map(p => p.gender).filter(Boolean));
-        return ["Todos", ...Array.from(set).sort()];
-    }, [lista]);
-
-    const categories = useMemo(() => {
-        const set = new Set(lista.map(p => p.category).filter(Boolean));
-        // Ordenadas por la etiqueta que se ve: 30 ML, 50 ML, Auto, Difusores.
-        return ["Todas", ...Array.from(set).sort((a, b) =>
-            etiquetaCategoria(a).localeCompare(etiquetaCategoria(b), "es", { numeric: true }))];
-    }, [lista]);
-
     const q = search.trim().toLowerCase();
     const coincideBusqueda = (p: CatalogoProducto) =>
         !q || p.name.toLowerCase().includes(q) || p.description.toLowerCase().includes(q);
+    const esPerfumes = tipo === "perfumes";
+    const pasaGenero = (p: CatalogoProducto) => !esPerfumes || genero === "Todos" || p.gender === genero;
+    const pasaTamano = (p: CatalogoProducto) => !esPerfumes || tamano === "Todos" || p.category === tamano;
 
-    const filtered = useMemo(() => lista.filter(p =>
-        (gender === "Todos" || p.gender === gender) &&
-        (category === "Todas" || p.category === category) &&
-        coincideBusqueda(p)
-    ), [lista, q, gender, category]); // eslint-disable-line react-hooks/exhaustive-deps
+    // Opciones de los perfumes: géneros (sin "Ambiente") y tamaños (30 ml, 50 ml…)
+    const perfumes = useMemo(() => lista.filter(p => tipoDe(p) === "perfumes"), [lista]);
+    const generos = useMemo(() => {
+        const set = new Set(perfumes.map(p => p.gender).filter(g => g && g.toLowerCase() !== "ambiente"));
+        return Array.from(set).sort((a, b) => ORDEN_GENEROS.indexOf(a) - ORDEN_GENEROS.indexOf(b) || a.localeCompare(b, "es"));
+    }, [perfumes]);
+    const tamanos = useMemo(() => {
+        const set = new Set(perfumes.map(p => p.category).filter(Boolean));
+        return Array.from(set).sort((a, b) => etiquetaCategoria(a).localeCompare(etiquetaCategoria(b), "es", { numeric: true }));
+    }, [perfumes]);
 
-    // Cantidad de productos que quedarían al tocar cada botón (respetando el otro filtro y la búsqueda).
+    const filtered = useMemo(() => {
+        const r = lista.filter(p =>
+            (tipo === "todo" || tipoDe(p) === tipo) && pasaGenero(p) && pasaTamano(p) && coincideBusqueda(p)
+        );
+        if (orden === "precio-asc") return [...r].sort((a, b) => a.price - b.price);
+        if (orden === "precio-desc") return [...r].sort((a, b) => b.price - a.price);
+        if (orden === "nombre") return [...r].sort((a, b) => a.name.localeCompare(b.name, "es"));
+        // Recomendados: primero lo que se puede pedir ya, al final lo que no tiene stock
+        return [...r].sort((a, b) => PESO_DISPONIBILIDAD[a.availability] - PESO_DISPONIBILIDAD[b.availability]);
+    }, [lista, q, tipo, genero, tamano, orden]);
+
+    // Cantidad que quedaría al tocar cada opción (respetando la búsqueda y los otros filtros)
+    const cuentaTipo = useMemo(() => {
+        const c: Record<Tipo, number> = { todo: 0, perfumes: 0, difusores: 0, auto: 0 };
+        for (const p of lista) {
+            if (!coincideBusqueda(p)) continue;
+            c.todo++;
+            c[tipoDe(p)]++;
+        }
+        return c;
+    }, [lista, q]);
+
     const cuentaGenero = useMemo(() => {
-        const base = lista.filter(p => (category === "Todas" || p.category === category) && coincideBusqueda(p));
+        const base = perfumes.filter(p => pasaTamano(p) && coincideBusqueda(p));
         const c: Record<string, number> = { Todos: base.length };
         for (const p of base) c[p.gender] = (c[p.gender] ?? 0) + 1;
         return c;
-    }, [lista, q, category]); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [perfumes, q, tamano, tipo]);
 
-    const cuentaCategoria = useMemo(() => {
-        const base = lista.filter(p => (gender === "Todos" || p.gender === gender) && coincideBusqueda(p));
-        const c: Record<string, number> = { Todas: base.length };
+    const cuentaTamano = useMemo(() => {
+        const base = perfumes.filter(p => pasaGenero(p) && coincideBusqueda(p));
+        const c: Record<string, number> = { Todos: base.length };
         for (const p of base) c[p.category] = (c[p.category] ?? 0) + 1;
         return c;
-    }, [lista, q, gender]); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [perfumes, q, genero, tipo]);
 
     const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
     const pageItems = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
-    const hayFiltros = gender !== "Todos" || category !== "Todas" || q !== "";
+    const hayFiltros = tipo !== "todo" || q !== "" || orden !== "recomendados";
 
-    useEffect(() => { setPage(1); }, [search, gender, category]);
+    useEffect(() => { setPage(1); }, [search, tipo, genero, tamano, orden]);
+
+    const elegirTipo = (t: Tipo) => {
+        setTipo(t);
+        setGenero("Todos");
+        setTamano("Todos");
+    };
 
     const irAPagina = (n: number) => {
         setPage(Math.min(Math.max(1, n), totalPages));
@@ -126,8 +178,8 @@ export default function CatalogoClient({ productos }: { productos: CatalogoProdu
 
     const limpiarFiltros = () => {
         setSearch("");
-        setGender("Todos");
-        setCategory("Todas");
+        elegirTipo("todo");
+        setOrden("recomendados");
     };
 
     // Solo cuenta productos que siguen en el catálogo (por si alguno se dio de baja).
@@ -219,55 +271,106 @@ export default function CatalogoClient({ productos }: { productos: CatalogoProdu
                     />
                 ) : (
                     <>
-                        {/* Filtros */}
-                        <section className="mb-6 rounded-3xl border border-[#E6DFD5] dark:border-[#353B33] bg-white dark:bg-[#242723] p-4 sm:p-5 space-y-4">
-                            <div className="relative">
-                                <Search className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-[#2C2C2C]/40 dark:text-[#F4EFEA]/40" />
-                                <input
-                                    type="search"
-                                    value={search}
-                                    onChange={e => setSearch(e.target.value)}
-                                    placeholder="Buscar perfume, aroma o marca..."
-                                    className="w-full rounded-2xl border border-[#E6DFD5] dark:border-[#353B33] bg-[#F9F6F0] dark:bg-[#1B1D1A] pl-11 pr-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#7D9878]/40"
-                                />
+                        {/* Filtros: buscar y ordenar, el tipo de producto y (solo en perfumes) género y tamaño */}
+                        <section className="mb-6 rounded-3xl border border-[#E6DFD5] dark:border-[#353B33] bg-white dark:bg-[#242723] shadow-sm">
+                            <div className="p-4 sm:p-5 space-y-4">
+                                <div className="flex flex-col sm:flex-row gap-2.5">
+                                    <div className="relative flex-1">
+                                        <Search className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-[#2C2C2C]/40 dark:text-[#F4EFEA]/40 pointer-events-none" />
+                                        <input
+                                            type="search"
+                                            value={search}
+                                            onChange={e => setSearch(e.target.value)}
+                                            placeholder="Buscar perfume, aroma o marca…"
+                                            aria-label="Buscar"
+                                            className="w-full h-11 rounded-xl border border-[#E6DFD5] dark:border-[#353B33] bg-[#F9F6F0] dark:bg-[#1B1D1A] pl-11 pr-4 text-sm placeholder:text-[#2C2C2C]/40 dark:placeholder:text-[#F4EFEA]/35 outline-none focus:border-[#7D9878]/70 focus:ring-2 focus:ring-[#7D9878]/20 transition-[border-color,box-shadow] duration-150"
+                                        />
+                                    </div>
+                                    <Desplegable
+                                        valor={orden}
+                                        opciones={ORDENES.map(o => ({ valor: o.id, titulo: o.titulo }))}
+                                        onCambiar={setOrden}
+                                        etiqueta="Ordenar por"
+                                        icono={<ArrowUpDown className="w-4 h-4" />}
+                                        className="sm:w-60 shrink-0"
+                                    />
+                                </div>
+
+                                {/* Tipo de producto: la pastilla se desliza a la opción elegida */}
+                                <div role="tablist" aria-label="Tipo de producto" className="grid grid-cols-2 sm:grid-cols-4 gap-1 p-1 rounded-2xl bg-[#F4EFEA] dark:bg-[#1B1D1A]">
+                                    {TIPOS.map(({ id, titulo, Icono }) => {
+                                        const activo = tipo === id;
+                                        const cantidad = cuentaTipo[id];
+                                        return (
+                                            <button
+                                                key={id}
+                                                type="button"
+                                                role="tab"
+                                                aria-selected={activo}
+                                                disabled={!activo && cantidad === 0}
+                                                onClick={() => elegirTipo(id)}
+                                                className={`relative h-11 rounded-xl text-sm font-semibold transition-colors duration-150 active:scale-[0.98] disabled:opacity-40 disabled:pointer-events-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7D9878]/50 ${activo
+                                                    ? "text-[#2C2C2C] dark:text-[#F4EFEA]"
+                                                    : "text-[#2C2C2C]/60 dark:text-[#F4EFEA]/55 hover:text-[#2C2C2C] dark:hover:text-[#F4EFEA]"}`}
+                                            >
+                                                {activo && (
+                                                    <motion.span
+                                                        layoutId="catalogo-tipo"
+                                                        transition={{ type: "spring", bounce: 0.15, duration: 0.35 }}
+                                                        className="absolute inset-0 rounded-xl bg-white dark:bg-[#353B33] shadow-sm ring-1 ring-[#E6DFD5]/80 dark:ring-white/[0.04]"
+                                                    />
+                                                )}
+                                                <span className="relative flex items-center justify-center gap-2">
+                                                    <Icono className={`w-4 h-4 ${activo ? "text-[#7D9878] dark:text-[#A3B69B]" : ""}`} />
+                                                    {titulo}
+                                                    <span className="text-xs font-medium tabular-nums text-[#2C2C2C]/45 dark:text-[#F4EFEA]/40">{cantidad}</span>
+                                                </span>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+
+                                {/* Solo para perfumes: género y tamaño */}
+                                <AnimatePresence initial={false}>
+                                    {esPerfumes && (
+                                        <motion.div
+                                            key="filtros-perfumes"
+                                            initial={{ height: 0, opacity: 0 }}
+                                            animate={{ height: "auto", opacity: 1, transition: { duration: 0.24, ease: [0.23, 1, 0.32, 1] } }}
+                                            exit={{ height: 0, opacity: 0, transition: { duration: 0.16, ease: "easeOut" } }}
+                                            className="overflow-hidden"
+                                        >
+                                            <div className="flex flex-col lg:flex-row lg:items-center gap-3 lg:gap-8 pt-1">
+                                                <GrupoOpciones titulo="Género">
+                                                    {["Todos", ...generos].map(g => (
+                                                        <Opcion key={g} activa={genero === g} cantidad={cuentaGenero[g] ?? 0} onClick={() => setGenero(g)}>
+                                                            {g}
+                                                        </Opcion>
+                                                    ))}
+                                                </GrupoOpciones>
+                                                <span aria-hidden className="hidden lg:block w-px h-7 bg-[#E6DFD5] dark:bg-[#353B33]" />
+                                                <GrupoOpciones titulo="Tamaño">
+                                                    {["Todos", ...tamanos].map(t => (
+                                                        <Opcion key={t} activa={tamano === t} cantidad={cuentaTamano[t] ?? 0} onClick={() => setTamano(t)}>
+                                                            {t === "Todos" ? "Todos" : etiquetaCategoria(t).toLowerCase().replace(/\s*ml$/, " ml")}
+                                                        </Opcion>
+                                                    ))}
+                                                </GrupoOpciones>
+                                            </div>
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
                             </div>
 
-                            <FilaFiltro titulo="Género">
-                                {genders.map(g => (
-                                    <ChipFiltro
-                                        key={g}
-                                        activo={gender === g}
-                                        cantidad={cuentaGenero[g] ?? 0}
-                                        onClick={() => setGender(g)}
-                                    >
-                                        {g}
-                                    </ChipFiltro>
-                                ))}
-                            </FilaFiltro>
-
-                            {categories.length > 2 && (
-                                <FilaFiltro titulo="Categoría">
-                                    {categories.map(c => (
-                                        <ChipFiltro
-                                            key={c}
-                                            activo={category === c}
-                                            cantidad={cuentaCategoria[c] ?? 0}
-                                            onClick={() => setCategory(c)}
-                                        >
-                                            {c === "Todas" ? "Todas" : etiquetaCategoria(c)}
-                                        </ChipFiltro>
-                                    ))}
-                                </FilaFiltro>
-                            )}
-
-                            <div className="flex items-center justify-between gap-3 pt-3 border-t border-[#E6DFD5] dark:border-[#353B33] text-xs">
-                                <p className="text-[#2C2C2C]/60 dark:text-[#F4EFEA]/60">
+                            <div className="flex items-center justify-between gap-3 px-4 sm:px-5 py-3 border-t border-[#E6DFD5] dark:border-[#353B33] text-sm">
+                                <p className="text-[#2C2C2C]/60 dark:text-[#F4EFEA]/55">
                                     {filtered.length === 0
                                         ? "Sin resultados"
-                                        : `Mostrando ${(page - 1) * PAGE_SIZE + 1}–${Math.min(page * PAGE_SIZE, filtered.length)} de ${filtered.length} productos`}
+                                        : <>Mostrando <span className="font-semibold text-[#2C2C2C] dark:text-[#F4EFEA] tabular-nums">{(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, filtered.length)}</span> de <span className="tabular-nums">{filtered.length}</span> productos</>}
                                 </p>
                                 {hayFiltros && (
-                                    <button onClick={limpiarFiltros} className="font-bold text-[#7D9878] dark:text-[#A3B69B] hover:underline">
+                                    <button onClick={limpiarFiltros} className="shrink-0 whitespace-nowrap inline-flex items-center gap-1.5 h-8 px-2.5 -mr-2.5 rounded-lg text-sm font-semibold text-[#5A7356] dark:text-[#A3B69B] hover:bg-[#7D9878]/10 transition-colors duration-150">
+                                        <X className="w-3.5 h-3.5" />
                                         Limpiar filtros
                                     </button>
                                 )}
@@ -444,34 +547,30 @@ export default function CatalogoClient({ productos }: { productos: CatalogoProdu
     );
 }
 
-function FilaFiltro({ titulo, children }: { titulo: string; children: React.ReactNode }) {
+function GrupoOpciones({ titulo, children }: { titulo: string; children: React.ReactNode }) {
     return (
-        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
-            <span className="sm:w-24 shrink-0 text-[10px] font-black uppercase tracking-widest text-[#2C2C2C]/50 dark:text-[#F4EFEA]/50">
-                {titulo}
-            </span>
-            <div className="flex flex-wrap gap-2">{children}</div>
+        <div role="group" aria-label={titulo} className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+            <span className="shrink-0 text-xs font-semibold text-[#2C2C2C]/55 dark:text-[#F4EFEA]/50">{titulo}</span>
+            <div className="flex flex-wrap gap-1.5">{children}</div>
         </div>
     );
 }
 
-function ChipFiltro({ activo, cantidad, onClick, children }: { activo: boolean; cantidad: number; onClick: () => void; children: React.ReactNode }) {
+// Opción de filtro: tranquila cuando no está elegida, verde suave cuando sí
+function Opcion({ activa, cantidad, onClick, children }: { activa: boolean; cantidad: number; onClick: () => void; children: React.ReactNode }) {
     return (
         <button
+            type="button"
             onClick={onClick}
-            disabled={!activo && cantidad === 0}
-            aria-pressed={activo}
-            className={`inline-flex items-center gap-1.5 rounded-full pl-3 pr-2 py-1.5 text-xs font-bold border transition-all disabled:opacity-35 disabled:cursor-not-allowed ${activo
-                ? "bg-[#7D9878] border-[#7D9878] text-white shadow-sm shadow-[#7D9878]/30"
-                : "bg-[#F9F6F0] dark:bg-[#1B1D1A] border-[#E6DFD5] dark:border-[#353B33] hover:border-[#7D9878] hover:text-[#7D9878] dark:hover:text-[#A3B69B]"}`}
+            disabled={!activa && cantidad === 0}
+            aria-pressed={activa}
+            className={`inline-flex items-center gap-1.5 h-9 px-3 rounded-full border text-sm font-medium active:scale-[0.97] disabled:opacity-35 disabled:cursor-not-allowed transition-[background-color,border-color,color,transform] duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7D9878]/50 ${activa
+                ? "border-[#7D9878] bg-[#7D9878]/[0.1] dark:bg-[#7D9878]/[0.16] text-[#3F5A3C] dark:text-[#C5D6BF]"
+                : "border-[#E6DFD5] dark:border-[#353B33] text-[#2C2C2C]/70 dark:text-[#F4EFEA]/65 hover:border-[#7D9878]/50 hover:text-[#2C2C2C] dark:hover:text-[#F4EFEA]"}`}
         >
-            {activo && <Check className="w-3.5 h-3.5 -ml-0.5" />}
+            {activa && <Check className="w-3.5 h-3.5 -ml-0.5" strokeWidth={2.5} />}
             {children}
-            <span className={`min-w-5 px-1.5 rounded-full text-[10px] font-black text-center ${activo
-                ? "bg-white/25 text-white"
-                : "bg-[#E6DFD5] dark:bg-[#353B33] text-[#2C2C2C]/60 dark:text-[#F4EFEA]/60"}`}>
-                {cantidad}
-            </span>
+            <span className={`text-xs tabular-nums ${activa ? "text-[#3F5A3C]/70 dark:text-[#C5D6BF]/70" : "text-[#2C2C2C]/40 dark:text-[#F4EFEA]/35"}`}>{cantidad}</span>
         </button>
     );
 }
@@ -502,9 +601,11 @@ function TarjetaProducto({ producto, qty, onQty }: { producto: CatalogoProducto;
     const { formato, Icono, fondo, acento } = estiloProducto(producto);
     const enPedido = qty > 0;
     const sinStock = producto.availability === "sin-stock";
+    // Tamaño del frasco (30 / 50 ml) bien visible: es lo primero que se compara entre dos perfumes
+    const ml = formato.match(/(\d+)\s*ml/i)?.[1];
 
     return (
-        <article className={`group relative flex flex-col overflow-hidden rounded-3xl border bg-white dark:bg-[#242723] transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-[#2C2C2C]/5 dark:hover:shadow-black/30 ${enPedido
+        <article className={`group relative flex flex-col overflow-hidden rounded-3xl border bg-white dark:bg-[#242723] transition duration-200 hover:-translate-y-1 hover:shadow-xl hover:shadow-[#2C2C2C]/5 dark:hover:shadow-black/30 ${enPedido
             ? "border-[#7D9878] ring-1 ring-[#7D9878]/40"
             : "border-[#E6DFD5] dark:border-[#353B33] hover:border-[#A3B69B]/60"}`}
         >
@@ -522,9 +623,16 @@ function TarjetaProducto({ producto, qty, onQty }: { producto: CatalogoProducto;
                 ) : (
                     <Icono className={`w-10 h-10 ${acento} opacity-70 transition-transform duration-300 group-hover:scale-110`} strokeWidth={1.4} />
                 )}
-                <span className="absolute top-3 left-3 rounded-full bg-white/80 dark:bg-[#1B1D1A]/70 backdrop-blur px-2.5 py-1 text-[10px] font-black uppercase tracking-widest">
-                    {formato}
-                </span>
+                {ml ? (
+                    <span className="absolute top-3 left-3 inline-flex items-baseline gap-0.5 rounded-xl bg-[#2C2C2C] dark:bg-[#F4EFEA] text-white dark:text-[#1B1D1A] px-3 py-1.5 shadow-md shadow-black/15">
+                        <span className="text-lg font-black leading-none tabular-nums">{ml}</span>
+                        <span className="text-[11px] font-bold leading-none">ml</span>
+                    </span>
+                ) : (
+                    <span className="absolute top-3 left-3 rounded-xl bg-[#2C2C2C] dark:bg-[#F4EFEA] text-white dark:text-[#1B1D1A] px-3 py-1.5 text-xs font-bold shadow-md shadow-black/15">
+                        {formato}
+                    </span>
+                )}
                 {producto.gender && (
                     <span className={`absolute top-3 right-3 rounded-full bg-white/80 dark:bg-[#1B1D1A]/70 backdrop-blur px-2.5 py-1 text-[10px] font-black uppercase tracking-widest ${acento}`}>
                         {producto.gender}
@@ -560,7 +668,10 @@ function TarjetaProducto({ producto, qty, onQty }: { producto: CatalogoProducto;
                 <div className="mt-auto pt-4 flex items-end justify-between gap-3">
                     <div>
                         <p className="text-[10px] font-bold uppercase tracking-widest text-[#2C2C2C]/40 dark:text-[#F4EFEA]/40">Precio</p>
-                        <p className="text-xl font-black tracking-tight">${formatNumber(producto.price)}</p>
+                        <p className="text-xl font-black tracking-tight">
+                            ${formatNumber(producto.price)}
+                            {ml && <span className="ml-1 text-sm font-semibold tracking-normal text-[#2C2C2C]/50 dark:text-[#F4EFEA]/50">/ {ml} ml</span>}
+                        </p>
                     </div>
                     {sinStock && !enPedido ? (
                         <span className="rounded-full border border-[#E6DFD5] dark:border-[#353B33] px-4 py-2.5 text-sm font-bold text-[#2C2C2C]/45 dark:text-[#F4EFEA]/45">

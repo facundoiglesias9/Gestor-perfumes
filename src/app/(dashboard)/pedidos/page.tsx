@@ -4,6 +4,8 @@ import { ShoppingCart, Plus, CheckCircle2, Package, Search, X, FlaskConical, Fil
 import { useState, useMemo } from "react";
 import { useAppContext } from "@/context/AppContext";
 import Ventana from "@/components/Ventana";
+import { PanelVentana, CabeceraVentana, CAMPO } from "@/components/ventana-partes";
+import { Selector } from "@/components/Desplegable";
 
 export default function PedidosPage() {
     const { esencias, insumos, inventario, setInventario, transacciones, setTransacciones, getNextId, categorias, proveedores, generos } = useAppContext();
@@ -167,7 +169,7 @@ export default function PedidosPage() {
     const cartTotal = cart.reduce((acc, item) => acc + (item.bultosToBuy * item.bultoCost), 0);
 
     return (
-        <div className="space-y-8 pb-12 animate-in fade-in duration-700 relative">
+        <div className="space-y-8 pb-12 anim-entrada relative">
             <header className="flex flex-col md:flex-row md:justify-between md:items-end gap-6 bg-white dark:bg-[#242723] p-8 md:p-10 rounded-[2.5rem] shadow-sm border border-[#E6DFD5] dark:border-[#353B33] transition-colors duration-300">
                 <div className="space-y-3">
                     <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#7D9878]/10 text-[#7D9878] dark:text-[#A3B69B] text-xs font-bold tracking-widest uppercase mb-1">
@@ -197,7 +199,7 @@ export default function PedidosPage() {
                             <div className="grid grid-cols-2 gap-3">
                                 <button
                                     onClick={() => setFormData({ ...formData, type: "Esencia", item_id: "" })}
-                                    className={`py-3 rounded-2xl font-bold transition-all border ${formData.type === "Esencia"
+                                    className={`py-3 rounded-2xl font-bold transition border ${formData.type === "Esencia"
                                         ? "bg-[#7D9878]/10 text-[#7D9878] dark:text-[#A3B69B] border-[#7D9878]/30 font-black"
                                         : "bg-[#F9F6F0] dark:bg-[#1B1D1A] text-[#2C2C2C]/70 dark:text-[#F4EFEA]/70 border-[#E6DFD5] dark:border-[#353B33]"
                                         }`}
@@ -206,7 +208,7 @@ export default function PedidosPage() {
                                 </button>
                                 <button
                                     onClick={() => setFormData({ ...formData, type: "Insumo", item_id: "" })}
-                                    className={`py-3 rounded-2xl font-bold transition-all border ${formData.type === "Insumo"
+                                    className={`py-3 rounded-2xl font-bold transition border ${formData.type === "Insumo"
                                         ? "bg-[#7D9878]/10 text-[#7D9878] dark:text-[#A3B69B] border-[#7D9878]/30 font-black"
                                         : "bg-[#F9F6F0] dark:bg-[#1B1D1A] text-[#2C2C2C]/70 dark:text-[#F4EFEA]/70 border-[#E6DFD5] dark:border-[#353B33]"
                                         }`}
@@ -220,7 +222,7 @@ export default function PedidosPage() {
                             <div className="space-y-4 animate-in slide-in-from-top-2 duration-300">
                                 <button
                                     onClick={() => setIsEsenciaModalOpen(true)}
-                                    className="w-full flex items-center justify-between px-6 py-4 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 hover:border-cyan-500 group transition-all"
+                                    className="w-full flex items-center justify-between px-6 py-4 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 hover:border-cyan-500 group transition"
                                 >
                                     <span className="font-bold text-slate-600 dark:text-slate-400 group-hover:text-cyan-600 transition-colors">Seleccionar Esencia...</span>
                                     <Search className="w-5 h-5 text-slate-400 group-hover:text-cyan-500 transition-colors" />
@@ -230,16 +232,16 @@ export default function PedidosPage() {
                             <div className="space-y-6 animate-in slide-in-from-top-2 duration-300">
                                 <div className="space-y-2">
                                     <label className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest pl-1">Seleccionar Insumo</label>
-                                    <select
+                                    <Selector
                                         value={formData.item_id}
                                         onChange={e => setFormData({ ...formData, item_id: e.target.value })}
-                                        className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl py-3.5 px-4 text-slate-900 dark:text-slate-50 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500 transition-all font-semibold appearance-none"
+                                        className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl py-3.5 px-4 text-slate-900 dark:text-slate-50 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500 transition font-semibold appearance-none"
                                     >
                                         <option value="" disabled>Elegí un insumo</option>
                                         {insumos.map(i => (
                                             <option key={i.id} value={i.id}>{i.name} (${i.cost.toLocaleString()} / {i.qty}{i.unit})</option>
                                         ))}
-                                    </select>
+                                    </Selector>
                                 </div>
 
                                 <div className="space-y-2 relative">
@@ -250,14 +252,14 @@ export default function PedidosPage() {
                                         value={formData.bultosToBuy}
                                         onFocus={(e) => e.target.select()}
                                         onChange={e => setFormData({ ...formData, bultosToBuy: parseInt(e.target.value) || 1 })}
-                                        className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl py-3.5 px-4 text-slate-900 dark:text-slate-50 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500 transition-all font-bold"
+                                        className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl py-3.5 px-4 text-slate-900 dark:text-slate-50 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500 transition font-bold"
                                     />
                                 </div>
 
                                 <button
                                     onClick={() => handleAddToCart()}
                                     disabled={!formData.item_id}
-                                    className="w-full py-4 rounded-2xl bg-cyan-600 text-white font-extrabold text-lg flex items-center justify-center gap-2 hover:bg-cyan-700 hover:shadow-xl hover:shadow-cyan-600/20 active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none transition-all"
+                                    className="w-full py-4 rounded-2xl bg-cyan-600 text-white font-extrabold text-lg flex items-center justify-center gap-2 hover:bg-cyan-700 hover:shadow-xl hover:shadow-cyan-600/20 active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none transition"
                                 >
                                     <Plus className="w-5 h-5" />
                                     Agregar al Carrito
@@ -282,7 +284,7 @@ export default function PedidosPage() {
                         ) : (
                             <div className="space-y-3">
                                 {cart.map(item => (
-                                    <div key={item.cartId} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-3xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800/80 hover:border-cyan-500/30 transition-all group">
+                                    <div key={item.cartId} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-3xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800/80 hover:border-cyan-500/30 transition group">
                                         <div>
                                             <p className="font-black text-slate-900 dark:text-slate-50 flex items-center gap-2">
                                                 {item.name}
@@ -301,7 +303,7 @@ export default function PedidosPage() {
                                             </p>
                                             <button
                                                 onClick={() => handleRemoveFromCart(item.cartId)}
-                                                className="p-2.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-2xl transition-all"
+                                                className="p-2.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-2xl transition"
                                             >
                                                 <X className="w-5 h-5" />
                                             </button>
@@ -320,7 +322,7 @@ export default function PedidosPage() {
                         <button
                             onClick={handleConfirmOrder}
                             disabled={cart.length === 0}
-                            className="w-full py-5 rounded-[1.5rem] bg-[#7D9878] text-white font-black text-xl flex items-center justify-center gap-3 shadow-xl hover:bg-[#6b8566] active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none transition-all font-brand"
+                            className="w-full py-5 rounded-[1.5rem] bg-[#7D9878] text-white font-black text-xl flex items-center justify-center gap-3 shadow-xl hover:bg-[#6b8566] active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none transition font-brand"
                         >
                             <CheckCircle2 className="w-7 h-7" />
                             Confirmar Compra
@@ -329,130 +331,143 @@ export default function PedidosPage() {
                 </div>
             </div>
 
-            {/* Modal de Búsqueda de Esencias */}
-            <Ventana abierta={isEsenciaModalOpen} onCerrar={() => setIsEsenciaModalOpen(false)}>
-            {isEsenciaModalOpen && (
-                    <div className="bg-white dark:bg-[#242723] rounded-[2rem] shadow-2xl w-full max-w-2xl max-h-[calc(100vh-8rem)] flex flex-col overflow-hidden border border-[#E6DFD5] dark:border-[#353B33]">
-                        {/* Header */}
-                        <div className="p-5 border-b border-[#E6DFD5] dark:border-[#353B33] flex justify-between items-center shrink-0 bg-[#F9F6F0] dark:bg-[#1B1D1A]">
-                            <h2 className="text-xl font-black text-[#2C2C2C] dark:text-[#F4EFEA] flex items-center gap-2 font-brand">
-                                <FlaskConical className="w-5 h-5 text-[#7D9878]" />
-                                Seleccionar Esencia
-                            </h2>
-                            <button onClick={() => setIsEsenciaModalOpen(false)} className="p-2.5 rounded-full bg-[#1B1D1A] text-white hover:bg-rose-600 hover:text-white hover:rotate-90 hover:scale-110 active:scale-95 transition-all duration-300 shadow-sm border border-[#353B33] flex items-center justify-center shrink-0 cursor-pointer" title="Cerrar">
-                                <X className="w-5 h-5" />
-                            </button>
-                        </div>
+            {/* Elegir esencia para el pedido */}
+            <Ventana abierta={isEsenciaModalOpen} onCerrar={() => setIsEsenciaModalOpen(false)} etiqueta="Elegir esencia">
+            {isEsenciaModalOpen && (() => {
+                    const campoFiltro = CAMPO.replace("h-11", "h-10");
+                    const selectFiltro = `${campoFiltro.replace("w-full", "w-auto")} cursor-pointer`;
+                    const botonPrecio = "flex flex-col items-end justify-center min-w-[84px] h-12 px-3 rounded-xl border border-[#E6DFD5] dark:border-[#353B33] hover:border-[#7D9878]/60 hover:bg-[#7D9878]/[0.06] active:scale-[0.97] transition-[border-color,background-color,transform] duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7D9878]/50";
+                    return (
+                    <PanelVentana ancho="lg">
+                        <CabeceraVentana
+                            etiqueta="Pedido a proveedores"
+                            titulo="Elegir esencia"
+                            descripcion="Tocá el precio de la presentación que querés pedir."
+                            icono={FlaskConical}
+                            onCerrar={() => setIsEsenciaModalOpen(false)}
+                        >
+                            <div role="tablist" className="mt-5 inline-flex p-1 rounded-xl bg-[#F4EFEA] dark:bg-[#1B1D1A]">
+                                {(["Perfumería", "Limpia Pisos"] as const).map(tab => (
+                                    <button
+                                        key={tab}
+                                        type="button"
+                                        role="tab"
+                                        aria-selected={esenciaTab === tab}
+                                        onClick={() => { setEsenciaTab(tab); setEsenciaGenderFilter("Todos"); setEsenciaProviderFilter("Todos"); setEsenciaCategoryFilter("Todos"); }}
+                                        className={`h-9 px-4 rounded-lg text-sm font-semibold transition-[background-color,color,box-shadow] duration-150 ${esenciaTab === tab
+                                            ? "bg-white dark:bg-[#353B33] text-[#2C2C2C] dark:text-[#F4EFEA] shadow-sm"
+                                            : "text-[#2C2C2C]/55 dark:text-[#F4EFEA]/50 hover:text-[#2C2C2C] dark:hover:text-[#F4EFEA]"}`}
+                                    >
+                                        {tab === "Perfumería" ? "Perfumería fina" : "Limpia pisos"}
+                                    </button>
+                                ))}
+                            </div>
+                        </CabeceraVentana>
 
-                        {/* Tabs */}
-                        <div className="flex gap-0 border-b border-[#E6DFD5] dark:border-[#353B33] shrink-0 px-5 bg-[#F9F6F0] dark:bg-[#1B1D1A]">
-                            {(["Perfumería", "Limpia Pisos"] as const).map(tab => (
-                                <button key={tab} onClick={() => { setEsenciaTab(tab); setEsenciaGenderFilter("Todos"); setEsenciaProviderFilter("Todos"); setEsenciaCategoryFilter("Todos"); }}
-                                    className={`pb-3 pt-3 px-4 font-black text-sm transition-colors border-b-2 ${esenciaTab === tab ? "border-[#7D9878] text-[#7D9878] dark:text-[#A3B69B]" : "border-transparent text-[#2C2C2C]/50 dark:text-[#F4EFEA]/50 hover:text-[#7D9878]"
-                                        }`}>
-                                    {tab === "Perfumería" ? "Perfumería Fina" : "Limpia Pisos"}
-                                </button>
-                            ))}
-                        </div>
-
-                        {/* Filtros */}
-                        <div className="p-3 bg-[#F9F6F0] dark:bg-[#1B1D1A] border-b border-[#E6DFD5] dark:border-[#353B33] flex flex-wrap gap-2 shrink-0">
-                            <div className="relative flex-1 min-w-[180px]">
-                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#2C2C2C]/40" />
-                                <input autoFocus type="text" placeholder="Buscar por nombre..." value={esenciaSearch}
+                        {/* Buscador y filtros */}
+                        <div className="px-7 pt-5 pb-3 flex flex-wrap gap-2 shrink-0">
+                            <div className="relative flex-1 min-w-[200px]">
+                                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#2C2C2C]/40 dark:text-[#F4EFEA]/40 pointer-events-none" />
+                                <input
+                                    autoFocus
+                                    type="text"
+                                    aria-label="Buscar esencia"
+                                    placeholder="Buscar por nombre…"
+                                    value={esenciaSearch}
                                     onChange={e => setEsenciaSearch(e.target.value)}
-                                    className="w-full bg-white dark:bg-[#242723] border border-[#E6DFD5] dark:border-[#353B33] text-[#2C2C2C] dark:text-[#F4EFEA] rounded-xl py-2 pl-9 pr-4 text-sm font-bold focus:outline-none focus:border-[#7D9878] transition-all" />
+                                    className={`${campoFiltro} pl-10`}
+                                />
                             </div>
                             {esenciaTab === "Perfumería" ? (
                                 <>
-                                    <select value={esenciaGenderFilter} onChange={e => setEsenciaGenderFilter(e.target.value)}
-                                        className="bg-white dark:bg-[#242723] border border-[#E6DFD5] dark:border-[#353B33] text-[#2C2C2C] dark:text-[#F4EFEA] rounded-xl px-3 py-2 text-xs font-black focus:outline-none appearance-none cursor-pointer">
-                                        <option value="Todos">Género: Todos</option>
+                                    <Selector aria-label="Género" value={esenciaGenderFilter} onChange={e => setEsenciaGenderFilter(e.target.value)} className={selectFiltro}>
+                                        <option value="Todos">Todos los géneros</option>
                                         {generos.filter(g => g.toLowerCase() !== "limpia pisos").map((g, i) => <option key={i} value={g}>{g}</option>)}
-                                    </select>
-                                    <select value={esenciaProviderFilter} onChange={e => setEsenciaProviderFilter(e.target.value)}
-                                        className="bg-white dark:bg-[#242723] border border-[#E6DFD5] dark:border-[#353B33] text-[#2C2C2C] dark:text-[#F4EFEA] rounded-xl px-3 py-2 text-xs font-black focus:outline-none appearance-none cursor-pointer">
-                                        <option value="Todos">Proveedor: Todos</option>
+                                    </Selector>
+                                    <Selector aria-label="Proveedor" value={esenciaProviderFilter} onChange={e => setEsenciaProviderFilter(e.target.value)} className={selectFiltro}>
+                                        <option value="Todos">Todos los proveedores</option>
                                         {proveedores.map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
-                                    </select>
+                                    </Selector>
                                 </>
                             ) : (
-                                <select value={esenciaCategoryFilter} onChange={e => setEsenciaCategoryFilter(e.target.value)}
-                                    className="bg-white dark:bg-[#242723] border border-[#E6DFD5] dark:border-[#353B33] text-[#2C2C2C] dark:text-[#F4EFEA] rounded-xl px-3 py-2 text-xs font-black focus:outline-none appearance-none cursor-pointer">
-                                    <option value="Todos">Categoría: Todos</option>
+                                <Selector aria-label="Categoría" value={esenciaCategoryFilter} onChange={e => setEsenciaCategoryFilter(e.target.value)} className={selectFiltro}>
+                                    <option value="Todos">Todas las categorías</option>
                                     {categorias.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
-                                </select>
+                                </Selector>
                             )}
                         </div>
 
                         {/* Lista */}
-                        <div className="flex-1 overflow-y-auto p-4 space-y-2 custom-scrollbar">
-                            {filteredEsencias.length === 0 && (
-                                <div className="py-10 text-center text-[#2C2C2C]/40 dark:text-[#F4EFEA]/40 font-bold text-sm">No se encontraron esencias.</div>
+                        <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar px-7 pb-6">
+                            {filteredEsencias.length === 0 ? (
+                                <p className="rounded-2xl border border-dashed border-[#E6DFD5] dark:border-[#353B33] px-4 py-10 text-center text-sm text-[#2C2C2C]/55 dark:text-[#F4EFEA]/50">
+                                    No se encontraron esencias.
+                                </p>
+                            ) : (
+                                <ul className="rounded-2xl border border-[#E6DFD5] dark:border-[#353B33] divide-y divide-[#E6DFD5]/70 dark:divide-[#353B33]/70 overflow-hidden">
+                                    {filteredEsencias.map(e => {
+                                        const isLP = e.gender?.toLowerCase() === "limpia pisos" || e.category?.toLowerCase()?.includes("limpia pisos");
+                                        const gender = e.gender || (e.category?.toLowerCase().includes("femenina") ? "Femenino" : "Masculino");
+                                        const catLabel = e.category || (isLP ? "Limpia Pisos" : "Perfumería Fina");
+                                        const inicial = isLP ? "LP" : gender === "Femenino" ? "F" : "M";
+                                        return (
+                                            <li key={e.id} className="flex items-center gap-3 px-4 py-3">
+                                                <span className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 text-[11px] font-bold ${!isLP && gender === "Femenino" ? "bg-[#C9866F]/12 text-[#97604D] dark:text-[#DBA793]" : "bg-[#7D9878]/12 text-[#5A7356] dark:text-[#A3B69B]"}`}>
+                                                    {inicial}
+                                                </span>
+                                                <span className="flex-1 min-w-0">
+                                                    <span className="block text-sm font-medium text-[#2C2C2C] dark:text-[#F4EFEA] truncate">{e.name}</span>
+                                                    <span className="block text-xs text-[#2C2C2C]/50 dark:text-[#F4EFEA]/45 truncate">
+                                                        {catLabel}{e.provider ? ` · ${e.provider}` : ""}
+                                                    </span>
+                                                </span>
+                                                {isLP ? (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setCart([...cart, {
+                                                                cartId: `C-${Date.now()}`,
+                                                                type: "Esencia",
+                                                                item_id: e.id,
+                                                                name: e.name,
+                                                                category: e.category || "Limpia Pisos",
+                                                                bultosToBuy: 1,
+                                                                bultoQty: e.qty || 1,
+                                                                bultoCost: e.cost || 0,
+                                                                unit: "ml"
+                                                            }]);
+                                                            setIsEsenciaModalOpen(false);
+                                                        }}
+                                                        className={botonPrecio}
+                                                    >
+                                                        <span className="text-[10px] font-semibold uppercase tracking-wider text-[#2C2C2C]/45 dark:text-[#F4EFEA]/45">Costo</span>
+                                                        <span className="text-sm font-semibold tabular-nums text-[#2C2C2C] dark:text-[#F4EFEA]">${(e.cost || 0).toLocaleString()}</span>
+                                                    </button>
+                                                ) : (
+                                                    <div className="flex gap-2 shrink-0">
+                                                        <button type="button" onClick={() => handleSelectEsencia(e, '30g')} className={botonPrecio}>
+                                                            <span className="text-[10px] font-semibold uppercase tracking-wider text-[#2C2C2C]/45 dark:text-[#F4EFEA]/45">30 g</span>
+                                                            <span className="text-sm font-semibold tabular-nums text-[#2C2C2C] dark:text-[#F4EFEA]">
+                                                                {typeof e.price30g === 'number' ? `$${e.price30g.toLocaleString()}` : 'Consultar'}
+                                                            </span>
+                                                        </button>
+                                                        <button type="button" onClick={() => handleSelectEsencia(e, '100g')} className={botonPrecio}>
+                                                            <span className="text-[10px] font-semibold uppercase tracking-wider text-[#2C2C2C]/45 dark:text-[#F4EFEA]/45">100 g</span>
+                                                            <span className="text-sm font-semibold tabular-nums text-[#2C2C2C] dark:text-[#F4EFEA]">
+                                                                {typeof e.price100g === 'number' ? `$${e.price100g.toLocaleString()}` : 'Consultar'}
+                                                            </span>
+                                                        </button>
+                                                    </div>
+                                                )}
+                                            </li>
+                                        );
+                                    })}
+                                </ul>
                             )}
-                            {filteredEsencias.map(e => {
-                                const isLP = e.gender?.toLowerCase() === "limpia pisos" || e.category?.toLowerCase()?.includes("limpia pisos");
-                                const gender = e.gender || (e.category?.toLowerCase().includes("femenina") ? "Femenino" : "Masculino");
-                                const catLabel = e.category || (isLP ? "Limpia Pisos" : "Perfumería Fina");
-                                return (
-                                    <div key={e.id} className="bg-white dark:bg-[#1B1D1A] p-4 rounded-xl border border-[#E6DFD5] dark:border-[#353B33] hover:border-[#7D9878]/50 transition-all flex flex-col gap-3">
-                                        <div className="flex items-start justify-between gap-2">
-                                            <div className="flex-1 min-w-0">
-                                                <div className="flex items-center gap-2 mb-1">
-                                                    <span className={`text-[8px] font-black uppercase px-1.5 py-0.5 rounded ${isLP ? "bg-[#7D9878]/10 text-[#7D9878]" :
-                                                            gender === "Femenino" ? "bg-[#C9866F]/10 text-[#C9866F]" : "bg-[#7D9878]/10 text-[#7D9878]"
-                                                        }`}>{isLP ? "LP" : gender === "Femenino" ? "F" : "M"}</span>
-                                                    <span className="text-[9px] text-[#2C2C2C]/40 dark:text-[#F4EFEA]/40 font-bold uppercase tracking-widest">{catLabel}</span>
-                                                    {e.provider && <span className="text-[9px] text-[#2C2C2C]/40 dark:text-[#F4EFEA]/40 font-bold uppercase">• {e.provider}</span>}
-                                                </div>
-                                                <h4 className="text-sm font-bold text-[#2C2C2C] dark:text-[#F4EFEA]">{e.name}</h4>
-                                            </div>
-                                        </div>
-                                        {isLP ? (
-                                            <button
-                                                onClick={() => {
-                                                    setCart([...cart, {
-                                                        cartId: `C-${Date.now()}`,
-                                                        type: "Esencia",
-                                                        item_id: e.id,
-                                                        name: e.name,
-                                                        category: e.category || "Limpia Pisos",
-                                                        bultosToBuy: 1,
-                                                        bultoQty: e.qty || 1,
-                                                        bultoCost: e.cost || 0,
-                                                        unit: "ml"
-                                                    }]);
-                                                    setIsEsenciaModalOpen(false);
-                                                }}
-                                                className="w-full flex items-center justify-between px-4 py-2 rounded-lg border border-[#E6DFD5] dark:border-[#353B33] hover:border-[#7D9878] hover:bg-[#7D9878]/10 transition-all"
-                                            >
-                                                <span className="text-xs font-black text-[#2C2C2C]/50 dark:text-[#F4EFEA]/50 uppercase">Costo</span>
-                                                <span className="text-sm font-black text-[#2C2C2C] dark:text-[#F4EFEA]">${(e.cost || 0).toLocaleString()}</span>
-                                            </button>
-                                        ) : (
-                                            <div className="grid grid-cols-2 gap-2">
-                                                <button onClick={() => handleSelectEsencia(e, '30g')}
-                                                    className="flex flex-col items-center py-2 rounded-lg border border-[#E6DFD5] dark:border-[#353B33] hover:border-[#DAC4AA] hover:bg-[#DAC4AA]/10 transition-all">
-                                                    <span className="text-[8px] font-black text-[#2C2C2C]/40 uppercase">30g</span>
-                                                    <span className="text-xs font-black text-[#2C2C2C] dark:text-[#F4EFEA]">
-                                                        {typeof e.price30g === 'number' ? `$${e.price30g.toLocaleString()}` : 'Cons.'}
-                                                    </span>
-                                                </button>
-                                                <button onClick={() => handleSelectEsencia(e, '100g')}
-                                                    className="flex flex-col items-center py-2 rounded-lg border border-[#E6DFD5] dark:border-[#353B33] hover:border-[#7D9878] hover:bg-[#7D9878]/10 transition-all">
-                                                    <span className="text-[8px] font-black text-[#2C2C2C]/40 uppercase">100g</span>
-                                                    <span className="text-xs font-black text-[#2C2C2C] dark:text-[#F4EFEA]">
-                                                        {typeof e.price100g === 'number' ? `$${e.price100g.toLocaleString()}` : 'Cons.'}
-                                                    </span>
-                                                </button>
-                                            </div>
-                                        )}
-                                    </div>
-                                );
-                            })}
                         </div>
-                    </div>
-            )}
+                    </PanelVentana>
+                    );
+            })()}
             </Ventana>
         </div>
     );

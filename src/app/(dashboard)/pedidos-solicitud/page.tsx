@@ -6,9 +6,10 @@ import { useSearchParams } from "next/navigation";
 import { useAppContext, OrderStatus, Order, Transaccion, InventarioItem } from "@/context/AppContext";
 import ConfirmModal from "@/components/ConfirmModal";
 import Ventana from "@/components/Ventana";
+import { PanelVentana, CabeceraVentana, CuerpoVentana, PieVentana, ETIQUETA_CAMPO, AREA_TEXTO, BOTON_PELIGRO, BOTON_SECUNDARIO } from "@/components/ventana-partes";
 
 const Toast = ({ message, onClose, type = "success" }: { message: string, onClose: () => void, type?: "success" | "info" | "error" }) => (
-    <div className="fixed bottom-8 right-8 z-[100] animate-in slide-in-from-right-full duration-500">
+    <div className="fixed bottom-8 right-8 z-[100] animate-in fade-in slide-in-from-bottom-4 duration-300">
         <div className={`flex items-center gap-4 px-6 py-4 rounded-[2rem] shadow-2xl border ${type === "success"
             ? "bg-emerald-600 border-emerald-500 text-white"
             : type === "error"
@@ -92,7 +93,7 @@ function PedidosSolicitudContent() {
     };
 
     return (
-        <div className="space-y-8 pb-12 animate-in fade-in duration-700">
+        <div className="space-y-8 pb-12 anim-entrada">
             <header className="flex flex-col md:flex-row md:justify-between md:items-end gap-6 bg-white dark:bg-slate-900 p-8 md:p-10 rounded-[2.5rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.2)] border border-slate-100 dark:border-slate-800 transition-colors duration-300">
                 <div className="space-y-3">
                     <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 text-xs font-bold tracking-widest uppercase mb-1">
@@ -131,7 +132,7 @@ function PedidosSolicitudContent() {
                     placeholder="Buscar por cliente o N° de pedido..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl py-4 pl-14 pr-6 text-slate-900 dark:text-slate-50 focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500/50 transition-all font-semibold"
+                    className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl py-4 pl-14 pr-6 text-slate-900 dark:text-slate-50 focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500/50 transition font-semibold"
                 />
             </div>
 
@@ -163,7 +164,7 @@ function PedidosSolicitudContent() {
                                 const currentStage = stages.find(s => s.level === order.status);
                                 const nextStatus = getNextStatus(order.status);
                                 return (
-                                    <tr key={order.id} className="group hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-all">
+                                    <tr key={order.id} className="group hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition">
                                         <td className="px-8 py-6">
                                             <p className="text-slate-900 dark:text-slate-100 font-black text-lg">#{order.id}</p>
                                             <p className="text-xs text-slate-400 font-bold tracking-tight">
@@ -177,7 +178,7 @@ function PedidosSolicitudContent() {
                                             <span className="px-3 py-1 bg-slate-100 dark:bg-slate-800 rounded-lg text-xs font-black text-slate-600 dark:text-slate-400 cursor-help">
                                                 {order.items.reduce((acc, item) => acc + item.quantity, 0)} items
                                             </span>
-                                            <div className="absolute left-1/2 -translate-x-1/2 bottom-1/2 mb-4 opacity-0 invisible group-hover/tooltip:opacity-100 group-hover/tooltip:visible transition-all duration-300 z-50 bg-slate-800 dark:bg-slate-700 text-white text-xs font-bold rounded-2xl shadow-[0_10px_50px_-10px_rgba(0,0,0,0.6)] w-max min-w-[320px] max-w-[450px] p-5 text-left pointer-events-none border border-slate-700 dark:border-slate-600">
+                                            <div className="absolute left-1/2 -translate-x-1/2 bottom-1/2 mb-4 opacity-0 invisible group-hover/tooltip:opacity-100 group-hover/tooltip:visible transition duration-200 z-50 bg-slate-800 dark:bg-slate-700 text-white text-xs font-bold rounded-2xl shadow-[0_10px_50px_-10px_rgba(0,0,0,0.6)] w-max min-w-[320px] max-w-[450px] p-5 text-left pointer-events-none border border-slate-700 dark:border-slate-600">
                                                 <div className="space-y-3 max-h-[300px] overflow-y-auto custom-scrollbar pr-3">
                                                     {order.items.map((item, idx) => (
                                                         <div key={idx} className="flex justify-between items-start gap-5 border-b border-slate-700/50 dark:border-slate-600/50 last:border-0 pb-3 last:pb-0">
@@ -235,7 +236,7 @@ function PedidosSolicitudContent() {
                                                                     // wait, the toast here is unconditional. I'll make it better.
                                                                     setToast({ message: `Pedido #${order.id} actualizado.`, type: "info" });
                                                                 }}
-                                                                className="flex items-center gap-2 px-4 py-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-xl text-[10px] font-black uppercase tracking-widest hover:scale-105 transition-all shadow-lg active:scale-95"
+                                                                className="flex items-center gap-2 px-4 py-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-xl text-[10px] font-black uppercase tracking-widest transition shadow-lg active:scale-95"
                                                             >
                                                                 Pasar a {stages.find(s => s.level === nextStatus)?.label} <ArrowRight className="w-3.5 h-3.5" />
                                                             </button>
@@ -251,7 +252,7 @@ function PedidosSolicitudContent() {
                                                                     updateOrderPaymentStatus(order.id, 'pagado');
                                                                     setToast({ message: "Pago confirmado.", type: "success" });
                                                                 }}
-                                                                className="px-3 py-2 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-100 transition-all border border-emerald-100 dark:border-emerald-500/20"
+                                                                className="px-3 py-2 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-100 transition border border-emerald-100 dark:border-emerald-500/20"
                                                                 title="Confirmar Pago"
                                                             >
                                                                 Confirmar Pago
@@ -260,7 +261,7 @@ function PedidosSolicitudContent() {
                                                         {order.status !== 'cancelado' && order.status !== 'listo para entregar' && (
                                                             <button
                                                                 onClick={() => setItemToCancel(order.id)}
-                                                                className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-xl transition-all"
+                                                                className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-xl transition"
                                                                 title="Cancelar pedido"
                                                             >
                                                                 <Trash2 className="w-4 h-4" />
@@ -273,7 +274,7 @@ function PedidosSolicitudContent() {
                                                                         deleteOrder(order.id);
                                                                     }
                                                                 }}
-                                                                className="p-2 text-slate-300 hover:text-rose-600 dark:hover:text-rose-500 transition-all"
+                                                                className="p-2 text-slate-300 hover:text-rose-600 dark:hover:text-rose-500 transition"
                                                                 title="Eliminar definitivamente"
                                                             >
                                                                 <Trash2 className="w-3.5 h-3.5" />
@@ -296,54 +297,52 @@ function PedidosSolicitudContent() {
             </div>
             {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
 
-            <Ventana abierta={!!itemToCancel} onCerrar={() => { setItemToCancel(null); setCancelReason(""); }} cerrarAlTocarFondo={false}>
+            <Ventana abierta={!!itemToCancel} onCerrar={() => { setItemToCancel(null); setCancelReason(""); }} cerrarAlTocarFondo={false} etiqueta="Cancelar pedido">
             {itemToCancel && (
-                    <div className="bg-white dark:bg-[#242723] rounded-[2.5rem] p-8 md:p-10 w-full max-w-lg shadow-2xl border border-[#E6DFD5] dark:border-[#353B33] relative">
-                        <button
-                            onClick={() => { setItemToCancel(null); setCancelReason(""); }}
-                            className="absolute top-6 right-6 p-2.5 rounded-full bg-[#1B1D1A] text-white hover:bg-rose-600 hover:text-white hover:rotate-90 hover:scale-110 active:scale-95 transition-all duration-300 shadow-sm border border-[#353B33] flex items-center justify-center shrink-0 cursor-pointer"
-                            title="Cerrar"
-                        >
-                            <X className="w-5 h-5" />
-                        </button>
-                        <div className="flex items-center gap-4 mb-6">
-                            <div className="p-3 bg-[#C9866F]/10 rounded-2xl">
-                                <AlertTriangle className="w-6 h-6 text-[#C9866F]" />
-                            </div>
-                            <h2 className="text-2xl font-black text-[#2C2C2C] dark:text-[#F4EFEA] uppercase tracking-tight font-brand">Cancelar Pedido</h2>
-                        </div>
-                        <p className="text-[#2C2C2C]/60 dark:text-[#F4EFEA]/60 font-medium mb-6">
-                            ¿Por qué deseas cancelar el pedido <span className="text-[#2C2C2C] dark:text-[#F4EFEA] font-bold">#{itemToCancel}</span>? El motivo será enviado al cliente.
-                        </p>
-                        <div className="space-y-4">
-                            <textarea
-                                value={cancelReason}
-                                onChange={(e) => setCancelReason(e.target.value)}
-                                placeholder="Ej: Sin stock de envases de 50ml, pago rechazado..."
-                                className="w-full bg-[#F9F6F0] dark:bg-[#1B1D1A] border border-[#E6DFD5] dark:border-[#353B33] rounded-2xl p-4 text-[#2C2C2C] dark:text-[#F4EFEA] focus:outline-none focus:ring-2 focus:ring-[#C9866F]/30 focus:border-[#C9866F] transition-all font-semibold resize-none h-32"
-                            />
-                            <div className="grid grid-cols-2 gap-4 pt-4">
-                                <button
-                                    onClick={() => { setItemToCancel(null); setCancelReason(""); }}
-                                    className="px-6 py-4 rounded-2xl bg-[#F9F6F0] dark:bg-[#1B1D1A] text-[#2C2C2C]/60 dark:text-[#F4EFEA]/60 font-black uppercase text-xs tracking-widest hover:bg-[#7D9878]/10 transition-all border border-[#E6DFD5] dark:border-[#353B33]"
-                                >
-                                    Volver
-                                </button>
-                                <button
-                                    disabled={!cancelReason.trim()}
-                                    onClick={() => {
-                                        cancelOrder(itemToCancel, cancelReason);
-                                        setItemToCancel(null);
-                                        setCancelReason("");
-                                        setToast({ message: "Pedido cancelado y notificado.", type: "error" });
-                                    }}
-                                    className="px-6 py-4 rounded-2xl bg-[#C9866F] text-white font-black uppercase text-xs tracking-widest hover:bg-[#b5735c] transition-all shadow-lg shadow-[#C9866F]/20 disabled:opacity-50 font-brand"
-                                >
-                                    Confirmar
-                                </button>
-                            </div>
-                        </div>
-                    </div>
+                    <PanelVentana ancho="md">
+                        <CabeceraVentana
+                            etiqueta="Cancelar pedido"
+                            titulo={`Pedido #${itemToCancel}`}
+                            descripcion="Contá por qué se cancela: el motivo se le envía al cliente."
+                            icono={AlertTriangle}
+                            tono="terracota"
+                            onCerrar={() => { setItemToCancel(null); setCancelReason(""); }}
+                        />
+                        <CuerpoVentana>
+                            <label className="block">
+                                <span className={ETIQUETA_CAMPO}>Motivo</span>
+                                <textarea
+                                    autoFocus
+                                    value={cancelReason}
+                                    onChange={(e) => setCancelReason(e.target.value)}
+                                    placeholder="Ej: no hay stock de frascos de 50 ml, el pago fue rechazado…"
+                                    className={AREA_TEXTO}
+                                />
+                            </label>
+                        </CuerpoVentana>
+                        <PieVentana>
+                            <button
+                                type="button"
+                                onClick={() => { setItemToCancel(null); setCancelReason(""); }}
+                                className={BOTON_SECUNDARIO}
+                            >
+                                Volver
+                            </button>
+                            <button
+                                type="button"
+                                disabled={!cancelReason.trim()}
+                                onClick={() => {
+                                    cancelOrder(itemToCancel, cancelReason);
+                                    setItemToCancel(null);
+                                    setCancelReason("");
+                                    setToast({ message: "Pedido cancelado y notificado.", type: "error" });
+                                }}
+                                className={BOTON_PELIGRO}
+                            >
+                                Cancelar pedido
+                            </button>
+                        </PieVentana>
+                    </PanelVentana>
             )}
             </Ventana>
         </div>

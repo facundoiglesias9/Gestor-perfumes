@@ -3,6 +3,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { useAppContext } from "@/context/AppContext";
 import Ventana from "@/components/Ventana";
+import { PanelVentana, CabeceraVentana, CuerpoVentana, PieVentana, ETIQUETA_CAMPO, AYUDA_CAMPO, CAMPO, BOTON_PRINCIPAL, BOTON_SECUNDARIO } from "@/components/ventana-partes";
 import { ClipboardList, TrendingUp, DollarSign, Package, PlusCircle, History, X, Check, Trash2, Receipt, Wallet, MinusCircle } from "lucide-react";
 
 type SaleRecord = {
@@ -144,7 +145,7 @@ export default function HistorialComprasPage() {
     }
 
     return (
-        <div className="space-y-8 pb-12 animate-in fade-in duration-700">
+        <div className="space-y-8 pb-12 anim-entrada">
             <header className="flex flex-col md:flex-row md:justify-between md:items-end gap-6 bg-white dark:bg-slate-900 p-8 md:p-10 rounded-[2.5rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.2)] border border-slate-100 dark:border-slate-800 transition-colors duration-300">
                 <div className="space-y-3">
                     <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 text-xs font-bold tracking-widest uppercase mb-1">
@@ -165,7 +166,7 @@ export default function HistorialComprasPage() {
                 <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-8 rounded-[2rem] shadow-sm flex flex-col justify-between group hover:border-blue-500/30 transition-colors">
                     <div className="flex items-start justify-between mb-4">
                         <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform">
+                            <div className="w-12 h-12 bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-2xl flex items-center justify-center transition-transform">
                                 <Wallet className="w-6 h-6" />
                             </div>
                             <div>
@@ -181,7 +182,7 @@ export default function HistorialComprasPage() {
 
                 <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-8 rounded-[2rem] shadow-sm flex flex-col justify-between group hover:border-emerald-500/30 transition-colors">
                     <div className="flex items-center gap-4 mb-4">
-                        <div className="w-12 h-12 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform">
+                        <div className="w-12 h-12 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-2xl flex items-center justify-center transition-transform">
                             <DollarSign className="w-6 h-6" />
                         </div>
                         <div>
@@ -194,7 +195,7 @@ export default function HistorialComprasPage() {
 
                 <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-8 rounded-[2rem] shadow-sm flex flex-col justify-between group hover:border-indigo-500/30 transition-colors relative overflow-hidden">
                     <div className="flex items-center gap-4 mb-4 relative z-10">
-                        <div className="w-12 h-12 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform">
+                        <div className="w-12 h-12 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 rounded-2xl flex items-center justify-center transition-transform">
                             <TrendingUp className="w-6 h-6" />
                         </div>
                         <div>
@@ -207,7 +208,7 @@ export default function HistorialComprasPage() {
                     <p className="text-sm text-slate-500 font-medium relative z-10">Beneficio real extraído de las ventas tras restar el costo de mercadería despachada.</p>
 
                     {/* Background Progress relative indicator idea */}
-                    <div className={`absolute bottom-0 left-0 h-1 transition-all duration-1000 ${totalProfit >= 0 ? "bg-emerald-500" : "bg-rose-500"}`} style={{ width: totalInvestment > 0 ? `${Math.min(100, Math.max(0, (totalRevenue / totalInvestment) * 100))}%` : '0%' }}></div>
+                    <div className={`absolute bottom-0 left-0 h-1 transition-[width,background-color] duration-700 ease-out ${totalProfit >= 0 ? "bg-emerald-500" : "bg-rose-500"}`} style={{ width: totalInvestment > 0 ? `${Math.min(100, Math.max(0, (totalRevenue / totalInvestment) * 100))}%` : '0%' }}></div>
                 </div>
             </div>
 
@@ -246,7 +247,7 @@ export default function HistorialComprasPage() {
                                 </tr>
                             ) : (
                                 myPurchasedItems.map(item => (
-                                    <tr key={item.itemKey} className="group hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-all">
+                                    <tr key={item.itemKey} className="group hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition">
                                         <td className="px-8 py-6">
                                             <p className="text-slate-900 dark:text-slate-100 font-black">{item.productName}</p>
                                             <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">{item.date}</p>
@@ -269,7 +270,7 @@ export default function HistorialComprasPage() {
                                             <button
                                                 onClick={() => handleOpenSellModal(item)}
                                                 disabled={item.remaining === 0}
-                                                className="inline-flex items-center gap-2 px-5 py-2.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-black text-xs uppercase tracking-wider rounded-xl hover:scale-105 active:scale-95 transition-all disabled:opacity-30 disabled:pointer-events-none group/sell"
+                                                className="inline-flex items-center gap-2 px-5 py-2.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-black text-xs uppercase tracking-wider rounded-xl active:scale-95 transition disabled:opacity-30 disabled:pointer-events-none group/sell"
                                             >
                                                 <PlusCircle className="w-4 h-4 transition-transform group-hover/sell:rotate-90" />
                                                 Registrar Venta
@@ -393,76 +394,75 @@ export default function HistorialComprasPage() {
 
             </div>
 
-            {/* Selling Modal */}
-            <Ventana abierta={!!sellingItem} onCerrar={() => setSellingItem(null)}>
-            {sellingItem && (
-                    <div className="relative w-full max-w-lg bg-white dark:bg-[#242723] rounded-[2.5rem] shadow-2xl border border-[#E6DFD5] dark:border-[#353B33] p-8 sm:p-10 max-h-[calc(100vh-8rem)] overflow-y-auto custom-scrollbar">
-                        <button
-                            onClick={() => setSellingItem(null)}
-                            className="absolute top-6 right-6 p-2.5 rounded-full bg-[#1B1D1A] text-white hover:bg-rose-600 hover:text-white hover:rotate-90 hover:scale-110 active:scale-95 transition-all duration-300 shadow-sm border border-[#353B33] flex items-center justify-center shrink-0 cursor-pointer"
-                            title="Cerrar"
-                        >
-                            <X className="w-5 h-5" />
-                        </button>
-
-                        <div className="mb-8">
-                            <div className="w-12 h-12 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 rounded-2xl flex items-center justify-center mb-6">
-                                <DollarSign className="w-6 h-6" />
-                            </div>
-                            <h2 className="text-2xl font-black text-slate-900 dark:text-white mb-2">Registrar Venta</h2>
-                            <p className="text-slate-500 font-medium">Estás vendiendo <span className="font-bold text-indigo-500">{sellingItem.productName}</span></p>
-                        </div>
-
-                        <div className="space-y-6">
+            {/* Registrar venta de un producto comprado */}
+            <Ventana abierta={!!sellingItem} onCerrar={() => setSellingItem(null)} etiqueta="Registrar venta">
+            {sellingItem && (() => {
+                    const gananciaUnidad = formPrice - sellingItem.costPerUnit;
+                    const ganancia = gananciaUnidad * formQty;
+                    return (
+                    <PanelVentana ancho="md">
+                        <CabeceraVentana
+                            etiqueta="Registrar venta"
+                            titulo={sellingItem.productName}
+                            icono={DollarSign}
+                            onCerrar={() => setSellingItem(null)}
+                        />
+                        <CuerpoVentana className="space-y-5">
                             <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 block">Unidades a descontar</label>
+                                <label className="block">
+                                    <span className={ETIQUETA_CAMPO}>Unidades</span>
                                     <input
                                         type="number"
                                         min="1"
                                         max={sellingItem.remaining}
                                         value={formQty}
+                                        onFocus={e => e.target.select()}
                                         onChange={e => setFormQty(Math.max(1, Math.min(sellingItem.remaining, parseInt(e.target.value) || 1)))}
-                                        className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500 font-black text-slate-900 dark:text-white transition-all text-center text-xl"
+                                        className={`${CAMPO.replace("text-sm", "text-base")} font-semibold tabular-nums`}
                                     />
-                                    <p className="text-[10px] text-center font-bold text-slate-400 mt-2">Máximo disp.: {sellingItem.remaining}</p>
-                                </div>
-                                <div>
-                                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 block">Precio al cliente (C/U)</label>
-                                    <div className="relative flex items-center">
-                                        <span className="absolute left-4 font-black text-slate-400 text-lg">$</span>
+                                    <span className={`block ${AYUDA_CAMPO}`}>Quedan {sellingItem.remaining}</span>
+                                </label>
+                                <label className="block">
+                                    <span className={ETIQUETA_CAMPO}>Precio por unidad</span>
+                                    <span className="relative block">
+                                        <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-[#2C2C2C]/45 dark:text-[#F4EFEA]/45 pointer-events-none">$</span>
                                         <input
                                             type="number"
                                             min="0"
                                             value={formPrice}
+                                            onFocus={e => e.target.select()}
                                             onChange={e => setFormPrice(parseInt(e.target.value) || 0)}
-                                            className="w-full pl-8 pr-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl focus:outline-none focus:ring-2 focus:ring-emerald-500 font-black text-emerald-600 dark:text-emerald-400 transition-all text-xl"
+                                            className={`${CAMPO.replace("text-sm", "text-base")} pl-8 font-semibold tabular-nums`}
                                         />
-                                    </div>
-                                    <p className="text-[10px] text-center font-bold text-slate-400 mt-2">Costo unitario: ${sellingItem.costPerUnit}</p>
+                                    </span>
+                                    <span className={`block ${AYUDA_CAMPO}`}>Costo: ${sellingItem.costPerUnit.toLocaleString("es-AR")}</span>
+                                </label>
+                            </div>
+
+                            <div className={`flex items-center justify-between gap-4 rounded-2xl px-5 py-4 ${ganancia >= 0 ? "bg-[#7D9878]/[0.08] dark:bg-[#7D9878]/[0.12]" : "bg-[#C9866F]/10"}`}>
+                                <div>
+                                    <p className="text-sm font-semibold text-[#2C2C2C] dark:text-[#F4EFEA]">Ganancia</p>
+                                    <p className="mt-0.5 text-xs text-[#2C2C2C]/55 dark:text-[#F4EFEA]/50 tabular-nums">
+                                        {gananciaUnidad >= 0 ? "+" : "−"}${Math.abs(gananciaUnidad).toLocaleString("es-AR")} por unidad
+                                    </p>
                                 </div>
+                                <p className={`text-2xl font-bold tabular-nums ${ganancia >= 0 ? "text-[#3F5A3C] dark:text-[#A3B69B]" : "text-[#B5654A] dark:text-[#DBA793]"}`}>
+                                    {ganancia < 0 ? "−" : ""}${Math.abs(ganancia).toLocaleString("es-AR")}
+                                </p>
                             </div>
-
-                            <div className="p-6 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl flex flex-col items-center text-center space-y-2">
-                                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Impacto en tu bolsillo (Ganancia)</span>
-                                <span className={`text-4xl font-black ${(formPrice - sellingItem.costPerUnit) * formQty >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-500"}`}>
-                                    ${((formPrice - sellingItem.costPerUnit) * formQty).toLocaleString()}
-                                </span>
-                                <span className="text-xs font-bold text-slate-500">
-                                    {(formPrice - sellingItem.costPerUnit) >= 0 ? "+" : "-"}${Math.abs(formPrice - sellingItem.costPerUnit).toLocaleString()} de beneficio por cada unidad.
-                                </span>
-                            </div>
-
-                            <button
-                                onClick={confirmSale}
-                                className="w-full flex items-center justify-center gap-3 py-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-2xl font-black transition-all active:scale-95"
-                            >
-                                <Check className="w-5 h-5" />
-                                Confirmar y Registrar Venta
+                        </CuerpoVentana>
+                        <PieVentana>
+                            <button type="button" onClick={() => setSellingItem(null)} className={BOTON_SECUNDARIO}>
+                                Cancelar
                             </button>
-                        </div>
-                    </div>
-            )}
+                            <button type="button" onClick={confirmSale} className={BOTON_PRINCIPAL}>
+                                <Check className="w-4 h-4" strokeWidth={2.5} />
+                                Registrar venta
+                            </button>
+                        </PieVentana>
+                    </PanelVentana>
+                    );
+            })()}
             </Ventana>
         </div>
     );

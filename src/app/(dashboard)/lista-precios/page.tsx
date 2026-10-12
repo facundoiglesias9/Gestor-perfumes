@@ -57,6 +57,9 @@ import { toast } from "sonner";
 import { formatNumber } from "@/lib/format-utils";
 import { extractBrand } from "@/lib/product-utils";
 import ExportModal from "@/components/ExportModal";
+import { Selector } from "@/components/Desplegable";
+import Ventana from "@/components/Ventana";
+import { PanelVentana, CabeceraVentana, CuerpoVentana, BotonCerrar } from "@/components/ventana-partes";
 import ListSelectorToggle from "@/components/ListSelectorToggle";
 import PaginationControls from "@/components/PaginationControls";
 
@@ -69,11 +72,6 @@ const fondoModal = {
     animate: { opacity: 1, transition: { duration: 0.2 } },
     exit: { opacity: 0, transition: { duration: 0.15 } },
 };
-const panelModal = {
-    initial: { opacity: 0, scale: 0.96, y: 8 },
-    animate: { opacity: 1, scale: 1, y: 0, transition: { duration: 0.24, ease: EASE_OUT } },
-    exit: { opacity: 0, scale: 0.98, transition: { duration: 0.12 } },
-};
 
 // Desplegable de filtro con el mismo alto y estilo que el buscador; se marca cuando está en uso.
 function FiltroSelect({ icon: Icon, label, value, activo, onChange, children }: {
@@ -85,21 +83,16 @@ function FiltroSelect({ icon: Icon, label, value, activo, onChange, children }: 
     children: ReactNode;
 }) {
     return (
-        <label className={`relative flex items-center h-11 rounded-xl border transition-colors duration-150 focus-within:ring-2 focus-within:ring-[#7D9878]/25 ${activo
-            ? "border-[#7D9878]/60 bg-[#7D9878]/[0.08] dark:bg-[#A3B69B]/10"
-            : "border-[#E6DFD5] dark:border-[#353B33] bg-[#F9F6F0] dark:bg-[#1B1D1A] hover:border-[#D3CBBF] dark:hover:border-[#474C44]"}`}
+        <Selector
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            aria-label={label}
+            resaltado={activo}
+            icono={<Icon className={`w-4 h-4 ${activo ? "text-[#7D9878] dark:text-[#A3B69B]" : ""}`} />}
+            className="w-full"
         >
-            <span className="sr-only">{label}</span>
-            <Icon className={`absolute left-3.5 w-4 h-4 pointer-events-none ${activo ? "text-[#7D9878] dark:text-[#A3B69B]" : "text-[#2C2C2C]/45 dark:text-[#F4EFEA]/45"}`} />
-            <select
-                value={value}
-                onChange={(e) => onChange(e.target.value)}
-                className="appearance-none w-full h-full bg-transparent pl-10 pr-10 text-sm font-semibold text-[#2C2C2C] dark:text-[#F4EFEA] focus:outline-none cursor-pointer dark:[&_option]:bg-[#242723]"
-            >
-                {children}
-            </select>
-            <ChevronDown className="absolute right-3.5 w-4 h-4 pointer-events-none text-[#2C2C2C]/45 dark:text-[#F4EFEA]/45" />
-        </label>
+            {children}
+        </Selector>
     );
 }
 
@@ -585,56 +578,63 @@ export default function ListaPreciosPage() {
         };
     }, [isMinorista, itemDiscounts, esencias, insumos]);
 
+    // Totales del pedido. Primero el descuento de cada producto (por unidad) y después, sobre lo que queda,
+    // el descuento a todo el pedido: en % o un monto fijo en $ que se resta UNA vez del total.
     const cartSummary = useMemo(() => {
         let baseSubtotal = 0;
-        let totalDiscount = 0;
-        let totalFinal = 0;
+        let itemsDiscount = 0;
+        let subtotalConDescuentos = 0;
         let totalCost = 0;
         let hasAnyInvalidCost = false;
 
         for (const item of cartFiltered) {
             const pricing = getItemPricing(item);
             baseSubtotal += pricing.itemSubtotal;
-            totalDiscount += pricing.itemTotalDiscount;
-            totalFinal += pricing.itemFinalTotal;
+            itemsDiscount += pricing.itemTotalDiscount;
+            subtotalConDescuentos += pricing.itemFinalTotal;
             totalCost += pricing.itemTotalCost;
             if (pricing.hasInvalidCost) hasAnyInvalidCost = true;
         }
+
+        let orderDiscount = 0;
+        if (globalDiscountValue > 0 && subtotalConDescuentos > 0) {
+            orderDiscount = globalDiscountType === "percent"
+                ? Math.round((subtotalConDescuentos * Math.min(100, globalDiscountValue)) / 100)
+                : Math.min(subtotalConDescuentos, Math.round(globalDiscountValue));
+        }
+        const totalFinal = subtotalConDescuentos - orderDiscount;
+        // Parte del precio de cada producto que queda después del descuento al pedido (se reparte en proporción)
+        const factorPedido = subtotalConDescuentos > 0 ? totalFinal / subtotalConDescuentos : 1;
 
         const netProfit = (!hasAnyInvalidCost && isFinite(totalFinal - totalCost)) ? (totalFinal - totalCost) : null;
         const marginPercent = (!hasAnyInvalidCost && totalCost > 0 && netProfit !== null) ? (netProfit / totalCost) * 100 : null;
 
         return {
             baseSubtotal,
-            totalDiscount,
+            itemsDiscount,
+            subtotalConDescuentos,
+            orderDiscount,
+            totalDiscount: itemsDiscount + orderDiscount,
             totalFinal,
+            factorPedido,
             totalCost,
             hasAnyInvalidCost,
             netProfit,
             marginPercent
         };
-    }, [cartFiltered, getItemPricing]);
-
-    const handleApplyGlobalDiscount = (type: "percent" | "fixed", value: number) => {
-        const updated: Record<string, { type: "percent" | "fixed"; value: number }> = {};
-        cartFiltered.forEach(item => {
-            const key = `${item.producto.id}_${item.priceType}`;
-            updated[key] = { type, value };
-        });
-        setItemDiscounts(updated);
-    };
+    }, [cartFiltered, getItemPricing, globalDiscountType, globalDiscountValue]);
 
     const handleVender = async (e: React.FormEvent) => {
         e.preventDefault();
         if (cartFiltered.length === 0 || isSelling) return;
 
-        // El precio final de cada ítem (con su descuento) se calcula acá y se manda tal cual:
-        // antes se guardaba en el carrito y la venta se registraba con el precio de lista.
+        // El precio final de cada ítem (con su descuento y su parte del descuento al pedido) se calcula acá
+        // y se manda tal cual, así la venta suma exactamente el "Total a cobrar".
         const items = cartFiltered.map(item => ({
             producto: item.producto,
             quantity: item.quantity,
             priceType: item.priceType,
-            unitPrice: getItemPricing(item).effectiveUnitPrice,
+            unitPrice: Math.round(getItemPricing(item).effectiveUnitPrice * cartSummary.factorPedido * 100) / 100,
         }));
 
         const enCero = items.filter(i => !(i.unitPrice > 0));
@@ -662,6 +662,7 @@ export default function ListaPreciosPage() {
             updateCartQuantity(item.producto.id, item.priceType, 0);
         });
         setItemDiscounts({});
+        setGlobalDiscountValue(0);
     };
 
     const handlePerformExport = async (data: Producto[], format: "excel" | "pdf") => {
@@ -1064,236 +1065,145 @@ export default function ListaPreciosPage() {
                 />
             )}
 
-            {/* Modal de Rentabilidad (% Ganancia) */}
-            <AnimatePresence>
-            {profitModalProduct && (
-                <motion.div
-                    key="modal-ganancia"
-                    {...fondoModal}
-                    onClick={() => setProfitModalProduct(null)}
-                    className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md"
-                >
-                    <motion.div
-                        {...panelModal}
-                        role="dialog"
-                        aria-modal="true"
-                        onClick={(e) => e.stopPropagation()}
-                        className="bg-white dark:bg-[#242723] rounded-[2rem] shadow-2xl w-full max-w-md overflow-hidden border border-[#E6DFD5] dark:border-[#353B33]"
-                    >
-                        {/* Header */}
-                        <div className="p-6 sm:p-8 border-b border-[#E6DFD5] dark:border-[#353B33] flex justify-between items-center bg-[#F9F6F0] dark:bg-[#1B1D1A]">
-                            <div>
-                                <span className="text-[10px] font-black uppercase tracking-widest text-[#7D9878] dark:text-[#A3B69B]">Análisis de Rentabilidad</span>
-                                <h3 className="text-xl font-extrabold text-[#2C2C2C] dark:text-[#F4EFEA] font-brand mt-0.5">{profitModalProduct.name}</h3>
+            {/* Rentabilidad de un producto */}
+            <Ventana abierta={!!profitModalProduct} onCerrar={() => setProfitModalProduct(null)} etiqueta="Rentabilidad">
+            {profitModalProduct && (() => {
+                const pesos = (n: number) => `$${Intl.NumberFormat("es-AR").format(Math.round(n))}`;
+                const cost = getProductCost(profitModalProduct, esencias, insumos);
+                const priceMay = Number(profitModalProduct.price) || 0;
+                const priceMin = Number(profitModalProduct.priceMinorista) || 0;
+                const marginMay = calculateProfitMargin(cost, priceMay);
+                const marginMin = calculateProfitMargin(cost, priceMin);
+                const filas = [
+                    { titulo: "Mayorista", Icono: Store, precio: priceMay, margen: marginMay, tono: "text-[#3F5A3C] dark:text-[#A3B69B]", fondo: "bg-[#7D9878]/12 text-[#3F5A3C] dark:text-[#A3B69B]" },
+                    { titulo: "Minorista", Icono: UserCheck, precio: priceMin, margen: marginMin, tono: "text-[#97604D] dark:text-[#DBA793]", fondo: "bg-[#C9866F]/12 text-[#97604D] dark:text-[#DBA793]" },
+                ];
+                return (
+                    <PanelVentana ancho="md">
+                        <CabeceraVentana
+                            etiqueta="Rentabilidad"
+                            titulo={profitModalProduct.name}
+                            icono={TrendingUp}
+                            onCerrar={() => setProfitModalProduct(null)}
+                        />
+                        <CuerpoVentana className="space-y-4">
+                            <div className="flex items-center justify-between gap-4 rounded-2xl bg-[#F9F6F0] dark:bg-[#1B1D1A] px-5 py-4">
+                                <div>
+                                    <p className="text-xs text-[#2C2C2C]/55 dark:text-[#F4EFEA]/50">Costo de fabricación</p>
+                                    <p className="mt-0.5 text-xl font-bold tabular-nums text-[#2C2C2C] dark:text-[#F4EFEA]">
+                                        {cost > 0 && isFinite(cost) ? pesos(cost) : "Consultar"}
+                                    </p>
+                                </div>
+                                <Coins className="w-6 h-6 text-[#7D9878] dark:text-[#A3B69B]" />
                             </div>
-                            <button
-                                onClick={() => setProfitModalProduct(null)}
-                                className="p-2.5 rounded-full bg-[#1B1D1A] text-white hover:bg-rose-600 transition-all border border-[#353B33]"
-                                title="Cerrar"
-                            >
-                                <X className="w-5 h-5" />
-                            </button>
-                        </div>
 
-                        {/* Content Body */}
-                        <div className="p-6 sm:p-8 space-y-6">
-                            {(() => {
-                                const cost = getProductCost(profitModalProduct, esencias, insumos);
-                                const priceMay = Number(profitModalProduct.price) || 0;
-                                const priceMin = Number(profitModalProduct.priceMinorista) || 0;
-
-                                const marginMay = calculateProfitMargin(cost, priceMay);
-                                const marginMin = calculateProfitMargin(cost, priceMin);
-
-                                return (
-                                    <>
-                                        <div className="p-4 rounded-2xl bg-[#F9F6F0] dark:bg-[#1B1D1A] border border-[#E6DFD5] dark:border-[#353B33] flex justify-between items-center">
+                            <div className="rounded-2xl border border-[#E6DFD5] dark:border-[#353B33] divide-y divide-[#E6DFD5]/70 dark:divide-[#353B33]/70 overflow-hidden">
+                                {filas.map(({ titulo, Icono, precio, margen, tono, fondo }) => (
+                                    <div key={titulo} className="px-5 py-4">
+                                        <div className="flex items-center justify-between gap-3">
+                                            <span className={`flex items-center gap-2 text-sm font-semibold ${tono}`}>
+                                                <Icono className="w-4 h-4" /> Venta {titulo.toLowerCase()}
+                                            </span>
+                                            <span className={`px-2.5 py-1 rounded-lg text-xs font-semibold tabular-nums ${margen.isConsultar ? "bg-[#DAC4AA]/20 text-[#7A5C34] dark:text-[#DAC4AA]" : fondo}`}>
+                                                {margen.percentStr}
+                                            </span>
+                                        </div>
+                                        <dl className="mt-3 grid grid-cols-2 gap-3 text-sm">
                                             <div>
-                                                <p className="text-[10px] font-black uppercase tracking-widest text-[#2C2C2C]/50 dark:text-[#F4EFEA]/50">Costo Estimado de Fabricación</p>
-                                                <p className="text-xl font-black text-[#2C2C2C] dark:text-[#F4EFEA] font-brand mt-0.5">
-                                                    {cost > 0 && isFinite(cost) ? `$${Intl.NumberFormat("es-AR").format(Math.round(cost))}` : "Consultar"}
-                                                </p>
+                                                <dt className="text-xs text-[#2C2C2C]/55 dark:text-[#F4EFEA]/50">Precio</dt>
+                                                <dd className="mt-0.5 font-semibold tabular-nums text-[#2C2C2C] dark:text-[#F4EFEA]">
+                                                    {precio > 0 && isFinite(precio) ? pesos(precio) : "Consultar"}
+                                                </dd>
                                             </div>
-                                            <div className="p-3 bg-[#7D9878]/10 rounded-xl text-[#7D9878]">
-                                                <Coins className="w-6 h-6" />
+                                            <div>
+                                                <dt className="text-xs text-[#2C2C2C]/55 dark:text-[#F4EFEA]/50">Ganancia por unidad</dt>
+                                                <dd className={`mt-0.5 font-semibold tabular-nums ${tono}`}>
+                                                    {margen.gainVal !== null && margen.gainVal > 0 && isFinite(margen.gainVal) ? `+${pesos(margen.gainVal)}` : "Consultar"}
+                                                </dd>
                                             </div>
-                                        </div>
-
-                                        {/* Mayorista breakdown */}
-                                        <div className="p-5 rounded-2xl bg-white dark:bg-[#1B1D1A] border border-[#E6DFD5] dark:border-[#353B33] space-y-3">
-                                            <div className="flex justify-between items-center border-b border-[#E6DFD5] dark:border-[#353B33] pb-2">
-                                                <span className="text-xs font-black uppercase tracking-wider text-[#7D9878] dark:text-[#A3B69B] flex items-center gap-1.5 font-brand">
-                                                    <Store className="w-4 h-4" /> Venta Mayorista
-                                                </span>
-                                                <span className={`px-2.5 py-1 rounded-lg text-xs font-black ${marginMay.isConsultar ? "bg-[#DAC4AA]/20 text-[#2C2C2C] dark:text-[#DAC4AA]" : "bg-[#7D9878]/15 text-[#7D9878] dark:text-[#A3B69B]"}`}>
-                                                    {marginMay.percentStr}
-                                                </span>
-                                            </div>
-                                            <div className="flex justify-between items-center text-xs font-bold">
-                                                <span className="text-[#2C2C2C]/60 dark:text-[#F4EFEA]/60">Precio Venta Mayorista:</span>
-                                                <span className="text-[#2C2C2C] dark:text-[#F4EFEA] text-sm font-bold">
-                                                    {priceMay > 0 && isFinite(priceMay) ? `$${Intl.NumberFormat("es-AR").format(priceMay)}` : "Consultar"}
-                                                </span>
-                                            </div>
-                                            <div className="flex justify-between items-center text-xs font-bold">
-                                                <span className="text-[#2C2C2C]/60 dark:text-[#F4EFEA]/60">Ganancia Neta por Unidad:</span>
-                                                <span className="text-[#7D9878] dark:text-[#A3B69B] text-sm font-black">
-                                                    {marginMay.gainVal !== null && marginMay.gainVal > 0 && isFinite(marginMay.gainVal) ? `+$${Intl.NumberFormat("es-AR").format(Math.round(marginMay.gainVal))}` : "Consultar"}
-                                                </span>
-                                            </div>
-                                        </div>
-
-                                        {/* Minorista breakdown */}
-                                        <div className="p-5 rounded-2xl bg-white dark:bg-[#1B1D1A] border border-[#E6DFD5] dark:border-[#353B33] space-y-3">
-                                            <div className="flex justify-between items-center border-b border-[#E6DFD5] dark:border-[#353B33] pb-2">
-                                                <span className="text-xs font-black uppercase tracking-wider text-[#C9866F] flex items-center gap-1.5 font-brand">
-                                                    <UserCheck className="w-4 h-4" /> Venta Minorista
-                                                </span>
-                                                <span className={`px-2.5 py-1 rounded-lg text-xs font-black ${marginMin.isConsultar ? "bg-[#DAC4AA]/20 text-[#2C2C2C] dark:text-[#DAC4AA]" : "bg-[#C9866F]/15 text-[#C9866F]"}`}>
-                                                    {marginMin.percentStr}
-                                                </span>
-                                            </div>
-                                            <div className="flex justify-between items-center text-xs font-bold">
-                                                <span className="text-[#2C2C2C]/60 dark:text-[#F4EFEA]/60">Precio Venta Minorista:</span>
-                                                <span className="text-[#2C2C2C] dark:text-[#F4EFEA] text-sm font-bold">
-                                                    {priceMin > 0 && isFinite(priceMin) ? `$${Intl.NumberFormat("es-AR").format(priceMin)}` : "Consultar"}
-                                                </span>
-                                            </div>
-                                            <div className="flex justify-between items-center text-xs font-bold">
-                                                <span className="text-[#2C2C2C]/60 dark:text-[#F4EFEA]/60">Ganancia Neta por Unidad:</span>
-                                                <span className="text-[#C9866F] text-sm font-black">
-                                                    {marginMin.gainVal !== null && marginMin.gainVal > 0 && isFinite(marginMin.gainVal) ? `+$${Intl.NumberFormat("es-AR").format(Math.round(marginMin.gainVal))}` : "Consultar"}
-                                                </span>
-                                            </div>
-                                        </div>
-                                    </>
-                                );
-                            })()}
-                        </div>
-                    </motion.div>
-                </motion.div>
-            )}
-            </AnimatePresence>
-
-            {/* Modal de Insumos y Fórmula de Fabricación (Info Button) */}
-            <AnimatePresence>
-            {infoModalProduct && (
-                <motion.div
-                    key="modal-insumos"
-                    {...fondoModal}
-                    onClick={() => setInfoModalProduct(null)}
-                    className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md"
-                >
-                    <motion.div
-                        {...panelModal}
-                        role="dialog"
-                        aria-modal="true"
-                        onClick={(e) => e.stopPropagation()}
-                        className="bg-white dark:bg-[#242723] rounded-[2rem] shadow-2xl w-full max-w-lg overflow-hidden border border-[#E6DFD5] dark:border-[#353B33] flex flex-col max-h-[85vh]"
-                    >
-                        {/* Header */}
-                        <div className="p-6 sm:p-8 border-b border-[#E6DFD5] dark:border-[#353B33] flex justify-between items-center bg-[#F9F6F0] dark:bg-[#1B1D1A] shrink-0">
-                            <div>
-                                <span className="text-[10px] font-black uppercase tracking-widest text-[#7D9878] dark:text-[#A3B69B] flex items-center gap-1.5 font-brand">
-                                    <Info className="w-3.5 h-3.5" /> Fórmula e Insumos de Fabricación
-                                </span>
-                                <h3 className="text-xl font-extrabold text-[#2C2C2C] dark:text-[#F4EFEA] font-brand mt-0.5">{infoModalProduct.name}</h3>
-                            </div>
-                            <button
-                                onClick={() => setInfoModalProduct(null)}
-                                className="p-2.5 rounded-full bg-[#1B1D1A] text-white hover:bg-rose-600 transition-all border border-[#353B33]"
-                                title="Cerrar"
-                            >
-                                <X className="w-5 h-5" />
-                            </button>
-                        </div>
-
-                        {/* Content Body */}
-                        <div className="p-6 sm:p-8 space-y-6 overflow-y-auto flex-1 custom-scrollbar">
-                            <div className="flex flex-wrap items-center gap-2">
-                                <span className="px-3 py-1 rounded-xl bg-[#F9F6F0] dark:bg-[#1B1D1A] border border-[#E6DFD5] dark:border-[#353B33] text-xs font-bold text-[#7D9878] dark:text-[#A3B69B]">
-                                    Categoría: {infoModalProduct.category || "Perfumería Fina"}
-                                </span>
-                                <span className="px-3 py-1 rounded-xl bg-[#F9F6F0] dark:bg-[#1B1D1A] border border-[#E6DFD5] dark:border-[#353B33] text-xs font-bold text-[#2C2C2C]/70 dark:text-[#F4EFEA]/70">
-                                    Género: {infoModalProduct.gender || "Todos"}
-                                </span>
-                            </div>
-
-                            <div className="space-y-3">
-                                <p className="text-[10px] font-black uppercase tracking-widest text-[#2C2C2C]/50 dark:text-[#F4EFEA]/50">
-                                    Componentes Utilizados en Cálculo ({infoModalProduct.components?.length || 0})
-                                </p>
-
-                                {(() => {
-                                    const breakdown = getComponentBreakdown(infoModalProduct, esencias, insumos);
-                                    if (breakdown.length === 0) {
-                                        return (
-                                            <div className="p-4 rounded-2xl bg-[#F9F6F0] dark:bg-[#1B1D1A] border border-[#E6DFD5] dark:border-[#353B33] text-center text-xs font-bold text-[#2C2C2C]/60 dark:text-[#F4EFEA]/60">
-                                                Este producto no posee insumos asignados en su fórmula actual.
-                                            </div>
-                                        );
-                                    }
-
-                                    return (
-                                        <div className="space-y-2">
-                                            {breakdown.map((comp, idx) => (
-                                                <div key={idx} className="p-3.5 rounded-2xl bg-[#F9F6F0] dark:bg-[#1B1D1A] border border-[#E6DFD5] dark:border-[#353B33] flex items-center justify-between gap-3">
-                                                    <div className="flex items-center gap-3 min-w-0">
-                                                        <div className="p-2.5 rounded-xl bg-[#7D9878]/10 text-[#7D9878] shrink-0">
-                                                            {comp.type === "Esencia" ? <FlaskConical className="w-4 h-4" /> : <Package className="w-4 h-4" />}
-                                                        </div>
-                                                        <div className="min-w-0">
-                                                            <p className="text-xs font-bold text-[#2C2C2C] dark:text-[#F4EFEA] truncate">{comp.name}</p>
-                                                            <p className="text-[10px] font-bold text-[#2C2C2C]/50 dark:text-[#F4EFEA]/50">
-                                                                Dosis: <span className="font-extrabold text-[#7D9878] dark:text-[#A3B69B]">{comp.qty} {comp.type === "Esencia" ? "g/ml" : "un."}</span>
-                                                            </p>
-                                                        </div>
-                                                    </div>
-
-                                                    <div className="text-right shrink-0">
-                                                        <p className="text-[10px] font-bold text-[#2C2C2C]/50 dark:text-[#F4EFEA]/50 uppercase">Costo Parcial</p>
-                                                        <p className="text-sm font-black text-[#2C2C2C] dark:text-[#F4EFEA]">
-                                                            {comp.isConsultar ? "Consultar" : `$${Intl.NumberFormat("es-AR").format(Math.round(comp.totalCost))}`}
-                                                        </p>
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    );
-                                })()}
-                            </div>
-
-                            {/* Total Cost Summary */}
-                            {(() => {
-                                const cost = getProductCost(infoModalProduct, esencias, insumos);
-                                const priceMay = Number(infoModalProduct.price) || 0;
-                                const priceMin = Number(infoModalProduct.priceMinorista) || 0;
-
-                                return (
-                                    <div className="p-4 rounded-2xl bg-[#7D9878]/10 border border-[#7D9878]/20 flex justify-between items-center">
-                                        <div>
-                                            <p className="text-[10px] font-black uppercase tracking-widest text-[#7D9878] dark:text-[#A3B69B]">Costo Total Calculado</p>
-                                            <p className="text-xl font-black text-[#2C2C2C] dark:text-[#F4EFEA] font-brand mt-0.5">
-                                                {cost > 0 && isFinite(cost) ? `$${Intl.NumberFormat("es-AR").format(Math.round(cost))}` : "Consultar"}
-                                            </p>
-                                        </div>
-                                        <div className="text-right">
-                                            <p className="text-[10px] font-bold text-[#2C2C2C]/60 dark:text-[#F4EFEA]/60 uppercase">Precios finales</p>
-                                            <p className="text-xs font-bold text-[#2C2C2C] dark:text-[#F4EFEA]">
-                                                Mayorista: <strong className="text-[#7D9878] dark:text-[#A3B69B]">{priceMay > 0 && isFinite(priceMay) ? `$${Intl.NumberFormat("es-AR").format(priceMay)}` : "Consultar"}</strong>
-                                            </p>
-                                            <p className="text-xs font-bold text-[#2C2C2C] dark:text-[#F4EFEA]">
-                                                Minorista: <strong className="text-[#C9866F]">{priceMin > 0 && isFinite(priceMin) ? `$${Intl.NumberFormat("es-AR").format(priceMin)}` : "Consultar"}</strong>
-                                            </p>
-                                        </div>
+                                        </dl>
                                     </div>
-                                );
-                            })()}
-                        </div>
-                    </motion.div>
-                </motion.div>
-            )}
-            </AnimatePresence>
+                                ))}
+                            </div>
+                        </CuerpoVentana>
+                    </PanelVentana>
+                );
+            })()}
+            </Ventana>
+
+            {/* Fórmula e insumos de un producto */}
+            <Ventana abierta={!!infoModalProduct} onCerrar={() => setInfoModalProduct(null)} etiqueta="Fórmula del producto">
+            {infoModalProduct && (() => {
+                const pesos = (n: number) => `$${Intl.NumberFormat("es-AR").format(Math.round(n))}`;
+                const breakdown = getComponentBreakdown(infoModalProduct, esencias, insumos);
+                const cost = getProductCost(infoModalProduct, esencias, insumos);
+                const priceMay = Number(infoModalProduct.price) || 0;
+                const priceMin = Number(infoModalProduct.priceMinorista) || 0;
+                return (
+                    <PanelVentana ancho="md">
+                        <CabeceraVentana
+                            etiqueta="Fórmula del producto"
+                            titulo={infoModalProduct.name}
+                            descripcion={`${infoModalProduct.category || "Perfumería Fina"} · ${infoModalProduct.gender || "Todos los géneros"}`}
+                            icono={Info}
+                            onCerrar={() => setInfoModalProduct(null)}
+                        />
+                        <CuerpoVentana className="space-y-4">
+                            {breakdown.length === 0 ? (
+                                <p className="rounded-2xl border border-dashed border-[#E6DFD5] dark:border-[#353B33] px-4 py-8 text-center text-sm text-[#2C2C2C]/55 dark:text-[#F4EFEA]/50">
+                                    Este producto todavía no tiene insumos en su fórmula.
+                                </p>
+                            ) : (
+                                <div className="rounded-2xl border border-[#E6DFD5] dark:border-[#353B33] overflow-hidden">
+                                    <div className="flex items-center gap-3 px-4 py-2.5 bg-[#F9F6F0] dark:bg-[#1B1D1A] text-[11px] font-semibold uppercase tracking-wider text-[#2C2C2C]/50 dark:text-[#F4EFEA]/45">
+                                        <span className="flex-1">Componente</span>
+                                        <span>Cantidad</span>
+                                        <span className="w-24 text-right">Costo</span>
+                                    </div>
+                                    <ul className="divide-y divide-[#E6DFD5]/70 dark:divide-[#353B33]/70">
+                                        {breakdown.map((comp, idx) => (
+                                            <li key={idx} className="flex items-center gap-3 px-4 py-3 text-sm">
+                                                <span className="w-8 h-8 rounded-lg bg-[#7D9878]/10 text-[#5A7356] dark:text-[#A3B69B] flex items-center justify-center shrink-0">
+                                                    {comp.type === "Esencia" ? <FlaskConical className="w-4 h-4" /> : <Package className="w-4 h-4" />}
+                                                </span>
+                                                <span className="flex-1 min-w-0 truncate text-[#2C2C2C] dark:text-[#F4EFEA]">{comp.name}</span>
+                                                <span className="text-xs tabular-nums text-[#2C2C2C]/55 dark:text-[#F4EFEA]/50">
+                                                    {comp.qty} {comp.type === "Esencia" ? "g" : "un."}
+                                                </span>
+                                                <span className="w-24 text-right font-semibold tabular-nums text-[#2C2C2C] dark:text-[#F4EFEA]">
+                                                    {comp.isConsultar ? "Consultar" : pesos(comp.totalCost)}
+                                                </span>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                    <div className="flex items-center justify-between gap-3 px-4 py-4 border-t border-[#E6DFD5] dark:border-[#353B33] bg-[#7D9878]/[0.06] dark:bg-[#7D9878]/[0.1]">
+                                        <span className="text-sm font-semibold text-[#2C2C2C] dark:text-[#F4EFEA]">Costo total</span>
+                                        <span className="text-xl font-bold tabular-nums text-[#2C2C2C] dark:text-[#F4EFEA]">
+                                            {cost > 0 && isFinite(cost) ? pesos(cost) : "Consultar"}
+                                        </span>
+                                    </div>
+                                </div>
+                            )}
+
+                            <dl className="grid grid-cols-2 gap-3">
+                                <div className="rounded-2xl bg-[#F9F6F0] dark:bg-[#1B1D1A] px-4 py-3">
+                                    <dt className="text-xs text-[#2C2C2C]/55 dark:text-[#F4EFEA]/50">Precio mayorista</dt>
+                                    <dd className="mt-0.5 text-sm font-semibold tabular-nums text-[#3F5A3C] dark:text-[#A3B69B]">
+                                        {priceMay > 0 && isFinite(priceMay) ? pesos(priceMay) : "Consultar"}
+                                    </dd>
+                                </div>
+                                <div className="rounded-2xl bg-[#F9F6F0] dark:bg-[#1B1D1A] px-4 py-3">
+                                    <dt className="text-xs text-[#2C2C2C]/55 dark:text-[#F4EFEA]/50">Precio minorista</dt>
+                                    <dd className="mt-0.5 text-sm font-semibold tabular-nums text-[#97604D] dark:text-[#DBA793]">
+                                        {priceMin > 0 && isFinite(priceMin) ? pesos(priceMin) : "Consultar"}
+                                    </dd>
+                                </div>
+                            </dl>
+                        </CuerpoVentana>
+                    </PanelVentana>
+                );
+            })()}
+            </Ventana>
 
             {/* Modal de Ver Pedido / Carrito (isCartOpen) */}
             {/* Portal al body: así el panel queda por encima de la barra de navegación. */}
@@ -1311,7 +1221,7 @@ export default function ListaPreciosPage() {
                 const totalACobrar = cartSummary.totalFinal + recargoQR;
                 const hasItems = cartFiltered.length > 0 && !orderSuccess;
                 const chip = (active: boolean) =>
-                    `px-2.5 py-1 rounded-lg text-[11px] font-bold border transition-all ${active
+                    `px-2.5 py-1 rounded-lg text-[11px] font-bold border transition ${active
                         ? "bg-[#7D9878] text-white border-[#7D9878]"
                         : "bg-white dark:bg-[#242723] text-[#2C2C2C]/70 dark:text-[#F4EFEA]/70 border-[#E6DFD5] dark:border-[#353B33] hover:border-[#7D9878]"}`;
 
@@ -1350,19 +1260,13 @@ export default function ListaPreciosPage() {
                                     <button
                                         type="button"
                                         onClick={closeCart}
-                                        className="hidden sm:flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-[#7D9878] dark:text-[#A3B69B] hover:bg-[#7D9878]/10 transition-all"
+                                        className="hidden sm:flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-[#7D9878] dark:text-[#A3B69B] hover:bg-[#7D9878]/10 transition"
                                     >
                                         <ChevronLeft className="w-4 h-4" />
                                         Seguir agregando
                                     </button>
                                 )}
-                                <button
-                                    onClick={closeCart}
-                                    className="p-2 rounded-full text-[#2C2C2C]/70 dark:text-[#F4EFEA]/70 hover:bg-rose-500/10 hover:text-rose-500 transition-all"
-                                    title="Cerrar"
-                                >
-                                    <X className="w-5 h-5" />
-                                </button>
+                                <BotonCerrar onClick={closeCart} />
                             </div>
 
                             {orderSuccess ? (
@@ -1483,7 +1387,7 @@ export default function ListaPreciosPage() {
                                                                 <button
                                                                     type="button"
                                                                     onClick={() => setOpenItemDiscount(discountOpen ? null : pricing.key)}
-                                                                    className={`flex items-center gap-1 px-2 py-1 rounded-lg font-bold border transition-all ${hasDiscount
+                                                                    className={`flex items-center gap-1 px-2 py-1 rounded-lg font-bold border transition ${hasDiscount
                                                                         ? "bg-[#C9866F]/10 text-[#B5735C] dark:text-[#D29680] border-[#C9866F]/30"
                                                                         : "text-[#2C2C2C]/60 dark:text-[#F4EFEA]/60 border-[#E6DFD5] dark:border-[#353B33] hover:border-[#7D9878]"}`}
                                                                 >
@@ -1585,24 +1489,33 @@ export default function ListaPreciosPage() {
                                                     <Percent className="w-3 h-3" /> Descuento a todo el pedido
                                                 </label>
                                                 <div className="flex items-center gap-2">
-                                                    <input
-                                                        type="number"
-                                                        min="0"
-                                                        max={globalDiscountType === "percent" ? "100" : undefined}
-                                                        value={globalDiscountValue || ""}
-                                                        onChange={e => {
-                                                            const val = parseFloat(e.target.value) || 0;
-                                                            setGlobalDiscountValue(val);
-                                                            handleApplyGlobalDiscount(globalDiscountType, val);
-                                                        }}
-                                                        placeholder={globalDiscountType === "percent" ? "Ej: 10" : "Ej: 2000 por producto"}
-                                                        className="flex-1 min-w-0 px-3 py-2.5 rounded-xl bg-white dark:bg-[#242723] border border-[#E6DFD5] dark:border-[#353B33] text-sm font-bold text-[#2C2C2C] dark:text-[#F4EFEA] focus:outline-none focus:border-[#7D9878]"
-                                                    />
-                                                    <div className="flex bg-white dark:bg-[#242723] p-0.5 rounded-xl border border-[#E6DFD5] dark:border-[#353B33] shrink-0">
+                                                    <div className="relative flex-1 min-w-0">
+                                                        {globalDiscountType === "fixed" && (
+                                                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-bold text-[#2C2C2C]/45 dark:text-[#F4EFEA]/45 pointer-events-none">$</span>
+                                                        )}
+                                                        <input
+                                                            type="number"
+                                                            min="0"
+                                                            max={globalDiscountType === "percent" ? "100" : undefined}
+                                                            inputMode="decimal"
+                                                            aria-label={globalDiscountType === "percent" ? "Descuento a todo el pedido, en porcentaje" : "Descuento a todo el pedido, en pesos"}
+                                                            value={globalDiscountValue || ""}
+                                                            onChange={e => setGlobalDiscountValue(Math.max(0, parseFloat(e.target.value) || 0))}
+                                                            placeholder={globalDiscountType === "percent" ? "Ej: 10" : "Ej: 2000"}
+                                                            className={`w-full py-2.5 rounded-xl bg-white dark:bg-[#242723] border border-[#E6DFD5] dark:border-[#353B33] text-sm font-bold text-[#2C2C2C] dark:text-[#F4EFEA] focus:outline-none focus:border-[#7D9878] ${globalDiscountType === "fixed" ? "pl-7 pr-3" : "pl-3 pr-8"}`}
+                                                        />
+                                                        {globalDiscountType === "percent" && (
+                                                            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm font-bold text-[#2C2C2C]/45 dark:text-[#F4EFEA]/45 pointer-events-none">%</span>
+                                                        )}
+                                                    </div>
+                                                    <div role="radiogroup" aria-label="Tipo de descuento" className="flex bg-white dark:bg-[#242723] p-0.5 rounded-xl border border-[#E6DFD5] dark:border-[#353B33] shrink-0">
                                                         {(["percent", "fixed"] as const).map(t => (
                                                             <button
                                                                 key={t}
                                                                 type="button"
+                                                                role="radio"
+                                                                aria-checked={globalDiscountType === t}
+                                                                aria-label={t === "percent" ? "En porcentaje" : "En pesos"}
                                                                 onClick={() => setGlobalDiscountType(t)}
                                                                 className={`px-3 py-1.5 text-xs font-black rounded-lg ${globalDiscountType === t ? "bg-[#7D9878] text-white" : "text-[#2C2C2C]/60 dark:text-[#F4EFEA]/60"}`}
                                                             >
@@ -1611,6 +1524,14 @@ export default function ListaPreciosPage() {
                                                         ))}
                                                     </div>
                                                 </div>
+                                                {/* Qué se va a descontar, en pesos, para no tener dudas */}
+                                                {cartSummary.orderDiscount > 0 && (
+                                                    <p className="px-1 text-xs font-semibold text-[#B5735C] dark:text-[#D29680]" aria-live="polite">
+                                                        {globalDiscountType === "percent"
+                                                            ? `${Math.min(100, globalDiscountValue)}% del pedido: se descuentan $${fmt(cartSummary.orderDiscount)}`
+                                                            : `Se descuentan $${fmt(cartSummary.orderDiscount)} del total${Math.round(globalDiscountValue) > cartSummary.subtotalConDescuentos ? " (no puede ser más que el total)" : ""}`}
+                                                    </p>
+                                                )}
                                                 <div className="flex flex-wrap gap-1.5">
                                                     {[
                                                         { label: "Sin dto", val: 0 },
@@ -1626,9 +1547,8 @@ export default function ListaPreciosPage() {
                                                             onClick={() => {
                                                                 setGlobalDiscountType("percent");
                                                                 setGlobalDiscountValue(preset.val);
-                                                                handleApplyGlobalDiscount("percent", preset.val);
                                                             }}
-                                                            className={chip(globalDiscountType === "percent" && globalDiscountValue === preset.val)}
+                                                            className={chip(preset.val === 0 ? !(globalDiscountValue > 0) : globalDiscountType === "percent" && globalDiscountValue === preset.val)}
                                                         >
                                                             {preset.label}
                                                         </button>
@@ -1665,10 +1585,16 @@ export default function ListaPreciosPage() {
                                                     <span>Subtotal lista</span>
                                                     <span>${fmt(cartSummary.baseSubtotal)}</span>
                                                 </div>
-                                                {cartSummary.totalDiscount > 0 && (
+                                                {cartSummary.itemsDiscount > 0 && (
                                                     <div className="flex justify-between text-[#B5735C] dark:text-[#D29680]">
-                                                        <span>Descuentos</span>
-                                                        <span>-${fmt(cartSummary.totalDiscount)}</span>
+                                                        <span>Descuentos por producto</span>
+                                                        <span>-${fmt(cartSummary.itemsDiscount)}</span>
+                                                    </div>
+                                                )}
+                                                {cartSummary.orderDiscount > 0 && (
+                                                    <div className="flex justify-between text-[#B5735C] dark:text-[#D29680]">
+                                                        <span>Descuento al pedido{globalDiscountType === "percent" ? ` (${Math.min(100, globalDiscountValue)}%)` : ""}</span>
+                                                        <span>-${fmt(cartSummary.orderDiscount)}</span>
                                                     </div>
                                                 )}
                                                 {recargoQR > 0 && (
@@ -1708,7 +1634,7 @@ export default function ListaPreciosPage() {
                                         <button
                                             type="button"
                                             onClick={handleClearCart}
-                                            className="px-4 py-3 rounded-xl border border-[#E6DFD5] dark:border-[#353B33] text-rose-500 font-bold text-xs hover:bg-rose-500/10 transition-all"
+                                            className="px-4 py-3 rounded-xl border border-[#E6DFD5] dark:border-[#353B33] text-rose-500 font-bold text-xs hover:bg-rose-500/10 transition"
                                         >
                                             Vaciar
                                         </button>
@@ -1716,7 +1642,7 @@ export default function ListaPreciosPage() {
                                             type="button"
                                             onClick={handleVender}
                                             disabled={isSelling}
-                                            className="px-6 py-3 rounded-xl bg-[#7D9878] hover:bg-[#6b8566] text-white font-black text-sm transition-all shadow-md active:scale-95 flex items-center gap-2 disabled:opacity-60 disabled:cursor-wait"
+                                            className="px-6 py-3 rounded-xl bg-[#7D9878] hover:bg-[#6b8566] text-white font-black text-sm transition shadow-md active:scale-95 flex items-center gap-2 disabled:opacity-60 disabled:cursor-wait"
                                         >
                                             {isSelling ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
                                             {isSelling ? "Registrando..." : "Vender"}
