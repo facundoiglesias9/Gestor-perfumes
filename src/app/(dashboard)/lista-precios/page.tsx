@@ -66,6 +66,9 @@ import Buscador from "@/components/Buscador";
 
 // ── Animaciones ─────────────────────────────────────────────────────
 const EASE_OUT = [0.23, 1, 0.32, 1] as const;
+
+// Botones de cada fila (Fórmula y Ganancia): borde de color, mismo alto que "Agregar"
+const BOTON_FILA = "inline-flex items-center gap-1.5 h-9 px-3 rounded-lg border text-xs font-semibold shadow-sm shadow-black/[0.03] active:scale-[0.96] transition-[background-color,border-color,transform] duration-150 whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7D9878]/50";
 const EASE_CAJON = [0.32, 0.72, 0, 1] as const; // como el panel lateral de iOS
 
 const fondoModal = {
@@ -916,21 +919,21 @@ export default function ListaPreciosPage() {
                                                 <div className="flex items-center justify-end gap-1">
                                                     <button
                                                         onClick={() => setInfoModalProduct(producto)}
-                                                        className="inline-flex items-center gap-1.5 h-9 px-2.5 rounded-lg text-xs font-semibold text-[#2C2C2C]/60 dark:text-[#F4EFEA]/55 hover:text-[#2C2C2C] dark:hover:text-[#F4EFEA] hover:bg-[#F4EFEA] dark:hover:bg-[#1B1D1A] active:scale-[0.96] transition-[background-color,color,transform] duration-150 whitespace-nowrap"
+                                                        className={`${BOTON_FILA} border-[#C9A877]/60 bg-[#DAC4AA]/[0.14] text-[#7A5C34] dark:text-[#E3CBA4] hover:bg-[#DAC4AA]/30 hover:border-[#C9A877]`}
                                                         title="Ver insumos y fórmula utilizada"
-                                                        aria-label={`Insumos de ${producto.name}`}
+                                                        aria-label={`Fórmula de ${producto.name}`}
                                                     >
-                                                        <FlaskConical className="w-4 h-4" />
-                                                        <span className="hidden 2xl:inline">Insumos</span>
+                                                        <FlaskConical className="w-3.5 h-3.5" />
+                                                        Fórmula
                                                     </button>
                                                     <button
                                                         onClick={() => setProfitModalProduct(producto)}
-                                                        className="inline-flex items-center gap-1.5 h-9 px-2.5 rounded-lg text-xs font-semibold text-[#2C2C2C]/60 dark:text-[#F4EFEA]/55 hover:text-[#2C2C2C] dark:hover:text-[#F4EFEA] hover:bg-[#F4EFEA] dark:hover:bg-[#1B1D1A] active:scale-[0.96] transition-[background-color,color,transform] duration-150 whitespace-nowrap"
+                                                        className={`${BOTON_FILA} border-[#1baf7a]/45 bg-[#1baf7a]/[0.08] text-[#128a5f] dark:text-[#4fd1a0] hover:bg-[#1baf7a]/[0.18] hover:border-[#1baf7a]/75`}
                                                         title="Ver desglose de % de ganancia"
                                                         aria-label={`Ganancia de ${producto.name}`}
                                                     >
-                                                        <Percent className="w-4 h-4" />
-                                                        <span className="hidden 2xl:inline">Ganancia</span>
+                                                        <Percent className="w-3.5 h-3.5" />
+                                                        Ganancia
                                                     </button>
                                                     <span className="ml-1">
                                                         <BotonCarrito
@@ -1011,140 +1014,202 @@ export default function ListaPreciosPage() {
                 />
             )}
 
-            {/* Rentabilidad de un producto */}
-            <Ventana abierta={!!profitModalProduct} onCerrar={() => setProfitModalProduct(null)} etiqueta="Rentabilidad">
-            {profitModalProduct && (() => {
+            {/* Ficha del producto: fórmula y ganancia en una sola ventana, con pestañas */}
+            <Ventana
+                abierta={!!(infoModalProduct || profitModalProduct)}
+                onCerrar={() => { setInfoModalProduct(null); setProfitModalProduct(null); }}
+                etiqueta="Ficha del producto"
+            >
+            {(infoModalProduct || profitModalProduct) && (() => {
+                const p = (infoModalProduct || profitModalProduct)!;
+                const vista: "formula" | "ganancia" = infoModalProduct ? "formula" : "ganancia";
+                const verVista = (v: "formula" | "ganancia") => {
+                    setInfoModalProduct(v === "formula" ? p : null);
+                    setProfitModalProduct(v === "ganancia" ? p : null);
+                };
+                const cerrar = () => { setInfoModalProduct(null); setProfitModalProduct(null); };
                 const pesos = (n: number) => `$${Intl.NumberFormat("es-AR").format(Math.round(n))}`;
-                const cost = getProductCost(profitModalProduct, esencias, insumos);
-                const priceMay = Number(profitModalProduct.price) || 0;
-                const priceMin = Number(profitModalProduct.priceMinorista) || 0;
-                const marginMay = calculateProfitMargin(cost, priceMay);
-                const marginMin = calculateProfitMargin(cost, priceMin);
-                const filas = [
-                    { titulo: "Mayorista", Icono: Store, precio: priceMay, margen: marginMay, tono: "text-[#3F5A3C] dark:text-[#A3B69B]", fondo: "bg-[#7D9878]/12 text-[#3F5A3C] dark:text-[#A3B69B]" },
-                    { titulo: "Minorista", Icono: UserCheck, precio: priceMin, margen: marginMin, tono: "text-[#97604D] dark:text-[#DBA793]", fondo: "bg-[#C9866F]/12 text-[#97604D] dark:text-[#DBA793]" },
-                ];
-                return (
-                    <PanelVentana ancho="md">
-                        <CabeceraVentana
-                            etiqueta="Rentabilidad"
-                            titulo={profitModalProduct.name}
-                            icono={TrendingUp}
-                            onCerrar={() => setProfitModalProduct(null)}
-                        />
-                        <CuerpoVentana className="space-y-4">
-                            <div className="flex items-center justify-between gap-4 rounded-2xl bg-[#F9F6F0] dark:bg-[#1B1D1A] px-5 py-4">
-                                <div>
-                                    <p className="text-xs text-[#2C2C2C]/55 dark:text-[#F4EFEA]/50">Costo de fabricación</p>
-                                    <p className="mt-0.5 text-xl font-bold tabular-nums text-[#2C2C2C] dark:text-[#F4EFEA]">
-                                        {cost > 0 && isFinite(cost) ? pesos(cost) : "Consultar"}
-                                    </p>
-                                </div>
-                                <Coins className="w-6 h-6 text-[#7D9878] dark:text-[#A3B69B]" />
-                            </div>
+                const valido = (n: number) => n > 0 && isFinite(n);
+                const breakdown = getComponentBreakdown(p, esencias, insumos);
+                const cost = getProductCost(p, esencias, insumos);
+                const canales = [
+                    { titulo: "Mayorista", Icono: Store, precio: Number(p.price) || 0, color: "#7D9878", texto: "text-[#3F5A3C] dark:text-[#A3B69B]", chip: "bg-[#7D9878]/12 text-[#3F5A3C] dark:text-[#A3B69B]" },
+                    { titulo: "Minorista", Icono: UserCheck, precio: Number(p.priceMinorista) || 0, color: "#C9866F", texto: "text-[#97604D] dark:text-[#DBA793]", chip: "bg-[#C9866F]/12 text-[#97604D] dark:text-[#DBA793]" },
+                ].map(c => ({ ...c, margen: calculateProfitMargin(cost, c.precio) }));
+                const { title, brand } = extractBrand(p.name);
+                // Colores de cada componente en la barra de composición
+                const COLORES = ["#7D9878", "#C9A877", "#C9866F", "#A3B69B", "#8C9DB5", "#DAC4AA", "#5A7356", "#B5735C"];
+                const totalComp = breakdown.reduce((a, c) => a + (c.isConsultar ? 0 : c.totalCost), 0);
+                const rotulo = "text-[11px] font-semibold uppercase tracking-[0.12em] text-[#2C2C2C]/45 dark:text-[#F4EFEA]/40";
 
-                            <div className="rounded-2xl border border-[#E6DFD5] dark:border-[#353B33] divide-y divide-[#E6DFD5]/70 dark:divide-[#353B33]/70 overflow-hidden">
-                                {filas.map(({ titulo, Icono, precio, margen, tono, fondo }) => (
-                                    <div key={titulo} className="px-5 py-4">
-                                        <div className="flex items-center justify-between gap-3">
-                                            <span className={`flex items-center gap-2 text-sm font-semibold ${tono}`}>
-                                                <Icono className="w-4 h-4" /> Venta {titulo.toLowerCase()}
-                                            </span>
-                                            <span className={`px-2.5 py-1 rounded-lg text-xs font-semibold tabular-nums ${margen.isConsultar ? "bg-[#DAC4AA]/20 text-[#7A5C34] dark:text-[#DAC4AA]" : fondo}`}>
-                                                {margen.percentStr}
-                                            </span>
-                                        </div>
-                                        <dl className="mt-3 grid grid-cols-2 gap-3 text-sm">
-                                            <div>
-                                                <dt className="text-xs text-[#2C2C2C]/55 dark:text-[#F4EFEA]/50">Precio</dt>
-                                                <dd className="mt-0.5 font-semibold tabular-nums text-[#2C2C2C] dark:text-[#F4EFEA]">
-                                                    {precio > 0 && isFinite(precio) ? pesos(precio) : "Consultar"}
-                                                </dd>
-                                            </div>
-                                            <div>
-                                                <dt className="text-xs text-[#2C2C2C]/55 dark:text-[#F4EFEA]/50">Ganancia por unidad</dt>
-                                                <dd className={`mt-0.5 font-semibold tabular-nums ${tono}`}>
-                                                    {margen.gainVal !== null && margen.gainVal > 0 && isFinite(margen.gainVal) ? `+${pesos(margen.gainVal)}` : "Consultar"}
-                                                </dd>
-                                            </div>
-                                        </dl>
+                return (
+                    <PanelVentana ancho="lg">
+                        <CabeceraVentana
+                            etiqueta={brand || "Ficha del producto"}
+                            titulo={title}
+                            descripcion={[p.category || "Perfumería fina", p.gender].filter(Boolean).join(" · ")}
+                            icono={vista === "formula" ? FlaskConical : TrendingUp}
+                            onCerrar={cerrar}
+                        >
+                            <div role="tablist" aria-label="Ver" className="mt-4 inline-flex p-1 rounded-xl bg-[#F4EFEA] dark:bg-[#1B1D1A]">
+                                {([["formula", "Fórmula", FlaskConical], ["ganancia", "Ganancia", Percent]] as const).map(([clave, texto, Icono]) => {
+                                    const activo = vista === clave;
+                                    return (
+                                        <button
+                                            key={clave}
+                                            type="button"
+                                            role="tab"
+                                            aria-selected={activo}
+                                            onClick={() => verVista(clave)}
+                                            className={`relative inline-flex items-center gap-1.5 h-8 px-3.5 rounded-lg text-sm font-semibold transition-colors duration-150 ${activo ? "text-[#2C2C2C] dark:text-[#F4EFEA]" : "text-[#2C2C2C]/55 dark:text-[#F4EFEA]/50 hover:text-[#2C2C2C] dark:hover:text-[#F4EFEA]"}`}
+                                        >
+                                            {activo && (
+                                                <motion.span layoutId="ficha-pestana" transition={{ type: "spring", bounce: 0.15, duration: 0.35 }} className="absolute inset-0 rounded-lg bg-white dark:bg-[#353B33] shadow-sm" />
+                                            )}
+                                            <span className="relative inline-flex items-center gap-1.5"><Icono className="w-3.5 h-3.5" />{texto}</span>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </CabeceraVentana>
+
+                        <CuerpoVentana className="space-y-5">
+                            {/* Números clave: siempre a la vista */}
+                            <dl className="grid grid-cols-3 gap-2.5">
+                                <div className="rounded-xl border border-[#E6DFD5] dark:border-[#353B33] px-3.5 py-3">
+                                    <dt className="flex items-center gap-1.5 text-xs text-[#2C2C2C]/55 dark:text-[#F4EFEA]/50"><Coins className="w-3.5 h-3.5" /> Costo</dt>
+                                    <dd className="mt-1 text-lg font-bold tabular-nums text-[#2C2C2C] dark:text-[#F4EFEA]">{valido(cost) ? pesos(cost) : "Consultar"}</dd>
+                                    <dd className="text-[11px] text-[#2C2C2C]/45 dark:text-[#F4EFEA]/40">por unidad</dd>
+                                </div>
+                                {canales.map(c => (
+                                    <div key={c.titulo} className="rounded-xl border border-[#E6DFD5] dark:border-[#353B33] px-3.5 py-3">
+                                        <dt className={`flex items-center gap-1.5 text-xs ${c.texto}`}><c.Icono className="w-3.5 h-3.5" /> {c.titulo}</dt>
+                                        <dd className="mt-1 text-lg font-bold tabular-nums text-[#2C2C2C] dark:text-[#F4EFEA]">{valido(c.precio) ? pesos(c.precio) : "Consultar"}</dd>
+                                        <dd className={`text-[11px] font-semibold tabular-nums ${c.margen.isConsultar ? "text-[#2C2C2C]/45 dark:text-[#F4EFEA]/40" : c.texto}`}>
+                                            {c.margen.isConsultar ? "Sin margen" : `${c.margen.percentStr} sobre el costo`}
+                                        </dd>
                                     </div>
                                 ))}
-                            </div>
-                        </CuerpoVentana>
-                    </PanelVentana>
-                );
-            })()}
-            </Ventana>
-
-            {/* Fórmula e insumos de un producto */}
-            <Ventana abierta={!!infoModalProduct} onCerrar={() => setInfoModalProduct(null)} etiqueta="Fórmula del producto">
-            {infoModalProduct && (() => {
-                const pesos = (n: number) => `$${Intl.NumberFormat("es-AR").format(Math.round(n))}`;
-                const breakdown = getComponentBreakdown(infoModalProduct, esencias, insumos);
-                const cost = getProductCost(infoModalProduct, esencias, insumos);
-                const priceMay = Number(infoModalProduct.price) || 0;
-                const priceMin = Number(infoModalProduct.priceMinorista) || 0;
-                return (
-                    <PanelVentana ancho="md">
-                        <CabeceraVentana
-                            etiqueta="Fórmula del producto"
-                            titulo={infoModalProduct.name}
-                            descripcion={`${infoModalProduct.category || "Perfumería Fina"} · ${infoModalProduct.gender || "Todos los géneros"}`}
-                            icono={Info}
-                            onCerrar={() => setInfoModalProduct(null)}
-                        />
-                        <CuerpoVentana className="space-y-4">
-                            {breakdown.length === 0 ? (
-                                <p className="rounded-2xl border border-dashed border-[#E6DFD5] dark:border-[#353B33] px-4 py-8 text-center text-sm text-[#2C2C2C]/55 dark:text-[#F4EFEA]/50">
-                                    Este producto todavía no tiene insumos en su fórmula.
-                                </p>
-                            ) : (
-                                <div className="rounded-2xl border border-[#E6DFD5] dark:border-[#353B33] overflow-hidden">
-                                    <div className="flex items-center gap-3 px-4 py-2.5 bg-[#F9F6F0] dark:bg-[#1B1D1A] text-[11px] font-semibold uppercase tracking-wider text-[#2C2C2C]/50 dark:text-[#F4EFEA]/45">
-                                        <span className="flex-1">Componente</span>
-                                        <span>Cantidad</span>
-                                        <span className="w-24 text-right">Costo</span>
-                                    </div>
-                                    <ul className="divide-y divide-[#E6DFD5]/70 dark:divide-[#353B33]/70">
-                                        {breakdown.map((comp, idx) => (
-                                            <li key={idx} className="flex items-center gap-3 px-4 py-3 text-sm">
-                                                <span className="w-8 h-8 rounded-lg bg-[#7D9878]/10 text-[#5A7356] dark:text-[#A3B69B] flex items-center justify-center shrink-0">
-                                                    {comp.type === "Esencia" ? <FlaskConical className="w-4 h-4" /> : <Package className="w-4 h-4" />}
-                                                </span>
-                                                <span className="flex-1 min-w-0 truncate text-[#2C2C2C] dark:text-[#F4EFEA]">{comp.name}</span>
-                                                <span className="text-xs tabular-nums text-[#2C2C2C]/55 dark:text-[#F4EFEA]/50">
-                                                    {comp.qty} {comp.type === "Esencia" ? "g" : "un."}
-                                                </span>
-                                                <span className="w-24 text-right font-semibold tabular-nums text-[#2C2C2C] dark:text-[#F4EFEA]">
-                                                    {comp.isConsultar ? "Consultar" : pesos(comp.totalCost)}
-                                                </span>
-                                            </li>
-                                        ))}
-                                    </ul>
-                                    <div className="flex items-center justify-between gap-3 px-4 py-4 border-t border-[#E6DFD5] dark:border-[#353B33] bg-[#7D9878]/[0.06] dark:bg-[#7D9878]/[0.1]">
-                                        <span className="text-sm font-semibold text-[#2C2C2C] dark:text-[#F4EFEA]">Costo total</span>
-                                        <span className="text-xl font-bold tabular-nums text-[#2C2C2C] dark:text-[#F4EFEA]">
-                                            {cost > 0 && isFinite(cost) ? pesos(cost) : "Consultar"}
-                                        </span>
-                                    </div>
-                                </div>
-                            )}
-
-                            <dl className="grid grid-cols-2 gap-3">
-                                <div className="rounded-2xl bg-[#F9F6F0] dark:bg-[#1B1D1A] px-4 py-3">
-                                    <dt className="text-xs text-[#2C2C2C]/55 dark:text-[#F4EFEA]/50">Precio mayorista</dt>
-                                    <dd className="mt-0.5 text-sm font-semibold tabular-nums text-[#3F5A3C] dark:text-[#A3B69B]">
-                                        {priceMay > 0 && isFinite(priceMay) ? pesos(priceMay) : "Consultar"}
-                                    </dd>
-                                </div>
-                                <div className="rounded-2xl bg-[#F9F6F0] dark:bg-[#1B1D1A] px-4 py-3">
-                                    <dt className="text-xs text-[#2C2C2C]/55 dark:text-[#F4EFEA]/50">Precio minorista</dt>
-                                    <dd className="mt-0.5 text-sm font-semibold tabular-nums text-[#97604D] dark:text-[#DBA793]">
-                                        {priceMin > 0 && isFinite(priceMin) ? pesos(priceMin) : "Consultar"}
-                                    </dd>
-                                </div>
                             </dl>
+
+                            {vista === "formula" ? (
+                                breakdown.length === 0 ? (
+                                    <p className="rounded-xl border border-dashed border-[#E6DFD5] dark:border-[#353B33] px-4 py-8 text-center text-sm text-[#2C2C2C]/55 dark:text-[#F4EFEA]/50">
+                                        Este producto todavía no tiene insumos en su fórmula.
+                                    </p>
+                                ) : (
+                                    <section>
+                                        <div className="flex items-baseline justify-between gap-3">
+                                            <p className={rotulo}>Composición del costo</p>
+                                            <p className="text-xs text-[#2C2C2C]/45 dark:text-[#F4EFEA]/40">{breakdown.length} {breakdown.length === 1 ? "componente" : "componentes"}</p>
+                                        </div>
+                                        {/* Barra: cuánto pesa cada componente en el costo */}
+                                        {totalComp > 0 && (
+                                            <div className="mt-2.5 flex h-2.5 rounded-full overflow-hidden bg-[#2C2C2C]/[0.06] dark:bg-white/[0.06]" aria-hidden>
+                                                {breakdown.map((c, i) => !c.isConsultar && c.totalCost > 0 && (
+                                                    <motion.div
+                                                        key={i}
+                                                        style={{ backgroundColor: COLORES[i % COLORES.length] }}
+                                                        className="h-full border-r border-white/60 dark:border-[#242723] last:border-r-0"
+                                                        initial={{ width: 0 }}
+                                                        animate={{ width: `${(c.totalCost / totalComp) * 100}%` }}
+                                                        transition={{ duration: 0.5, delay: i * 0.04, ease: EASE_OUT }}
+                                                    />
+                                                ))}
+                                            </div>
+                                        )}
+                                        <ul className="mt-3 rounded-xl border border-[#E6DFD5] dark:border-[#353B33] divide-y divide-[#E6DFD5]/70 dark:divide-[#353B33]/70 overflow-hidden">
+                                            {breakdown.map((c, i) => {
+                                                const parte = totalComp > 0 && !c.isConsultar ? Math.round((c.totalCost / totalComp) * 100) : null;
+                                                return (
+                                                    <li key={i} className="flex items-center gap-3 px-3.5 py-2.5 text-sm">
+                                                        <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: c.isConsultar ? "transparent" : COLORES[i % COLORES.length], boxShadow: c.isConsultar ? "inset 0 0 0 1.5px #C9A877" : undefined }} />
+                                                        {c.type === "Esencia"
+                                                            ? <FlaskConical className="w-4 h-4 shrink-0 text-[#5A7356] dark:text-[#A3B69B]" />
+                                                            : <Package className="w-4 h-4 shrink-0 text-[#7A5C34] dark:text-[#DAC4AA]" />}
+                                                        <span className="flex-1 min-w-0">
+                                                            <span className="block truncate text-[#2C2C2C] dark:text-[#F4EFEA]">{c.name}</span>
+                                                            <span className="block text-xs text-[#2C2C2C]/50 dark:text-[#F4EFEA]/45 tabular-nums">
+                                                                {c.qty} {c.type === "Esencia" ? "g" : "un."}{c.type === "Esencia" ? " de esencia" : ""}
+                                                            </span>
+                                                        </span>
+                                                        {parte !== null && <span className="text-xs tabular-nums text-[#2C2C2C]/45 dark:text-[#F4EFEA]/40 w-10 text-right">{parte}%</span>}
+                                                        <span className={`w-24 text-right font-semibold tabular-nums ${c.isConsultar ? "text-[#7A5C34] dark:text-[#DAC4AA] text-xs" : "text-[#2C2C2C] dark:text-[#F4EFEA]"}`}>
+                                                            {c.isConsultar ? "Consultar" : pesos(c.totalCost)}
+                                                        </span>
+                                                    </li>
+                                                );
+                                            })}
+                                            <li className="flex items-center justify-between gap-3 px-3.5 py-3 bg-[#F9F6F0] dark:bg-[#1B1D1A]">
+                                                <span className="text-sm font-semibold text-[#2C2C2C] dark:text-[#F4EFEA]">Costo total</span>
+                                                <span className="text-base font-bold tabular-nums text-[#2C2C2C] dark:text-[#F4EFEA]">{valido(cost) ? pesos(cost) : "Consultar"}</span>
+                                            </li>
+                                        </ul>
+                                    </section>
+                                )
+                            ) : (
+                                <section className="space-y-3">
+                                    <p className={rotulo}>Cómo se arma el precio</p>
+                                    {canales.map(c => {
+                                        const okPrecio = valido(c.precio) && valido(cost);
+                                        const parteCosto = okPrecio ? Math.min(100, (cost / c.precio) * 100) : 0;
+                                        const sobrePrecio = okPrecio && c.margen.gainVal !== null ? Math.round((c.margen.gainVal / c.precio) * 100) : null;
+                                        return (
+                                            <div key={c.titulo} className="rounded-xl border border-[#E6DFD5] dark:border-[#353B33] p-4">
+                                                <div className="flex items-center justify-between gap-3">
+                                                    <span className={`flex items-center gap-2 text-sm font-semibold ${c.texto}`}>
+                                                        <c.Icono className="w-4 h-4" /> Venta {c.titulo.toLowerCase()}
+                                                    </span>
+                                                    <span className={`px-2 py-0.5 rounded-md text-xs font-semibold tabular-nums ${c.margen.isConsultar ? "bg-[#DAC4AA]/20 text-[#7A5C34] dark:text-[#DAC4AA]" : c.chip}`}>
+                                                        {c.margen.percentStr}
+                                                    </span>
+                                                </div>
+                                                {okPrecio ? (
+                                                    <>
+                                                        {/* Precio = costo + ganancia */}
+                                                        <div className="mt-3 flex h-7 rounded-lg overflow-hidden text-[11px] font-semibold">
+                                                            <motion.div
+                                                                className="flex items-center px-2 bg-[#2C2C2C]/[0.08] dark:bg-white/[0.08] text-[#2C2C2C]/65 dark:text-[#F4EFEA]/60 whitespace-nowrap overflow-hidden"
+                                                                initial={{ width: 0 }}
+                                                                animate={{ width: `${parteCosto}%` }}
+                                                                transition={{ duration: 0.5, ease: EASE_OUT }}
+                                                            >
+                                                                Costo
+                                                            </motion.div>
+                                                            <div className="flex-1 flex items-center justify-end px-2 text-white whitespace-nowrap overflow-hidden" style={{ backgroundColor: c.color }}>
+                                                                Ganancia
+                                                            </div>
+                                                        </div>
+                                                        <dl className="mt-3 grid grid-cols-3 gap-2 text-sm">
+                                                            <div>
+                                                                <dt className="text-xs text-[#2C2C2C]/50 dark:text-[#F4EFEA]/45">Costo</dt>
+                                                                <dd className="font-semibold tabular-nums text-[#2C2C2C] dark:text-[#F4EFEA]">{pesos(cost)}</dd>
+                                                            </div>
+                                                            <div>
+                                                                <dt className="text-xs text-[#2C2C2C]/50 dark:text-[#F4EFEA]/45">+ Ganancia</dt>
+                                                                <dd className={`font-semibold tabular-nums ${c.texto}`}>{c.margen.gainVal !== null ? pesos(c.margen.gainVal) : "—"}</dd>
+                                                            </div>
+                                                            <div className="text-right">
+                                                                <dt className="text-xs text-[#2C2C2C]/50 dark:text-[#F4EFEA]/45">= Precio</dt>
+                                                                <dd className="font-bold tabular-nums text-[#2C2C2C] dark:text-[#F4EFEA]">{pesos(c.precio)}</dd>
+                                                            </div>
+                                                        </dl>
+                                                        {sobrePrecio !== null && (
+                                                            <p className="mt-2 text-xs text-[#2C2C2C]/50 dark:text-[#F4EFEA]/45">
+                                                                De cada {pesos(c.precio)} que cobrás, {pesos(c.margen.gainVal ?? 0)} son ganancia ({sobrePrecio}% del precio).
+                                                            </p>
+                                                        )}
+                                                    </>
+                                                ) : (
+                                                    <p className="mt-2 text-sm text-[#2C2C2C]/55 dark:text-[#F4EFEA]/50">
+                                                        {valido(c.precio) ? "Falta el costo de algún componente para calcular la ganancia." : "Este producto no tiene precio cargado en esta lista."}
+                                                    </p>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
+                                </section>
+                            )}
                         </CuerpoVentana>
                     </PanelVentana>
                 );
