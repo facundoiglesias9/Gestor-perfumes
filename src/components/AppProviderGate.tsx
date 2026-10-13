@@ -6,7 +6,7 @@ import { AppProvider } from "@/context/AppContext";
 
 // Rutas públicas que no usan el sistema interno: no cargan costos,
 // usuarios ni pedidos, y no esperan a que se inicialice toda la base.
-const PUBLIC_PREFIXES = ["/catalogo"];
+const PUBLIC_PREFIXES = ["/catalogo", "/terminos", "/privacidad"];
 
 export default function AppProviderGate({ children }: { children: ReactNode }) {
     const pathname = usePathname() ?? "";

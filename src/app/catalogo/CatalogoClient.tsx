@@ -6,6 +6,7 @@ import { Search, Plus, Minus, ShoppingBag, X, MessageCircle, Clock, Trash2, Chec
 import { formatNumber } from "@/lib/format-utils";
 import Desplegable from "@/components/Desplegable";
 import { extractBrand } from "@/lib/product-utils";
+import { whatsappUrl } from "@/lib/contacto";
 
 export type CatalogoProducto = {
     id: string;
@@ -19,7 +20,6 @@ export type CatalogoProducto = {
     foto: string | null;
 };
 
-const WHATSAPP_NUMBER = "5491123529147";
 const STORAGE_KEY = "catalogo_consulta";
 const PAGE_SIZE = 12; // múltiplo de 2 y de 3: las filas quedan completas en celular, tablet y compu
 
@@ -62,8 +62,6 @@ function paginasVisibles(actual: number, total: number): (number | "…")[] {
 }
 
 type Consulta = Record<string, number>; // id de producto -> cantidad
-
-const whatsappUrl = (text: string) => `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(text)}`;
 
 export default function CatalogoClient({ productos }: { productos: CatalogoProducto[] | null }) {
     const [search, setSearch] = useState("");
@@ -446,6 +444,10 @@ export default function CatalogoClient({ productos }: { productos: CatalogoProdu
                     >
                         <MessageCircle className="w-3.5 h-3.5" /> Escribinos por WhatsApp
                     </a>
+                    <nav aria-label="Legales" className="flex flex-wrap justify-center gap-x-4 gap-y-1 text-xs text-[#2C2C2C]/55 dark:text-[#F4EFEA]/50">
+                        <a href="/terminos" className="hover:text-[#7D9878] transition-colors">Términos y condiciones</a>
+                        <a href="/privacidad" className="hover:text-[#7D9878] transition-colors">Política de privacidad</a>
+                    </nav>
                     <a href="/login" className="text-[11px] text-[#2C2C2C]/35 dark:text-[#F4EFEA]/35 hover:text-[#7D9878] transition-colors">
                         Acceso para el equipo
                     </a>
