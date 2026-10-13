@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useAppContext, Promotion } from "@/context/AppContext";
 import { Sparkles, Package, Percent, Save, Power, Search, ShoppingBag, Trash2, Calendar, Plus } from "lucide-react";
+import EncabezadoPagina from "@/components/EncabezadoPagina";
 import Buscador from "@/components/Buscador";
 
 export default function PromocionesPage() {
@@ -56,20 +57,7 @@ export default function PromocionesPage() {
 
     return (
         <div className="space-y-8 pb-12 anim-entrada">
-            <header className="flex flex-col md:flex-row md:justify-between md:items-end gap-6 bg-white dark:bg-slate-900 p-8 md:p-10 rounded-[2.5rem] shadow-sm border border-slate-100 dark:border-slate-800 transition-colors duration-300">
-                <div className="space-y-3">
-                    <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 text-xs font-bold tracking-widest uppercase mb-1">
-                        <Sparkles className="w-4 h-4" />
-                        Marketing & Ofertas
-                    </div>
-                    <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight text-slate-900 dark:text-slate-50 transition-colors">
-                        Promociones Múltiples
-                    </h1>
-                    <p className="text-slate-500 dark:text-slate-400 text-lg max-w-xl leading-relaxed font-medium transition-colors">
-                        Configurá múltiples ofertas destacadas y dales una fecha de caducidad.
-                    </p>
-                </div>
-            </header>
+            <EncabezadoPagina icono={Sparkles} titulo="Promociones" descripcion="Ofertas destacadas con fecha de vencimiento." />
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 {/* Configuration Card */}

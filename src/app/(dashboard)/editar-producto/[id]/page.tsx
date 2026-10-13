@@ -1,6 +1,7 @@
 "use client";
 
-import { Search, Plus, Sparkles, Layers, Trash2, X, FlaskConical, Package, Calculator, Save, Percent, DollarSign, ArrowLeft, ImagePlus, Loader2, Link as LinkIcon } from "lucide-react";
+import { Search, Plus, Sparkles, Layers, Trash2, X, FlaskConical, Package, Calculator, Save, Percent, DollarSign, ArrowLeft, ImagePlus, Loader2, Link as LinkIcon, Pencil } from "lucide-react";
+import EncabezadoPagina, { BOTON_ENC_BORDE } from "@/components/EncabezadoPagina";
 import { useState, useMemo, useEffect, useCallback } from "react";
 import { useAppContext, BaseComponent, Producto } from "@/context/AppContext";
 import { useRouter, useParams } from "next/navigation";
@@ -234,16 +235,14 @@ export default function EditarProductoPage() {
 
     return (
         <div className="space-y-8 pb-12 anim-entrada">
-            <header className="relative text-center p-8 md:p-10 bg-white dark:bg-[#242723] rounded-[2.5rem] border border-[#E6DFD5] dark:border-[#353B33] shadow-sm flex flex-col items-center justify-center">
-                <div className="space-y-3 flex flex-col items-center">
-                    <Link href="/lista-mayorista" className="inline-flex items-center gap-2 text-[#7D9878] font-bold text-sm mb-2 hover:gap-3 transition">
-                        <ArrowLeft className="w-4 h-4" /> Volver a la lista
-                    </Link>
-                    <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight text-[#2C2C2C] dark:text-[#F4EFEA] transition-colors font-brand text-center">
-                        Editar Producto <span className="text-[#7D9878]/60 dark:text-[#A3B69B]/60">#{existingProduct.id}</span>
-                    </h1>
-                </div>
-            </header>
+            <EncabezadoPagina
+                icono={Pencil}
+                titulo={<>Editar producto <span className="text-[#2C2C2C]/35 dark:text-[#F4EFEA]/35 font-sans text-lg font-semibold">#{existingProduct.id}</span></>}
+            >
+                <Link href="/lista-mayorista" className={BOTON_ENC_BORDE}>
+                    <ArrowLeft className="w-4 h-4" /> Volver a la lista
+                </Link>
+            </EncabezadoPagina>
 
             <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 <div className="lg:col-span-2 space-y-8">
@@ -293,28 +292,9 @@ export default function EditarProductoPage() {
                                 />
                             </div>
 
-                            <div className="space-y-2">
-                                <label className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest pl-1">Estado de Disponibilidad</label>
-                                <Selector
-                                    value={availabilityStatus}
-                                    onChange={(e) => setAvailabilityStatus(e.target.value)}
-                                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl py-3.5 px-4 text-slate-900 dark:text-slate-100 font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
-                                >
-                                    <option value="disponible">En Mano / Inmediata</option>
-                                    <option value="demora">Con Demora (X Días)</option>
-                                    <option value="no-disponible">Faltante / Consultar</option>
-                                </Selector>
-                            </div>
-
-                            <div className="space-y-2">
-                                <label className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest pl-1">Días de Demora</label>
-                                <input
-                                    type="number"
-                                    disabled={availabilityStatus !== "demora"}
-                                    value={deliveryDays}
-                                    onChange={e => setDeliveryDays(e.target.value)}
-                                    className={`w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl py-3.5 px-4 text-slate-900 dark:text-slate-100 font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500 transition ${availabilityStatus !== "demora" ? "opacity-30 grayscale" : ""}`}
-                                />
+                            <div className="md:col-span-2 rounded-2xl border border-[#7D9878]/25 bg-[#7D9878]/[0.06] px-4 py-3.5 text-sm text-[#2C2C2C]/75 dark:text-[#F4EFEA]/70 leading-relaxed">
+                                <p className="font-semibold text-[#5A7356] dark:text-[#A3B69B]">Disponibilidad automática en el catálogo</p>
+                                <p className="mt-1">Si hay perfumes hechos en el inventario sale como <strong>disponible</strong>; si no, con <strong>demora de 7 días</strong>. Si la esencia está en &ldquo;consultar&rdquo;, sale <strong>sin stock</strong>.</p>
                             </div>
                         </div>
 

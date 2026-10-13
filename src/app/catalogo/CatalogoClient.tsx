@@ -7,6 +7,7 @@ import { formatNumber } from "@/lib/format-utils";
 import Desplegable from "@/components/Desplegable";
 import { extractBrand } from "@/lib/product-utils";
 import Buscador from "@/components/Buscador";
+import BotonCarrito from "@/components/BotonCarrito";
 import { whatsappUrl } from "@/lib/contacto";
 
 export type CatalogoProducto = {
@@ -236,7 +237,7 @@ export default function CatalogoClient({ productos }: { productos: CatalogoProdu
                         <ShoppingBag className="w-4 h-4" />
                         <span className="hidden sm:inline">Mi pedido</span>
                         {totalUnidades > 0 && (
-                            <span className="min-w-5 h-5 px-1.5 rounded-full bg-[#C9866F] text-white text-[11px] font-black flex items-center justify-center">
+                            <span key={totalUnidades} className="anim-pop min-w-5 h-5 px-1.5 rounded-full bg-[#C9866F] text-white text-[11px] font-black flex items-center justify-center">
                                 {totalUnidades}
                             </span>
                         )}
@@ -454,14 +455,16 @@ export default function CatalogoClient({ productos }: { productos: CatalogoProdu
 
             {/* Barra inferior con el resumen del pedido */}
             {totalUnidades > 0 && !drawerOpen && (
-                <div className="fixed bottom-0 inset-x-0 z-30 p-4">
+                <div className="anim-entrada fixed bottom-0 inset-x-0 z-30 p-4">
                     <button
                         onClick={() => setDrawerOpen(true)}
                         className="max-w-xl mx-auto w-full flex items-center justify-between gap-3 rounded-2xl bg-[#242723] dark:bg-[#F4EFEA] text-white dark:text-[#1B1D1A] px-5 py-4 shadow-2xl"
                     >
                         <span className="flex items-center gap-2 text-sm font-bold">
                             <ShoppingBag className="w-4 h-4" />
-                            {totalUnidades} {totalUnidades === 1 ? "producto" : "productos"} · ${formatNumber(total)}
+                            <span key={totalUnidades} className="anim-pop inline-block">
+                                {totalUnidades} {totalUnidades === 1 ? "producto" : "productos"} · ${formatNumber(total)}
+                            </span>
                         </span>
                         <span className="text-sm font-black text-[#A3B69B] dark:text-[#6B8566]">Ver pedido →</span>
                     </button>
@@ -601,6 +604,8 @@ function TarjetaProducto({ producto, qty, onQty }: { producto: CatalogoProducto;
     const { formato, Icono, fondo, acento } = estiloProducto(producto);
     const enPedido = qty > 0;
     const sinStock = producto.availability === "sin-stock";
+    // Mientras el carrito del botón viaja, el botón sigue a la vista (después aparece el − / +)
+    const [animando, setAnimando] = useState(false);
     // Tamaño del frasco (30 / 50 ml) bien visible: es lo primero que se compara entre dos perfumes
     const ml = formato.match(/(\d+)\s*ml/i)?.[1];
 
@@ -673,19 +678,20 @@ function TarjetaProducto({ producto, qty, onQty }: { producto: CatalogoProducto;
                             {ml && <span className="ml-1 text-sm font-semibold tracking-normal text-[#2C2C2C]/50 dark:text-[#F4EFEA]/50">/ {ml} ml</span>}
                         </p>
                     </div>
-                    {sinStock && !enPedido ? (
+                    {sinStock && !enPedido && !animando ? (
                         <span className="rounded-full border border-[#E6DFD5] dark:border-[#353B33] px-4 py-2.5 text-sm font-bold text-[#2C2C2C]/45 dark:text-[#F4EFEA]/45">
                             Sin stock
                         </span>
-                    ) : enPedido ? (
+                    ) : enPedido && !animando ? (
                         <Stepper qty={qty} onQty={onQty} />
                     ) : (
-                        <button
-                            onClick={() => onQty(1)}
-                            className="flex items-center gap-1.5 rounded-full bg-[#2C2C2C] dark:bg-[#F4EFEA] text-white dark:text-[#1B1D1A] hover:bg-[#7D9878] dark:hover:bg-[#A3B69B] px-4 py-2.5 text-sm font-bold transition-colors"
-                        >
-                            <Plus className="w-4 h-4" /> Agregar
-                        </button>
+                        <BotonCarrito
+                            variante="tinta"
+                            onAgregar={() => onQty(qty + 1)}
+                            onInicio={() => setAnimando(true)}
+                            onFin={() => setAnimando(false)}
+                            aria-label={`Agregar ${producto.name} al pedido`}
+                        />
                     )}
                 </div>
             </div>

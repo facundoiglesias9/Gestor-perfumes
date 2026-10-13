@@ -55,6 +55,8 @@ import { formatNumber } from "@/lib/format-utils";
 import { extractBrand } from "@/lib/product-utils";
 import ExportModal from "@/components/ExportModal";
 import BotonDescarga, { type EstadoDescarga } from "@/components/BotonDescarga";
+import BotonCarrito from "@/components/BotonCarrito";
+import EncabezadoPagina from "@/components/EncabezadoPagina";
 import { Selector } from "@/components/Desplegable";
 import Ventana from "@/components/Ventana";
 import { PanelVentana, CabeceraVentana, CuerpoVentana, BotonCerrar } from "@/components/ventana-partes";
@@ -437,16 +439,9 @@ export default function ListaPreciosPage() {
     const [descarga, setDescarga] = useState<{ formato: "excel" | "pdf"; estado: EstadoDescarga; progreso: number } | null>(null);
     const itemsPerPage = 10;
 
-    // "Agregar" se convierte un momento en "Agregado" para confirmar el clic
-    const [recienAgregado, setRecienAgregado] = useState<string | null>(null);
-    const agregadoTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
     const agregarAlPedido = (producto: Producto) => {
         addToCart(producto, isMinorista ? "minorista" : "mayorista");
-        setRecienAgregado(producto.id);
-        if (agregadoTimer.current) clearTimeout(agregadoTimer.current);
-        agregadoTimer.current = setTimeout(() => setRecienAgregado(null), 1400);
     };
-    useEffect(() => () => { if (agregadoTimer.current) clearTimeout(agregadoTimer.current); }, []);
 
     // Escape cierra la ventana que esté abierta
     useEffect(() => {
@@ -703,81 +698,51 @@ export default function ListaPreciosPage() {
 
     return (
         <div className={`space-y-6 ${cartFiltered.length > 0 ? "pb-28" : "pb-12"}`}>
-            {/* Encabezado: qué lista es, selector y acciones, todo centrado */}
-            <header className="anim-entrada relative overflow-hidden bg-white dark:bg-[#242723] rounded-[2rem] px-6 py-9 md:px-10 md:py-11 border border-[#E6DFD5] dark:border-[#353B33] shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.2)]">
-                {/* Luz suave detrás del título */}
-                <div aria-hidden className="pointer-events-none absolute left-1/2 -translate-x-1/2 -top-36 w-[760px] max-w-full h-72 rounded-full bg-[#7D9878]/[0.14] dark:bg-[#A3B69B]/[0.07] blur-3xl" />
-
-                <div className="relative flex flex-col items-center text-center">
-                    {/* Al cambiar de lista, el texto se funde de una a otra */}
-                    <AnimatePresence mode="wait" initial={false}>
-                        <motion.div
-                            key={mode}
-                            initial={{ opacity: 0, y: 4, filter: "blur(3px)" }}
-                            animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-                            exit={{ opacity: 0, y: -4, filter: "blur(3px)" }}
-                            transition={{ duration: 0.18, ease: EASE_OUT }}
-                            className="flex flex-col items-center"
-                        >
-                            <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#7D9878]/10 text-[#5A7356] dark:text-[#A3B69B] border border-[#7D9878]/20 text-[11px] font-bold tracking-widest uppercase">
-                                {isMinorista ? <ShoppingBag className="w-3.5 h-3.5" /> : <Store className="w-3.5 h-3.5" />}
-                                {isMinorista ? "Venta al público" : "Venta mayorista"}
-                            </span>
-                            <h1 className="mt-4 text-4xl md:text-5xl font-extrabold tracking-tight text-[#2C2C2C] dark:text-[#F4EFEA] font-brand">
-                                {isMinorista ? "Lista Minorista" : "Lista Mayorista"}
-                            </h1>
-                            <p className="mt-3 max-w-xl text-base md:text-lg text-[#2C2C2C]/65 dark:text-[#F4EFEA]/60 leading-relaxed">
-                                {isMinorista
-                                    ? "Precios sugeridos para el consumidor final con margen minorista."
-                                    : "Gestioná tus precios mayoristas y prepará pedidos rápidamente."}
-                            </p>
-                            <p className="mt-2 inline-flex items-center gap-1.5 text-sm text-[#2C2C2C]/55 dark:text-[#F4EFEA]/50">
-                                <Info className="w-4 h-4 text-[#7D9878] dark:text-[#A3B69B]" />
-                                Todos los productos de Perfumería Fina son de 50 ml.
-                            </p>
-                        </motion.div>
-                    </AnimatePresence>
-
-                    <div className="mt-7 flex flex-wrap items-center justify-center gap-3">
-                        <ListSelectorToggle
-                            activeMode={mode}
-                            onSelectMode={(newMode) => {
-                                setMode(newMode);
-                                setCurrentPage(1);
-                            }}
+            {/* Encabezado: qué lista es, selector y acciones */}
+            <EncabezadoPagina
+                icono={isMinorista ? ShoppingBag : Store}
+                titulo={isMinorista ? "Lista minorista" : "Lista mayorista"}
+                descripcion={<>
+                    {isMinorista ? "Precios para el consumidor final." : "Tus precios mayoristas y pedidos rápidos."}
+                    <span className="inline-flex items-center gap-1 ml-1.5">
+                        <Info className="w-3.5 h-3.5 text-[#7D9878] dark:text-[#A3B69B]" />
+                        Perfumería fina: 50 ml.
+                    </span>
+                </>}
+            >
+                <ListSelectorToggle
+                    activeMode={mode}
+                    onSelectMode={(newMode) => {
+                        setMode(newMode);
+                        setCurrentPage(1);
+                    }}
+                />
+                <button
+                    onClick={() => setIsCartOpen(true)}
+                    className="flex items-center gap-2 h-10 pl-3.5 pr-2.5 rounded-xl bg-[#7D9878] text-white text-sm font-semibold shadow-sm shadow-[#7D9878]/25 hover:bg-[#6B8566] active:scale-[0.97] transition-[background-color,transform] duration-150 whitespace-nowrap"
+                >
+                    <ShoppingBag className="w-4 h-4" />
+                    Ver pedido
+                    <span
+                        key={cartFiltered.length}
+                        className={`min-w-6 h-6 px-1.5 rounded-lg text-xs font-bold tabular-nums flex items-center justify-center ${cartFiltered.length > 0 ? "anim-pop bg-white text-[#5A7356]" : "bg-white/20"}`}
+                    >
+                        {cartFiltered.length}
+                    </span>
+                </button>
+                <div className="flex items-start gap-2">
+                    {(["excel", "pdf"] as const).map(formato => (
+                        <BotonDescarga
+                            key={formato}
+                            formato={formato}
+                            estado={estadoDescarga(formato)}
+                            progreso={descarga?.formato === formato ? descarga.progreso : 0}
+                            deshabilitado={descarga?.estado === "descargando"}
+                            onClick={() => setExportFormat(formato)}
                         />
-
-                        <span className="hidden sm:block w-px h-7 bg-[#E6DFD5] dark:bg-[#353B33]" aria-hidden />
-
-                        <button
-                            onClick={() => setIsCartOpen(true)}
-                            className="flex items-center gap-2 h-11 pl-4 pr-3 rounded-xl bg-[#7D9878] text-white text-sm font-semibold shadow-md shadow-[#7D9878]/25 hover:bg-[#6B8566] active:scale-[0.97] transition-[background-color,transform] duration-150"
-                        >
-                            <ShoppingBag className="w-4 h-4" />
-                            Ver pedido
-                            <span
-                                key={cartFiltered.length}
-                                className={`min-w-6 h-6 px-1.5 rounded-lg text-xs font-bold tabular-nums flex items-center justify-center ${cartFiltered.length > 0 ? "anim-pop bg-white text-[#5A7356]" : "bg-white/20"}`}
-                            >
-                                {cartFiltered.length}
-                            </span>
-                        </button>
-
-                        <div className="flex items-start gap-2">
-                            {(["excel", "pdf"] as const).map(formato => (
-                                <BotonDescarga
-                                    key={formato}
-                                    formato={formato}
-                                    estado={estadoDescarga(formato)}
-                                    progreso={descarga?.formato === formato ? descarga.progreso : 0}
-                                    deshabilitado={descarga?.estado === "descargando"}
-                                    onClick={() => setExportFormat(formato)}
-                                />
-                            ))}
-                        </div>
-                    </div>
+                    ))}
                 </div>
-            </header>
+            </EncabezadoPagina>
 
             {/* Buscador y filtros en una sola barra pareja */}
             <div className="anim-entrada [animation-delay:60ms] bg-white dark:bg-[#242723] p-3 rounded-2xl border border-[#E6DFD5] dark:border-[#353B33] shadow-sm flex flex-col lg:flex-row gap-3">
@@ -905,7 +870,6 @@ export default function ListaPreciosPage() {
                                     const marginMay = calculateProfitMargin(cost, Number(producto.price) || 0);
                                     const marginMin = calculateProfitMargin(cost, Number(producto.priceMinorista) || 0);
                                     const currentMargin = isMinorista ? marginMin : marginMay;
-                                    const agregado = recienAgregado === producto.id;
 
                                     return (
                                         <tr
@@ -968,25 +932,14 @@ export default function ListaPreciosPage() {
                                                         <Percent className="w-4 h-4" />
                                                         <span className="hidden 2xl:inline">Ganancia</span>
                                                     </button>
-                                                    <button
-                                                        onClick={() => agregarAlPedido(producto)}
-                                                        disabled={!isValidPrice}
-                                                        className={`relative ml-1 inline-flex items-center justify-center min-w-[108px] h-9 px-3.5 rounded-lg text-white text-xs font-semibold transition-[background-color,transform,box-shadow] duration-150 active:scale-[0.96] disabled:opacity-40 disabled:pointer-events-none whitespace-nowrap ${agregado ? "bg-[#5A7356]" : "bg-[#7D9878] hover:bg-[#6B8566] shadow-sm shadow-[#7D9878]/25"}`}
-                                                    >
-                                                        <AnimatePresence mode="popLayout" initial={false}>
-                                                            <motion.span
-                                                                key={agregado ? "ok" : "agregar"}
-                                                                initial={{ opacity: 0, y: 6, filter: "blur(2px)" }}
-                                                                animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-                                                                exit={{ opacity: 0, y: -6, filter: "blur(2px)" }}
-                                                                transition={{ duration: 0.16, ease: EASE_OUT }}
-                                                                className="flex items-center gap-1.5"
-                                                            >
-                                                                {agregado ? <Check className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
-                                                                {agregado ? "Agregado" : "Agregar"}
-                                                            </motion.span>
-                                                        </AnimatePresence>
-                                                    </button>
+                                                    <span className="ml-1">
+                                                        <BotonCarrito
+                                                            variante="salvia"
+                                                            onAgregar={() => agregarAlPedido(producto)}
+                                                            disabled={!isValidPrice}
+                                                            aria-label={`Agregar ${producto.name} al pedido`}
+                                                        />
+                                                    </span>
                                                 </div>
                                             </td>
                                         </tr>

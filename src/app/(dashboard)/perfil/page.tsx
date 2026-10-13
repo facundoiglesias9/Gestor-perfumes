@@ -3,11 +3,12 @@
 import { useState, type FormEvent } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-    UserRound, Users, UserPlus, KeyRound, Eye, EyeOff, Loader2, Check, X, LogOut, ShieldCheck, Power,
+    UserRound, Users, UserPlus, KeyRound, Eye, EyeOff, Loader2, Check, X, LogOut, ShieldCheck, Power, Mail, Trash2,
 } from "lucide-react";
+import EncabezadoPagina from "@/components/EncabezadoPagina";
 import { toast } from "sonner";
 import { useAppContext, type Usuario } from "@/context/AppContext";
-import { crearUsuarioEquipo, cambiarClaveUsuario, cambiarEstadoUsuario } from "@/lib/auth-actions";
+import { crearUsuarioEquipo, cambiarClaveUsuario, cambiarEstadoUsuario, cambiarGmailUsuario, eliminarUsuario } from "@/lib/auth-actions";
 
 const EASE_OUT = [0.23, 1, 0.32, 1] as const;
 const aparecer = {
@@ -17,6 +18,7 @@ const aparecer = {
 };
 
 const USUARIO_VALIDO = /^[a-z0-9._-]{3,30}$/;
+const CORREO_VALIDO = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 const MIN_CLAVE = 8;
 
 const inicial = (nombre?: string) => (nombre || "?").charAt(0).toUpperCase();
@@ -99,6 +101,81 @@ function FormClave({ nombre, onGuardar, onCancelar }: {
     );
 }
 
+// Formulario para vincular, cambiar o quitar el Gmail con el que alguien entra por "Continuar con Google".
+// onGuardar devuelve el error a mostrar, o null si salió bien.
+function FormGmail({ nombre, actual, onGuardar, onCancelar }: {
+    nombre: string;
+    actual?: string;
+    onGuardar: (correo: string) => Promise<string | null>;
+    onCancelar: () => void;
+}) {
+    const [correo, setCorreo] = useState(actual ?? "");
+    const [error, setError] = useState<string | null>(null);
+    const [guardando, setGuardando] = useState<"guardar" | "quitar" | null>(null);
+
+    const guardar = async (valor: string, accion: "guardar" | "quitar") => {
+        if (accion === "guardar" && !CORREO_VALIDO.test(valor)) return setError("Ese correo no parece válido. Revisalo (ej: nombre@gmail.com).");
+        setError(null);
+        setGuardando(accion);
+        try {
+            setError(await onGuardar(valor));
+        } finally {
+            setGuardando(null);
+        }
+    };
+
+    return (
+        <motion.form
+            {...aparecer}
+            onSubmit={(e) => { e.preventDefault(); guardar(correo.trim().toLowerCase(), "guardar"); }}
+            className="mt-3 rounded-xl border border-[#E6DFD5] dark:border-[#353B33] bg-[#F9F6F0]/60 dark:bg-[#1B1D1A]/60 p-4 space-y-3"
+        >
+            <div>
+                <p className="text-sm font-semibold text-[#2C2C2C] dark:text-[#F4EFEA]">Gmail de {nombre}</p>
+                <p className="text-xs text-[#2C2C2C]/55 dark:text-[#F4EFEA]/50 mt-0.5">
+                    Con este correo entra tocando “Continuar con Google”, sin escribir la contraseña.
+                </p>
+            </div>
+            <div>
+                <label htmlFor={`gmail-${nombre}`} className={etiqueta}>Correo de Google</label>
+                <input
+                    id={`gmail-${nombre}`}
+                    type="email"
+                    inputMode="email"
+                    value={correo}
+                    onChange={(e) => { setCorreo(e.target.value.replace(/\s+/g, "")); if (error) setError(null); }}
+                    placeholder="nombre@gmail.com"
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    autoComplete="off"
+                    spellCheck={false}
+                    autoFocus
+                    className={campo}
+                />
+            </div>
+            {error && <p role="alert" className="text-sm text-[#97604D] dark:text-[#DBA793]">{error}</p>}
+            <div className="flex flex-wrap justify-end gap-2">
+                {actual && (
+                    <button
+                        type="button"
+                        onClick={() => guardar("", "quitar")}
+                        disabled={guardando !== null}
+                        className="mr-auto inline-flex items-center gap-2 h-10 px-3 rounded-xl text-sm font-semibold text-[#97604D] dark:text-[#DBA793] hover:bg-[#C9866F]/10 active:scale-[0.97] transition-[background-color,transform] duration-150 disabled:opacity-60"
+                    >
+                        {guardando === "quitar" ? <Loader2 className="w-4 h-4 animate-spin" /> : <X className="w-4 h-4" />}
+                        Quitar Gmail
+                    </button>
+                )}
+                <button type="button" onClick={onCancelar} className={botonSecundario}>Cancelar</button>
+                <button type="submit" disabled={guardando !== null} className={botonPrimario}>
+                    {guardando === "guardar" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                    Guardar Gmail
+                </button>
+            </div>
+        </motion.form>
+    );
+}
+
 export default function PerfilPage() {
     const { currentUser, usuarios, recargarUsuarios, addSystemLog, logout } = useAppContext();
 
@@ -112,18 +189,28 @@ export default function PerfilPage() {
 
     const [creando, setCreando] = useState(false);
     const [nuevoNombre, setNuevoNombre] = useState("");
+    const [nuevoGmail, setNuevoGmail] = useState("");
     const [nuevaClave, setNuevaClave] = useState("");
     const [nuevaRepetida, setNuevaRepetida] = useState("");
     const [errorNuevo, setErrorNuevo] = useState<string | null>(null);
     const [guardandoNuevo, setGuardandoNuevo] = useState(false);
     const [recienCreado, setRecienCreado] = useState<string | null>(null);
 
-    const [claveAbierta, setClaveAbierta] = useState<string | null>(null);
+    // Un solo panel abierto a la vez: contraseña, Gmail o confirmar que se elimina un usuario
+    type Panel = "clave" | "gmail" | "eliminar";
+    const [abierto, setAbierto] = useState<{ id: string; que: Panel } | null>(null);
+    const estaAbierto = (id: string, que: Panel) => abierto?.id === id && abierto.que === que;
     const [confirmarEstado, setConfirmarEstado] = useState<string | null>(null);
+    const [eliminando, setEliminando] = useState(false);
+
+    // Quién del equipo ya usa ese correo (para avisar antes de ir al servidor)
+    const duenoDelCorreo = (correo: string, idPropio?: string) =>
+        equipo.find(u => u.id !== idPropio && (u.email || "").toLowerCase() === correo);
 
     const cerrarNuevo = () => {
         setCreando(false);
         setNuevoNombre("");
+        setNuevoGmail("");
         setNuevaClave("");
         setNuevaRepetida("");
         setErrorNuevo(null);
@@ -138,19 +225,31 @@ export default function PerfilPage() {
         if (usuarios.some(u => (u.username || "").toLowerCase() === nombre)) {
             return setErrorNuevo(`Ya existe un usuario "${nombre}". Elegí otro nombre.`);
         }
-        if (nuevaClave.length < MIN_CLAVE) return setErrorNuevo(`La contraseña tiene que tener al menos ${MIN_CLAVE} caracteres.`);
-        if (nuevaClave !== nuevaRepetida) return setErrorNuevo("Las dos contraseñas no coinciden.");
+        const correo = nuevoGmail.trim().toLowerCase();
+        if (correo && !CORREO_VALIDO.test(correo)) return setErrorNuevo("Ese correo no parece válido. Revisalo (ej: nombre@gmail.com).");
+        const dueno = correo ? duenoDelCorreo(correo) : undefined;
+        if (dueno) return setErrorNuevo(`Ese correo ya lo usa "${dueno.username}".`);
+        // Con Gmail la contraseña es opcional; si la escriben, tiene que estar bien
+        if (!correo && !nuevaClave) return setErrorNuevo("Poné una contraseña o un Gmail para que pueda entrar.");
+        if (nuevaClave || nuevaRepetida) {
+            if (nuevaClave.length < MIN_CLAVE) return setErrorNuevo(`La contraseña tiene que tener al menos ${MIN_CLAVE} caracteres.`);
+            if (nuevaClave !== nuevaRepetida) return setErrorNuevo("Las dos contraseñas no coinciden.");
+        }
 
         setErrorNuevo(null);
         setGuardandoNuevo(true);
-        // El servidor la guarda cifrada y vuelve a revisar todo (nombre libre, largo, permiso)
-        const r = await crearUsuarioEquipo(nombre, nuevaClave).catch(() => ({ ok: false as const, error: "Revisá la conexión y probá de nuevo." }));
+        // El servidor la guarda cifrada y vuelve a revisar todo (nombre libre, largo, correo, permiso)
+        const r = await crearUsuarioEquipo(nombre, nuevaClave, correo).catch(() => ({ ok: false as const, error: "Revisá la conexión y probá de nuevo." }));
         setGuardandoNuevo(false);
         if (!r.ok) return setErrorNuevo(r.error);
 
         await recargarUsuarios();
-        addSystemLog("info", `Nuevo usuario creado: ${nombre}`);
-        toast.success(`Listo: "${nombre}" ya puede entrar`, { description: "Usa su usuario y la contraseña que le pusiste." });
+        addSystemLog("info", `Nuevo usuario creado: ${nombre}${correo ? ` (Gmail ${correo})` : ""}`);
+        toast.success(`Listo: "${nombre}" ya puede entrar`, {
+            description: correo
+                ? `Entra con “Continuar con Google” usando ${correo}.`
+                : "Usa su usuario y la contraseña que le pusiste.",
+        });
         setRecienCreado(nombre);
         cerrarNuevo();
     };
@@ -163,7 +262,38 @@ export default function PerfilPage() {
         }
         addSystemLog("info", `Contraseña cambiada: ${u.username}`);
         toast.success(esYo(u) ? "Tu contraseña se cambió" : `Se cambió la contraseña de ${u.username}`);
-        setClaveAbierta(null);
+        setAbierto(null);
+    };
+
+    const cambiarGmail = async (u: Usuario, correo: string): Promise<string | null> => {
+        const dueno = correo ? duenoDelCorreo(correo, u.id) : undefined;
+        if (dueno) return `Ese correo ya lo usa "${dueno.username}".`;
+        const r = await cambiarGmailUsuario(u.id, correo).catch(() => ({ ok: false as const, error: "Probá de nuevo en un momento." }));
+        if (!r.ok) return r.error;
+        await recargarUsuarios();
+        addSystemLog("info", correo ? `Gmail vinculado a ${u.username}: ${correo}` : `Gmail quitado a ${u.username}`);
+        const aviso = esYo(u)
+            ? (correo ? "Ya podés entrar con Google" : "Se quitó el Gmail de tu cuenta")
+            : (correo ? `${u.username} ya puede entrar con Google` : `Se quitó el Gmail de ${u.username}`);
+        toast.success(aviso, {
+            description: correo ? `Usando ${correo} en “Continuar con Google”.` : undefined,
+        });
+        setAbierto(null);
+        return null;
+    };
+
+    const eliminar = async (u: Usuario) => {
+        setEliminando(true);
+        const r = await eliminarUsuario(u.id).catch(() => ({ ok: false as const, error: "Probá de nuevo en un momento." }));
+        setEliminando(false);
+        if (!r.ok) {
+            toast.error("No se pudo eliminar", { description: r.error });
+            return;
+        }
+        setAbierto(null);
+        await recargarUsuarios();
+        addSystemLog("warn", `Usuario eliminado: ${u.username}`);
+        toast.success(`Se eliminó a ${u.username}`, { description: "Ya no puede entrar al sistema." });
     };
 
     const cambiarEstado = async (u: Usuario) => {
@@ -181,21 +311,7 @@ export default function PerfilPage() {
 
     return (
         <div className="space-y-6 pb-12">
-            <header className="anim-entrada relative overflow-hidden bg-white dark:bg-[#242723] rounded-[2rem] px-6 py-9 md:px-10 md:py-10 border border-[#E6DFD5] dark:border-[#353B33] shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.2)]">
-                <div aria-hidden className="pointer-events-none absolute left-1/2 -translate-x-1/2 -top-36 w-[760px] max-w-full h-72 rounded-full bg-[#7D9878]/[0.14] dark:bg-[#A3B69B]/[0.07] blur-3xl" />
-                <div className="relative flex flex-col items-center text-center">
-                    <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#7D9878]/10 text-[#5A7356] dark:text-[#A3B69B] border border-[#7D9878]/20 text-[11px] font-bold tracking-widest uppercase">
-                        <UserRound className="w-3.5 h-3.5" />
-                        Tu cuenta
-                    </span>
-                    <h1 className="mt-4 text-4xl md:text-5xl font-extrabold tracking-tight text-[#2C2C2C] dark:text-[#F4EFEA] font-brand">
-                        Mi perfil
-                    </h1>
-                    <p className="mt-3 max-w-xl text-base md:text-lg text-[#2C2C2C]/65 dark:text-[#F4EFEA]/60 leading-relaxed">
-                        Tus datos y las personas del equipo que pueden entrar al sistema.
-                    </p>
-                </div>
-            </header>
+            <EncabezadoPagina icono={UserRound} titulo="Mi perfil" descripcion="Tus datos y las personas del equipo que pueden entrar al sistema." />
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6 items-start">
                 {/* Tu cuenta */}
@@ -219,28 +335,51 @@ export default function PerfilPage() {
                             <dd className="font-semibold text-[#2C2C2C] dark:text-[#F4EFEA]">{currentUser?.username}</dd>
                         </div>
                         <div className="flex justify-between gap-3">
+                            <dt className="shrink-0 text-[#2C2C2C]/60 dark:text-[#F4EFEA]/55">Gmail para entrar</dt>
+                            <dd
+                                title={miUsuario?.email || undefined}
+                                className={`min-w-0 truncate text-right ${miUsuario?.email ? "font-semibold text-[#2C2C2C] dark:text-[#F4EFEA]" : "text-[#2C2C2C]/45 dark:text-[#F4EFEA]/40"}`}
+                            >
+                                {miUsuario?.email || "Sin vincular"}
+                            </dd>
+                        </div>
+                        <div className="flex justify-between gap-3">
                             <dt className="text-[#2C2C2C]/60 dark:text-[#F4EFEA]/55">Último ingreso</dt>
                             <dd className="font-semibold text-[#2C2C2C] dark:text-[#F4EFEA]">{miUsuario?.lastLogin || "—"}</dd>
                         </div>
                     </dl>
 
                     <AnimatePresence initial={false}>
-                        {miUsuario && claveAbierta === miUsuario.id ? (
+                        {miUsuario && estaAbierto(miUsuario.id, "clave") ? (
                             <FormClave
                                 key="mi-clave"
                                 nombre="vos"
                                 onGuardar={(c) => cambiarClave(miUsuario, c)}
-                                onCancelar={() => setClaveAbierta(null)}
+                                onCancelar={() => setAbierto(null)}
+                            />
+                        ) : miUsuario && estaAbierto(miUsuario.id, "gmail") ? (
+                            <FormGmail
+                                key="mi-gmail"
+                                nombre="tu cuenta"
+                                actual={miUsuario.email}
+                                onGuardar={(c) => cambiarGmail(miUsuario, c)}
+                                onCancelar={() => setAbierto(null)}
                             />
                         ) : null}
                     </AnimatePresence>
 
                     <div className="mt-6 flex flex-wrap gap-2">
-                        {miUsuario && claveAbierta !== miUsuario.id && (
-                            <button onClick={() => setClaveAbierta(miUsuario.id)} className={botonSecundario}>
-                                <KeyRound className="w-4 h-4" />
-                                Cambiar mi contraseña
-                            </button>
+                        {miUsuario && abierto?.id !== miUsuario.id && (
+                            <>
+                                <button onClick={() => setAbierto({ id: miUsuario.id, que: "clave" })} className={botonSecundario}>
+                                    <KeyRound className="w-4 h-4" />
+                                    Cambiar mi contraseña
+                                </button>
+                                <button onClick={() => setAbierto({ id: miUsuario.id, que: "gmail" })} className={botonSecundario}>
+                                    <Mail className="w-4 h-4" />
+                                    {miUsuario.email ? "Cambiar mi Gmail" : "Vincular mi Gmail"}
+                                </button>
+                            </>
                         )}
                         <button
                             onClick={async () => { await logout(); window.location.href = "/login"; }}
@@ -287,7 +426,7 @@ export default function PerfilPage() {
                                         <X className="w-4 h-4" />
                                     </button>
                                 </div>
-                                <div className="grid sm:grid-cols-3 gap-3">
+                                <div className="grid sm:grid-cols-2 gap-3">
                                     <div>
                                         <label htmlFor="nuevo-usuario" className={etiqueta}>Usuario</label>
                                         <input
@@ -304,11 +443,36 @@ export default function PerfilPage() {
                                             className={campo}
                                         />
                                     </div>
-                                    <CampoClave id="nueva-clave" label="Contraseña" value={nuevaClave} onChange={setNuevaClave} />
+                                    <div>
+                                        <label htmlFor="nuevo-gmail" className={etiqueta}>
+                                            Gmail <span className="font-normal text-[#2C2C2C]/45 dark:text-[#F4EFEA]/40">(para entrar con Google)</span>
+                                        </label>
+                                        <input
+                                            id="nuevo-gmail"
+                                            type="email"
+                                            inputMode="email"
+                                            value={nuevoGmail}
+                                            onChange={(e) => setNuevoGmail(e.target.value.replace(/\s+/g, ""))}
+                                            placeholder="nombre@gmail.com"
+                                            autoCapitalize="none"
+                                            autoCorrect="off"
+                                            autoComplete="off"
+                                            spellCheck={false}
+                                            className={campo}
+                                        />
+                                    </div>
+                                    <CampoClave
+                                        id="nueva-clave"
+                                        label={nuevoGmail.trim() ? "Contraseña (opcional)" : "Contraseña"}
+                                        value={nuevaClave}
+                                        onChange={setNuevaClave}
+                                    />
                                     <CampoClave id="nueva-repetida" label="Repetila" value={nuevaRepetida} onChange={setNuevaRepetida} />
                                 </div>
                                 <p className="text-xs text-[#2C2C2C]/55 dark:text-[#F4EFEA]/50">
-                                    Mínimo {MIN_CLAVE} caracteres. Pasale el usuario y la contraseña a esa persona por un medio privado.
+                                    {nuevoGmail.trim()
+                                        ? "Con Gmail entra tocando “Continuar con Google”, sin contraseña. Si igual le ponés una, también puede entrar con usuario y contraseña."
+                                        : `Cargá su Gmail para que entre con Google, o poné una contraseña de mínimo ${MIN_CLAVE} caracteres y pasásela por un medio privado.`}
                                 </p>
                                 {errorNuevo && <p role="alert" className="text-sm text-[#97604D] dark:text-[#DBA793]">{errorNuevo}</p>}
                                 <div className="flex justify-end gap-2">
@@ -357,19 +521,32 @@ export default function PerfilPage() {
                                             <p className="text-xs text-[#2C2C2C]/50 dark:text-[#F4EFEA]/45 mt-0.5">
                                                 {u.lastLogin ? `Último ingreso: ${u.lastLogin}` : "Todavía no entró"}
                                             </p>
+                                            <p className={`flex items-center gap-1 text-xs mt-0.5 min-w-0 ${u.email ? "text-[#5A7356] dark:text-[#A3B69B]" : "text-[#2C2C2C]/40 dark:text-[#F4EFEA]/35"}`}>
+                                                <Mail className="w-3.5 h-3.5 shrink-0" />
+                                                <span className="truncate" title={u.email || undefined}>{u.email || "Sin Gmail"}</span>
+                                            </p>
                                         </div>
 
-                                        <div className="flex items-center gap-1">
-                                            {!yo && claveAbierta !== u.id && (
-                                                <button
-                                                    onClick={() => setClaveAbierta(u.id)}
-                                                    className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg text-xs font-semibold text-[#2C2C2C]/65 dark:text-[#F4EFEA]/60 hover:text-[#2C2C2C] dark:hover:text-[#F4EFEA] hover:bg-[#F4EFEA] dark:hover:bg-[#1B1D1A] active:scale-[0.96] transition-[background-color,color,transform] duration-150"
-                                                >
-                                                    <KeyRound className="w-4 h-4" />
-                                                    Contraseña
-                                                </button>
+                                        <div className="flex flex-wrap items-center gap-1">
+                                            {!yo && abierto?.id !== u.id && (
+                                                <>
+                                                    <button
+                                                        onClick={() => setAbierto({ id: u.id, que: "gmail" })}
+                                                        className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg text-xs font-semibold text-[#2C2C2C]/65 dark:text-[#F4EFEA]/60 hover:text-[#2C2C2C] dark:hover:text-[#F4EFEA] hover:bg-[#F4EFEA] dark:hover:bg-[#1B1D1A] active:scale-[0.96] transition-[background-color,color,transform] duration-150"
+                                                    >
+                                                        <Mail className="w-4 h-4" />
+                                                        Gmail
+                                                    </button>
+                                                    <button
+                                                        onClick={() => setAbierto({ id: u.id, que: "clave" })}
+                                                        className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg text-xs font-semibold text-[#2C2C2C]/65 dark:text-[#F4EFEA]/60 hover:text-[#2C2C2C] dark:hover:text-[#F4EFEA] hover:bg-[#F4EFEA] dark:hover:bg-[#1B1D1A] active:scale-[0.96] transition-[background-color,color,transform] duration-150"
+                                                    >
+                                                        <KeyRound className="w-4 h-4" />
+                                                        Contraseña
+                                                    </button>
+                                                </>
                                             )}
-                                            {!yo && (
+                                            {!yo && !estaAbierto(u.id, "eliminar") && (
                                                 confirmarEstado === u.id ? (
                                                     <span className="inline-flex items-center gap-1 text-xs">
                                                         <span className="text-[#2C2C2C]/65 dark:text-[#F4EFEA]/60 mr-1">
@@ -402,17 +579,67 @@ export default function PerfilPage() {
                                                     </button>
                                                 )
                                             )}
+                                            {!yo && abierto?.id !== u.id && (
+                                                <button
+                                                    onClick={() => { setConfirmarEstado(null); setAbierto({ id: u.id, que: "eliminar" }); }}
+                                                    disabled={ultimoActivo}
+                                                    aria-label={`Eliminar a ${u.username}`}
+                                                    title="Eliminar usuario"
+                                                    className="inline-flex items-center justify-center w-9 h-9 rounded-lg text-[#2C2C2C]/45 dark:text-[#F4EFEA]/40 hover:text-[#97604D] dark:hover:text-[#DBA793] hover:bg-[#C9866F]/10 active:scale-[0.96] transition-[background-color,color,transform] duration-150 disabled:opacity-40 disabled:pointer-events-none"
+                                                >
+                                                    <Trash2 className="w-4 h-4" />
+                                                </button>
+                                            )}
                                         </div>
                                     </div>
 
                                     <AnimatePresence initial={false}>
-                                        {!yo && claveAbierta === u.id && (
+                                        {!yo && estaAbierto(u.id, "clave") && (
                                             <FormClave
                                                 key={`clave-${u.id}`}
                                                 nombre={u.username}
                                                 onGuardar={(c) => cambiarClave(u, c)}
-                                                onCancelar={() => setClaveAbierta(null)}
+                                                onCancelar={() => setAbierto(null)}
                                             />
+                                        )}
+                                        {!yo && estaAbierto(u.id, "gmail") && (
+                                            <FormGmail
+                                                key={`gmail-${u.id}`}
+                                                nombre={u.username}
+                                                actual={u.email}
+                                                onGuardar={(c) => cambiarGmail(u, c)}
+                                                onCancelar={() => setAbierto(null)}
+                                            />
+                                        )}
+                                        {!yo && estaAbierto(u.id, "eliminar") && (
+                                            <motion.div
+                                                key={`eliminar-${u.id}`}
+                                                {...aparecer}
+                                                role="alertdialog"
+                                                aria-label={`Eliminar a ${u.username}`}
+                                                className="mt-3 rounded-xl border border-[#C9866F]/40 bg-[#C9866F]/[0.07] p-4 space-y-3"
+                                            >
+                                                <div>
+                                                    <p className="text-sm font-semibold text-[#2C2C2C] dark:text-[#F4EFEA]">¿Eliminar a {u.username}?</p>
+                                                    <p className="text-xs text-[#2C2C2C]/60 dark:text-[#F4EFEA]/55 mt-1 leading-relaxed">
+                                                        Se borra para siempre y ya no va a poder entrar, ni con contraseña ni con Google.
+                                                        {!inactivo && " Si solo querés que no entre por un tiempo, usá Desactivar."}
+                                                    </p>
+                                                </div>
+                                                <div className="flex justify-end gap-2">
+                                                    <button type="button" onClick={() => setAbierto(null)} className={botonSecundario}>Cancelar</button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => eliminar(u)}
+                                                        disabled={eliminando}
+                                                        autoFocus
+                                                        className="inline-flex items-center justify-center gap-2 h-10 px-4 rounded-xl bg-[#C9866F] hover:bg-[#B5735C] text-white text-sm font-semibold active:scale-[0.97] transition-[background-color,transform] duration-150 disabled:opacity-60 disabled:pointer-events-none"
+                                                    >
+                                                        {eliminando ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                                                        Sí, eliminar
+                                                    </button>
+                                                </div>
+                                            </motion.div>
                                         )}
                                     </AnimatePresence>
                                 </li>

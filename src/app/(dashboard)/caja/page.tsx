@@ -1,7 +1,8 @@
 "use client";
 
-import { Wallet, TrendingUp, TrendingDown, ArrowDownLeft, ArrowUpRight, Plus, Trash2, X, Loader2, Check } from "lucide-react";
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { Wallet, ArrowDownLeft, ArrowUpRight, Plus, Trash2, Loader2, Check, ReceiptText } from "lucide-react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import Buscador from "@/components/Buscador";
 import { AnimatePresence, animate, motion, useReducedMotion } from "framer-motion";
 import { toast } from "sonner";
 import { useAppContext, type Transaccion } from "@/context/AppContext";
@@ -191,67 +192,72 @@ export default function CajaPage() {
     const tono = TONO[formData.type];
     const montoValido = parseFloat(formData.amount) > 0;
 
-    return (
-        <div className="space-y-8 pb-12 anim-entrada relative">
-            <header className="relative text-center p-8 md:p-10 bg-white dark:bg-[#242723] rounded-[2.5rem] border border-[#E6DFD5] dark:border-[#353B33] shadow-sm flex flex-col items-center justify-center">
-                <div className="space-y-3 flex flex-col items-center">
-                    <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#7D9878]/10 text-[#7D9878] dark:text-[#A3B69B] text-xs font-bold tracking-widest uppercase mb-1 border border-[#7D9878]/20">
-                        <Wallet className="w-3.5 h-3.5" />
-                        Monetización
-                    </div>
-                    <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight text-[#2C2C2C] dark:text-[#F4EFEA] transition-colors font-brand text-center">
-                        Caja Unificada
-                    </h1>
-                    <p className="text-[#2C2C2C]/70 dark:text-[#F4EFEA]/70 text-lg max-w-xl leading-relaxed font-medium transition-colors text-center">
-                        Controlá el saldo, ingresos por ventas manuales y los egresos por compras.
-                    </p>
-                </div>
+    // Historial: filtro por tipo y búsqueda por descripción
+    const [verTipo, setVerTipo] = useState<"Todos" | Tipo>("Todos");
+    const [busqueda, setBusqueda] = useState("");
+    const cantidad = { Todos: transacciones.length, Ingreso: transacciones.filter(t => t.type === "Ingreso").length, Egreso: transacciones.filter(t => t.type === "Egreso").length };
+    const listado = useMemo(() => {
+        const q = busqueda.trim().toLowerCase();
+        return transacciones.filter(t =>
+            (verTipo === "Todos" || t.type === verTipo) &&
+            (!q || (t.description || "").toLowerCase().includes(q) || (t.date || "").includes(q)));
+    }, [transacciones, verTipo, busqueda]);
+    // Proporción de lo que entró contra lo que salió (barra del saldo)
+    const parteIngresos = totalIngresos + totalEgresos > 0 ? totalIngresos / (totalIngresos + totalEgresos) : 0.5;
 
-                <div className="mt-6">
-                    <button
-                        onClick={abrirModal}
-                        className="flex items-center gap-2.5 px-7 py-3.5 rounded-2xl bg-[#7D9878] text-white font-bold hover:bg-[#6b8566] hover:shadow-xl hover:shadow-[#7D9878]/20 active:scale-[0.97] transition-[background-color,box-shadow,transform] duration-150 font-brand"
-                    >
-                        <Plus className="w-5 h-5" strokeWidth={2.5} />
-                        Movimiento Manual
-                    </button>
+    return (
+        <div className="space-y-5 pb-12 relative">
+            {/* Encabezado compacto */}
+            <header className="anim-entrada bg-white dark:bg-[#242723] rounded-2xl border border-[#E6DFD5] dark:border-[#353B33] shadow-sm p-5 md:p-6 flex flex-col sm:flex-row sm:items-center gap-4">
+                <div className="flex items-center gap-4 flex-1 min-w-0">
+                    <span className="w-11 h-11 shrink-0 rounded-xl flex items-center justify-center bg-[#7D9878]/15 text-[#5A7356] dark:bg-[#A3B69B]/15 dark:text-[#A3B69B]">
+                        <Wallet className="w-5 h-5" />
+                    </span>
+                    <div className="min-w-0">
+                        <h1 className="text-2xl md:text-[28px] font-bold tracking-tight leading-tight text-[#2C2C2C] dark:text-[#F4EFEA] font-brand">Caja</h1>
+                        <p className="text-sm text-[#2C2C2C]/60 dark:text-[#F4EFEA]/55">Saldo, ingresos y gastos del negocio.</p>
+                    </div>
                 </div>
+                <button onClick={abrirModal} className={BOTON_PRINCIPAL}>
+                    <Plus className="w-4 h-4" strokeWidth={2.5} />
+                    Nuevo movimiento
+                </button>
             </header>
 
-            {/* Widgets de Saldo */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-1 bg-gradient-to-br from-[#7D9878] to-[#5a7356] dark:from-[#353B33] dark:to-[#242723] rounded-[2.5rem] p-8 text-white shadow-xl shadow-[#7D9878]/20 relative overflow-hidden flex flex-col justify-between min-h-[220px] border border-[#7D9878]/30">
-                    <div className="absolute top-0 right-0 p-8 opacity-10">
-                        <Wallet className="w-32 h-32" />
-                    </div>
-                    {/* Destello cuando cambia el saldo */}
+            {/* Números */}
+            <div className="anim-entrada [animation-delay:60ms] grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* Saldo */}
+                <div className="relative overflow-hidden rounded-2xl p-5 md:p-6 bg-white dark:bg-[#242723] bg-gradient-to-br from-[#7D9878]/[0.12] via-transparent to-transparent dark:from-[#A3B69B]/[0.10] border border-[#7D9878]/35 dark:border-[#A3B69B]/25 text-[#2C2C2C] dark:text-[#F4EFEA] shadow-sm">
                     <AnimatePresence>
                         {burbujas.map(b => (
                             <motion.div
                                 key={`brillo-${b.id}`}
                                 aria-hidden
-                                className="absolute inset-0 bg-white pointer-events-none"
+                                className="absolute inset-0 bg-[#7D9878] pointer-events-none"
                                 initial={{ opacity: 0 }}
-                                animate={{ opacity: [0, 0.18, 0], transition: { duration: 0.9, ease: "easeOut" } }}
+                                animate={{ opacity: [0, 0.12, 0], transition: { duration: 0.9, ease: EASE_OUT } }}
                                 exit={{ opacity: 0 }}
                             />
                         ))}
                     </AnimatePresence>
-                    <div className="relative z-10 flex items-center gap-3 font-semibold text-white/90">
-                        Plata en Caja
+                    <div className="relative flex items-center justify-between gap-3">
+                        <p className="text-sm font-medium text-[#2C2C2C]/60 dark:text-[#F4EFEA]/55">Saldo en caja</p>
+                        <Wallet className="w-4 h-4 text-[#5A7356] dark:text-[#A3B69B]" />
                     </div>
-                    <div className="relative z-10 mt-4">
-                        <span className="text-5xl font-black tracking-tight"><NumeroAnimado valor={mostrados.saldo} /></span>
+                    <div className="relative mt-2">
+                        <p className={`text-3xl md:text-[34px] font-bold tracking-tight ${mostrados.saldo < 0 ? "text-[#c4501f] dark:text-[#f2895c]" : ""}`}>
+                            <NumeroAnimado valor={mostrados.saldo} />
+                        </p>
                         {/* Globito con lo que entró o salió */}
-                        <div className="absolute left-0 -top-10 h-8">
+                        <div className="absolute right-0 -top-9 h-8">
                             <AnimatePresence>
                                 {burbujas.map(b => (
                                     <motion.span
                                         key={b.id}
-                                        className="absolute left-0 whitespace-nowrap inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white text-sm font-bold shadow-lg shadow-black/15"
-                                        initial={{ opacity: 0, y: 14, scale: 0.9 }}
-                                        animate={{ opacity: 1, y: 0, scale: 1, transition: { type: "spring", duration: 0.5, bounce: 0.3 } }}
-                                        exit={{ opacity: 0, y: -14, transition: { duration: 0.35, ease: "easeOut" } }}
+                                        className="absolute right-0 whitespace-nowrap inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white text-sm font-bold shadow-lg shadow-black/15"
+                                        initial={{ opacity: 0, transform: "translateY(14px) scale(0.95)" }}
+                                        animate={{ opacity: 1, transform: "translateY(0px) scale(1)", transition: { type: "spring", duration: 0.5, bounce: 0.3 } }}
+                                        exit={{ opacity: 0, transform: "translateY(-14px) scale(1)", transition: { duration: 0.35, ease: EASE_OUT } }}
                                     >
                                         {b.tipo === "Ingreso"
                                             ? <ArrowDownLeft className="w-4 h-4 text-[#128a5f]" />
@@ -262,107 +268,116 @@ export default function CajaPage() {
                             </AnimatePresence>
                         </div>
                     </div>
+                    {/* Cuánto de lo movido fue ingreso y cuánto gasto */}
+                    <div className="relative mt-4 flex h-1.5 rounded-full overflow-hidden bg-[#2C2C2C]/[0.06] dark:bg-white/[0.08]" aria-hidden>
+                        <div className="bg-[#1baf7a]" style={{ width: `${parteIngresos * 100}%` }} />
+                        <div className="bg-[#eb6834] flex-1" />
+                    </div>
+                    <p className="relative mt-2 text-xs text-[#2C2C2C]/50 dark:text-[#F4EFEA]/45">Ingresos menos egresos</p>
                 </div>
 
-                <div className="lg:col-span-2 grid grid-cols-2 gap-6">
-                    <div className="bg-white dark:bg-[#242723] border border-[#E6DFD5] dark:border-[#353B33] p-8 rounded-[2.5rem] shadow-sm flex flex-col justify-center gap-4">
-                        <div className="flex items-center gap-3 text-[#7D9878] dark:text-[#A3B69B] font-bold uppercase tracking-wider text-xs">
-                            <div className="p-2 bg-[#7D9878]/10 rounded-lg">
-                                <ArrowDownLeft className="w-5 h-5" />
-                            </div>
-                            Ingresos Totales
+                {([
+                    { tipo: "Ingreso" as Tipo, titulo: "Ingresos", valor: mostrados.ingresos, Icono: ArrowDownLeft },
+                    { tipo: "Egreso" as Tipo, titulo: "Egresos", valor: mostrados.egresos, Icono: ArrowUpRight },
+                ]).map(c => (
+                    <div key={c.tipo} className="rounded-2xl p-5 md:p-6 bg-white dark:bg-[#242723] border border-[#E6DFD5] dark:border-[#353B33] shadow-sm">
+                        <div className="flex items-center justify-between gap-3">
+                            <p className="text-sm font-medium text-[#2C2C2C]/60 dark:text-[#F4EFEA]/55">{c.titulo}</p>
+                            <span className={`w-8 h-8 rounded-lg flex items-center justify-center ${TONO[c.tipo].chip}`}>
+                                <c.Icono className="w-4 h-4" />
+                            </span>
                         </div>
-                        <p className="text-3xl font-black text-[#2C2C2C] dark:text-[#F4EFEA]"><NumeroAnimado valor={mostrados.ingresos} /></p>
+                        <p className={`mt-2 text-2xl md:text-[28px] font-bold tracking-tight ${TONO[c.tipo].texto}`}>
+                            <NumeroAnimado valor={c.valor} />
+                        </p>
+                        <p className="mt-1 text-xs text-[#2C2C2C]/50 dark:text-[#F4EFEA]/45">
+                            {cantidad[c.tipo]} {cantidad[c.tipo] === 1 ? "movimiento" : "movimientos"}
+                        </p>
                     </div>
-
-                    <div className="bg-white dark:bg-[#242723] border border-[#E6DFD5] dark:border-[#353B33] p-8 rounded-[2.5rem] shadow-sm flex flex-col justify-center gap-4">
-                        <div className="flex items-center gap-3 text-[#C9866F] font-bold uppercase tracking-wider text-xs">
-                            <div className="p-2 bg-[#C9866F]/10 rounded-lg">
-                                <ArrowUpRight className="w-5 h-5" />
-                            </div>
-                            Egresos Totales
-                        </div>
-                        <p className="text-3xl font-black text-[#2C2C2C] dark:text-[#F4EFEA]"><NumeroAnimado valor={mostrados.egresos} /></p>
-                    </div>
-                </div>
+                ))}
             </div>
 
-            {/* Listado de Transacciones */}
-            <div className="bg-white dark:bg-[#242723] border border-[#E6DFD5] dark:border-[#353B33] rounded-[2.5rem] shadow-sm overflow-hidden transition-colors duration-300 relative min-h-[400px] flex flex-col">
-                <div className="p-6 md:p-8 flex flex-col sm:flex-row gap-4 border-b border-[#E6DFD5] dark:border-[#353B33]">
-                    <h2 className="text-xl font-bold text-[#2C2C2C] dark:text-[#F4EFEA] flex items-center gap-2">
-                        Historial de Movimientos
+            {/* Historial */}
+            <section className="anim-entrada [animation-delay:120ms] bg-white dark:bg-[#242723] border border-[#E6DFD5] dark:border-[#353B33] rounded-2xl shadow-sm overflow-hidden">
+                <div className="px-5 py-4 flex flex-wrap items-center gap-3 border-b border-[#E6DFD5] dark:border-[#353B33]">
+                    <h2 className="flex items-center gap-2 text-[15px] font-semibold text-[#2C2C2C] dark:text-[#F4EFEA] mr-auto">
+                        <ReceiptText className="w-4 h-4 text-[#5A7356] dark:text-[#A3B69B]" />
+                        Movimientos
                     </h2>
+                    <div role="group" aria-label="Ver" className="flex gap-1 p-1 rounded-xl bg-[#F4EFEA] dark:bg-[#1B1D1A]">
+                        {(["Todos", "Ingreso", "Egreso"] as const).map(t => {
+                            const activo = verTipo === t;
+                            return (
+                                <button
+                                    key={t}
+                                    type="button"
+                                    aria-pressed={activo}
+                                    onClick={() => setVerTipo(t)}
+                                    className={`inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-[13px] font-semibold transition-[background-color,color,box-shadow] duration-150 ${activo
+                                        ? "bg-white dark:bg-[#353B33] text-[#2C2C2C] dark:text-[#F4EFEA] shadow-sm"
+                                        : "text-[#2C2C2C]/60 dark:text-[#F4EFEA]/55 hover:text-[#2C2C2C] dark:hover:text-[#F4EFEA]"}`}
+                                >
+                                    {t === "Todos" ? "Todos" : t === "Ingreso" ? "Ingresos" : "Egresos"}
+                                    <span className="text-xs font-medium tabular-nums opacity-60">{cantidad[t]}</span>
+                                </button>
+                            );
+                        })}
+                    </div>
+                    <Buscador
+                        valor={busqueda}
+                        onCambiar={setBusqueda}
+                        placeholder="Buscar movimiento…"
+                        aria-label="Buscar movimiento"
+                        fondo="crema"
+                        className="w-full sm:w-64"
+                    />
                 </div>
 
-                <div className="overflow-x-auto flex-1">
-                    <table className="w-full text-left border-collapse min-w-[700px]">
-                        <thead>
-                            <tr className="bg-[#F9F6F0] dark:bg-[#1B1D1A] border-b border-[#E6DFD5] dark:border-[#353B33]">
-                                <th className="px-8 py-6 text-xs font-bold text-[#2C2C2C]/60 dark:text-[#F4EFEA]/60 uppercase tracking-widest w-[15%]">Fecha</th>
-                                <th className="px-8 py-6 text-xs font-bold text-[#2C2C2C]/60 dark:text-[#F4EFEA]/60 uppercase tracking-widest w-[15%]">Tipo</th>
-                                <th className="px-8 py-6 text-xs font-bold text-[#2C2C2C]/60 dark:text-[#F4EFEA]/60 uppercase tracking-widest w-[40%]">Descripción</th>
-                                <th className="px-8 py-6 text-xs font-bold text-[#2C2C2C]/60 dark:text-[#F4EFEA]/60 uppercase tracking-widest w-[20%] text-right">Monto</th>
-                                <th className="px-8 py-6 text-xs font-bold text-[#2C2C2C]/60 dark:text-[#F4EFEA]/60 uppercase tracking-widest w-[10%]"></th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-[#E6DFD5] dark:divide-[#353B33]">
-                            {transacciones.map((item, idx) => {
-                                const nueva = item.id === filaNueva;
-                                return (
-                                    <tr
-                                        key={item.id || idx}
-                                        className={`group hover:bg-[#7D9878]/5 dark:hover:bg-[#A3B69B]/10 transition-colors ${nueva ? item.type === "Ingreso" ? "fila-nueva-ingreso" : "fila-nueva-egreso" : ""}`}
+                {listado.length === 0 ? (
+                    <div className="py-14 px-6 flex flex-col items-center text-center gap-2">
+                        <Wallet className="w-7 h-7 text-[#2C2C2C]/25 dark:text-[#F4EFEA]/20" />
+                        <p className="text-sm font-semibold text-[#2C2C2C]/70 dark:text-[#F4EFEA]/65">
+                            {transacciones.length === 0 ? "Todavía no hay movimientos" : "No hay movimientos con ese filtro"}
+                        </p>
+                        <p className="text-xs text-[#2C2C2C]/50 dark:text-[#F4EFEA]/45">
+                            {transacciones.length === 0 ? "Cargá un ingreso o un gasto con “Nuevo movimiento”." : "Probá con otra búsqueda."}
+                        </p>
+                    </div>
+                ) : (
+                    <ul className="divide-y divide-[#E6DFD5]/70 dark:divide-[#353B33]/70">
+                        {listado.map((item, idx) => {
+                            const nueva = item.id === filaNueva;
+                            const tipo = (item.type === "Ingreso" ? "Ingreso" : "Egreso") as Tipo;
+                            const Icono = tipo === "Ingreso" ? ArrowDownLeft : ArrowUpRight;
+                            return (
+                                <li
+                                    key={item.id || idx}
+                                    className={`group flex items-center gap-3 px-5 py-3 hover:bg-[#F9F6F0] dark:hover:bg-[#2A2E29] transition-colors duration-150 ${nueva ? tipo === "Ingreso" ? "fila-nueva-ingreso" : "fila-nueva-egreso" : ""}`}
+                                >
+                                    <span className={`w-9 h-9 shrink-0 rounded-lg flex items-center justify-center ${TONO[tipo].chip}`} title={tipo}>
+                                        <Icono className="w-4 h-4" />
+                                    </span>
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-sm font-medium text-[#2C2C2C] dark:text-[#F4EFEA] truncate" title={item.description}>{item.description}</p>
+                                        <p className="text-xs text-[#2C2C2C]/50 dark:text-[#F4EFEA]/45">{item.date} · {tipo}</p>
+                                    </div>
+                                    <p className={`text-[15px] font-semibold tabular-nums whitespace-nowrap ${TONO[tipo].texto}`}>
+                                        {tipo === "Ingreso" ? "+" : "−"}{formatARS(Number(item.amount))}
+                                    </p>
+                                    <button
+                                        onClick={() => setItemToDelete(item.id)}
+                                        aria-label={`Eliminar ${item.description}`}
+                                        title="Eliminar movimiento"
+                                        className="w-8 h-8 shrink-0 rounded-lg flex items-center justify-center text-[#2C2C2C]/35 dark:text-[#F4EFEA]/30 hover:text-[#c4501f] dark:hover:text-[#f2895c] hover:bg-[#eb6834]/10 active:scale-[0.94] transition-[background-color,color,transform] duration-150"
                                     >
-                                        <td className="px-8 py-6">
-                                            <p className="text-[#2C2C2C]/70 dark:text-[#F4EFEA]/70 font-medium text-sm">{item.date}</p>
-                                        </td>
-                                        <td className="px-8 py-6">
-                                            <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold text-[11px] uppercase tracking-wider border ${item.type === "Ingreso"
-                                                ? "bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20"
-                                                : "bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-500/20"
-                                                }`}>
-                                                {item.type === "Ingreso" ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
-                                                {item.type}
-                                            </span>
-                                        </td>
-                                        <td className="px-8 py-6">
-                                            <p className="text-slate-900 dark:text-slate-100 font-semibold">{item.description}</p>
-                                        </td>
-                                        <td className="px-8 py-6 text-right">
-                                            <p className={`font-black text-lg ${item.type === "Ingreso" ? "text-emerald-600 dark:text-emerald-400" : "text-slate-900 dark:text-slate-100"
-                                                }`}>
-                                                {item.type === "Ingreso" ? "+" : "-"}{formatARS(item.amount)}
-                                            </p>
-                                        </td>
-                                        <td className="px-8 py-6 text-right">
-                                            <button
-                                                onClick={() => setItemToDelete(item.id)}
-                                                className="p-2.5 text-slate-400 dark:text-slate-500 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl transition-colors active:scale-[0.94]"
-                                                title="Eliminar registro"
-                                            >
-                                                <Trash2 className="w-5 h-5" />
-                                            </button>
-                                        </td>
-                                    </tr>
-                                );
-                            })}
-                            {transacciones.length === 0 && (
-                                <tr>
-                                    <td colSpan={5} className="px-8 py-16 text-center">
-                                        <div className="flex flex-col items-center justify-center text-center">
-                                            <div className="w-20 h-20 mb-6 rounded-full bg-slate-50 dark:bg-slate-800 flex items-center justify-center">
-                                                <Wallet className="w-8 h-8 text-slate-400 dark:text-slate-500" strokeWidth={1.5} />
-                                            </div>
-                                            <p className="text-slate-500 dark:text-slate-400 font-medium max-w-sm">No hay movimientos en la caja. Comenzá a cargar ingresos y compras.</p>
-                                        </div>
-                                    </td>
-                                </tr>
-                            )}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
+                                        <Trash2 className="w-4 h-4" />
+                                    </button>
+                                </li>
+                            );
+                        })}
+                    </ul>
+                )}
+            </section>
 
             <ConfirmModal
                 isOpen={!!itemToDelete}

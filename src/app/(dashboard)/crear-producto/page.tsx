@@ -1,6 +1,7 @@
 "use client";
 
 import { Search, Plus, Sparkles, Layers, Trash2, X, FlaskConical, Package, Calculator, Save, Percent, DollarSign, ImagePlus, Loader2, Link as LinkIcon } from "lucide-react";
+import EncabezadoPagina from "@/components/EncabezadoPagina";
 import { useState, useMemo, useEffect } from "react";
 import { useAppContext, Base, BaseComponent, Producto, Esencia, Insumo } from "@/context/AppContext";
 import { useRouter } from "next/navigation";
@@ -281,20 +282,7 @@ const handleMarginMinoristaChange = (val: string) => {
 
     return (
         <div className="space-y-8 pb-12 anim-entrada">
-            <header className="relative text-center p-8 md:p-10 bg-white dark:bg-[#242723] rounded-[2.5rem] border border-[#E6DFD5] dark:border-[#353B33] shadow-sm flex flex-col items-center justify-center">
-                <div className="space-y-3 flex flex-col items-center">
-                    <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#7D9878]/10 text-[#7D9878] dark:text-[#A3B69B] text-xs font-bold tracking-widest uppercase mb-1 border border-[#7D9878]/20">
-                        <Sparkles className="w-3.5 h-3.5" />
-                        Lanzamientos
-                    </div>
-                    <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight text-[#2C2C2C] dark:text-[#F4EFEA] transition-colors font-brand text-center">
-                        Crear Producto
-                    </h1>
-                    <p className="text-[#2C2C2C]/70 dark:text-[#F4EFEA]/70 text-lg max-w-xl leading-relaxed font-medium transition-colors text-center">
-                        Convertí tus bases en productos finales listos para la venta.
-                    </p>
-                </div>
-            </header>
+            <EncabezadoPagina icono={Sparkles} titulo="Crear producto" descripcion="Convertí tus bases en productos finales listos para la venta." />
 
             <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 <div className="lg:col-span-2 space-y-8">
@@ -386,28 +374,9 @@ const handleMarginMinoristaChange = (val: string) => {
                                 />
                             </div>
 
-                            <div className="space-y-2">
-                                <label className="text-xs font-bold text-[#2C2C2C]/50 dark:text-[#F4EFEA]/50 uppercase tracking-widest pl-1">Estado de Disponibilidad</label>
-                                <Selector
-                                    value={availabilityStatus}
-                                    onChange={(e) => setAvailabilityStatus(e.target.value)}
-                                    className="w-full bg-[#F9F6F0] dark:bg-[#1B1D1A] border border-[#E6DFD5] dark:border-[#353B33] rounded-2xl py-3.5 px-4 text-[#2C2C2C] dark:text-[#F4EFEA] font-bold focus:outline-none focus:ring-2 focus:ring-[#7D9878]/30 transition"
-                                >
-                                    <option value="disponible">En Mano / Inmediata</option>
-                                    <option value="demora">Con Demora (X Días)</option>
-                                    <option value="no-disponible">Faltante / Consultar</option>
-                                </Selector>
-                            </div>
-
-                            <div className="space-y-2">
-                                <label className="text-xs font-bold text-[#2C2C2C]/50 dark:text-[#F4EFEA]/50 uppercase tracking-widest pl-1">Días de Demora</label>
-                                <input
-                                    type="number"
-                                    disabled={availabilityStatus !== "demora"}
-                                    value={deliveryDays}
-                                    onChange={e => setDeliveryDays(e.target.value)}
-                                    className={`w-full bg-[#F9F6F0] dark:bg-[#1B1D1A] border border-[#E6DFD5] dark:border-[#353B33] rounded-2xl py-3.5 px-4 text-[#2C2C2C] dark:text-[#F4EFEA] font-bold focus:outline-none focus:ring-2 focus:ring-[#7D9878]/30 transition ${availabilityStatus !== "demora" ? "opacity-30 grayscale" : ""}`}
-                                />
+                            <div className="md:col-span-2 rounded-2xl border border-[#7D9878]/25 bg-[#7D9878]/[0.06] px-4 py-3.5 text-sm text-[#2C2C2C]/75 dark:text-[#F4EFEA]/70 leading-relaxed">
+                                <p className="font-semibold text-[#5A7356] dark:text-[#A3B69B]">Disponibilidad automática en el catálogo</p>
+                                <p className="mt-1">Si hay perfumes hechos en el inventario sale como <strong>disponible</strong>; si no, con <strong>demora de 7 días</strong>. Si la esencia está en &ldquo;consultar&rdquo;, sale <strong>sin stock</strong>.</p>
                             </div>
                         </div>
 

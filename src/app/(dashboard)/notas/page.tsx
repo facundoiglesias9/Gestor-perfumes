@@ -25,6 +25,7 @@ import {
     LockKeyhole,
     RotateCcw,
 } from "lucide-react";
+import EncabezadoPagina from "@/components/EncabezadoPagina";
 import { useAppContext } from "@/context/AppContext";
 import Buscador from "@/components/Buscador";
 import {
@@ -191,9 +192,9 @@ function BotonIcono({ etiqueta, onClick, activo, peligro, children }: {
 
 function Dato({ valor, etiqueta, icono }: { valor: number; etiqueta: string; icono?: ReactNode }) {
     return (
-        <div className="min-w-[112px] px-5 py-3 rounded-2xl bg-[#F9F6F0] dark:bg-[#1B1D1A] border border-[#E6DFD5] dark:border-[#353B33] text-center">
-            <p className="text-2xl font-extrabold tabular-nums text-[#2C2C2C] dark:text-[#F4EFEA] leading-none">{valor}</p>
-            <p className="mt-1.5 flex items-center justify-center gap-1 text-xs font-semibold text-[#2C2C2C]/55 dark:text-[#F4EFEA]/50">
+        <div className="min-w-[88px] px-3.5 py-2 rounded-xl bg-[#F9F6F0] dark:bg-[#1B1D1A]">
+            <p className="text-lg font-bold tabular-nums text-[#2C2C2C] dark:text-[#F4EFEA] leading-tight">{valor}</p>
+            <p className="flex items-center gap-1 text-[11px] font-medium text-[#2C2C2C]/55 dark:text-[#F4EFEA]/50">
                 {icono}
                 {etiqueta}
             </p>
@@ -707,36 +708,14 @@ export default function NotasPage() {
     return (
         <div className="max-w-[1400px] mx-auto space-y-6 pb-16">
             {/* Encabezado centrado, igual que la Lista de Precios */}
-            <header className="anim-entrada relative overflow-hidden bg-white dark:bg-[#242723] rounded-[2rem] px-6 py-9 md:px-10 md:py-11 border border-[#E6DFD5] dark:border-[#353B33] shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.2)]">
-                {/* Luz suave detrás del título */}
-                <div aria-hidden className="pointer-events-none absolute left-1/2 -translate-x-1/2 -top-36 w-[760px] max-w-full h-72 rounded-full bg-[#7D9878]/[0.14] dark:bg-[#A3B69B]/[0.07] blur-3xl" />
-
-                <div className="relative flex flex-col items-center text-center">
-                    <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#7D9878]/10 text-[#5A7356] dark:text-[#A3B69B] border border-[#7D9878]/20 text-[11px] font-bold tracking-widest uppercase">
-                        <StickyNote className="w-3.5 h-3.5" />
-                        Herramientas personales
-                    </span>
-                    <h1 className="mt-4 text-4xl md:text-5xl font-extrabold tracking-tight text-[#2C2C2C] dark:text-[#F4EFEA] font-brand">Notas</h1>
-                    <p className="mt-3 max-w-2xl text-balance text-base md:text-lg text-[#2C2C2C]/65 dark:text-[#F4EFEA]/60 leading-relaxed">
-                        Anotá pedidos de clientes, ideas y recordatorios para no olvidarte de nada.
-                    </p>
-                    <div className="mt-2 flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5 text-sm text-[#2C2C2C]/55 dark:text-[#F4EFEA]/50">
-                        <span className="inline-flex items-center gap-1.5">
-                            <CloudCheck className="w-4 h-4 text-[#7D9878] dark:text-[#A3B69B]" />
-                            Se guardan solas en el sistema, desde cualquier compu o celular
-                        </span>
-                        <span className="inline-flex items-center gap-1.5">
-                            <LockKeyhole className="w-3.5 h-3.5 text-[#7D9878] dark:text-[#A3B69B]" />
-                            Solo las ves vos
-                        </span>
-                    </div>
-
-                    <div className="mt-7 flex flex-wrap items-center justify-center gap-3">
-                        <Dato valor={notas.length} etiqueta={notas.length === 1 ? "nota" : "notas"} icono={<StickyNote className="w-3 h-3" />} />
-                        <Dato valor={cantFijadas} etiqueta={cantFijadas === 1 ? "fijada" : "fijadas"} icono={<Pin className="w-3 h-3" />} />
-                    </div>
-                </div>
-            </header>
+            <EncabezadoPagina
+                icono={StickyNote}
+                titulo="Notas"
+                descripcion="Pedidos de clientes, ideas y recordatorios. Se guardan solas y solo las ves vos."
+            >
+                <Dato valor={notas.length} etiqueta={notas.length === 1 ? "nota" : "notas"} icono={<StickyNote className="w-3.5 h-3.5" />} />
+                <Dato valor={cantFijadas} etiqueta={cantFijadas === 1 ? "fijada" : "fijadas"} icono={<Pin className="w-3.5 h-3.5" />} />
+            </EncabezadoPagina>
 
             <Compositor onCrear={crear} />
 

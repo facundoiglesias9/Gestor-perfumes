@@ -1,6 +1,7 @@
 "use client";
 
 import { ShoppingBag, TrendingUp, Calendar, User, Trophy, ArrowRight, BarChart3 } from "lucide-react";
+import EncabezadoPagina from "@/components/EncabezadoPagina";
 import { useState, useMemo } from "react";
 import { useAppContext } from "@/context/AppContext";
 import { Selector } from "@/components/Desplegable";
@@ -102,44 +103,19 @@ export default function VentasRevendedoresPage() {
     return (
         <div className="space-y-8 pb-12 anim-entrada">
             {/* Header section with month filter */}
-            <header className="flex flex-col md:flex-row md:justify-between md:items-end gap-6 bg-white dark:bg-slate-900 p-8 md:p-10 rounded-[2.5rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100 dark:border-slate-800">
-                <div className="space-y-3">
-                    <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 text-xs font-bold tracking-widest uppercase mb-1">
-                        <TrendingUp className="w-3.5 h-3.5" />
-                        Monetización & Análisis
-                    </div>
-                    <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight text-slate-900 dark:text-slate-50">
-                        Ventas Mayoristas
-                    </h1>
-                    <p className="text-slate-500 dark:text-slate-400 text-lg max-w-xl leading-relaxed font-medium">
-                        Rendimiento exclusivo de usuarios con cuenta de Mayorista.
-                    </p>
-                </div>
-
-                <div className="flex flex-wrap gap-4">
-                    <div className="bg-slate-50 dark:bg-slate-800/50 p-1 rounded-2xl border border-slate-200 dark:border-slate-700 flex gap-1">
-                        <Selector
-                            value={selectedMonth}
-                            onChange={(e) => setSelectedMonth(Number(e.target.value))}
-                            className="bg-transparent text-sm font-bold text-slate-700 dark:text-slate-300 px-4 py-2 focus:outline-none"
-                        >
-                            <option value={-1} className="bg-white dark:bg-slate-900 font-extrabold text-indigo-600">Total Anual</option>
-                            {months.map((m, i) => (
-                                <option key={i} value={i} className="bg-white dark:bg-slate-900">{m}</option>
-                            ))}
-                        </Selector>
-                        <Selector
-                            value={selectedYear}
-                            onChange={(e) => setSelectedYear(Number(e.target.value))}
-                            className="bg-transparent text-sm font-bold text-slate-700 dark:text-slate-300 px-4 py-2 focus:outline-none"
-                        >
-                            {years.map(y => (
-                                <option key={y} value={y} className="bg-white dark:bg-slate-900">{y}</option>
-                            ))}
-                        </Selector>
-                    </div>
-                </div>
-            </header>
+            <EncabezadoPagina icono={TrendingUp} titulo="Ventas mayoristas" descripcion="El rendimiento de los clientes con cuenta mayorista.">
+                <Selector value={selectedMonth} onChange={(e) => setSelectedMonth(Number(e.target.value))} aria-label="Mes" className="h-10 w-40">
+                    <option value={-1}>Total anual</option>
+                    {months.map((m, i) => (
+                        <option key={i} value={i}>{m}</option>
+                    ))}
+                </Selector>
+                <Selector value={selectedYear} onChange={(e) => setSelectedYear(Number(e.target.value))} aria-label="Año" className="h-10 w-28">
+                    {years.map(y => (
+                        <option key={y} value={y}>{y}</option>
+                    ))}
+                </Selector>
+            </EncabezadoPagina>
 
             {/* Global stats cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

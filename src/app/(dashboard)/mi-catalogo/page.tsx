@@ -17,14 +17,12 @@ import {
     Pencil,
     Eye,
     EyeOff,
-    Clock,
-    PackageX,
-    PackageCheck,
     ImageOff,
     Tags,
 } from "lucide-react";
 import { toast } from "sonner";
-import { useAppContext, type Producto, type AvailabilityStatus } from "@/context/AppContext";
+import { useAppContext, type Producto } from "@/context/AppContext";
+import { calculadorDisponibilidad, type EstadoAutomatico } from "@/lib/perfume-hecho";
 import { actualizarPublicaciones, guardarFotoProducto, quitarFotoProducto, type CambiosPublicacion } from "@/lib/catalogo-actions";
 import { prepararFoto } from "@/lib/foto-cliente";
 import { extractBrand } from "@/lib/product-utils";
@@ -36,27 +34,35 @@ import Buscador from "@/components/Buscador";
 const POR_PAGINA = 20;
 const EASE_OUT = [0.23, 1, 0.32, 1] as const;
 
-type Filtro = "todos" | "catalogo" | "ocultos" | "sin-stock" | "sin-precio" | "sin-foto";
+type Filtro = "publicados" | "hay" | "demora" | "sin-stock" | "sin-foto" | "no-publicados" | "todos";
 
 const tienePrecio = (p: Producto) => Number(p.priceMinorista) > 0;
 // Lo que ve un cliente: visible y con precio minorista (los "sin stock" se ven, marcados así)
 const enCatalogo = (p: Producto) => p.visibleCatalogo !== false && tienePrecio(p);
 const pesos = (n: number) => `$${Math.round(n).toLocaleString("es-AR")}`;
 
-const FILTROS: { key: Filtro; label: string; cumple: (p: Producto) => boolean }[] = [
-    { key: "todos", label: "Todos", cumple: () => true },
-    { key: "catalogo", label: "En el catálogo", cumple: enCatalogo },
-    { key: "ocultos", label: "Ocultos", cumple: p => p.visibleCatalogo === false },
-    { key: "sin-stock", label: "Sin stock", cumple: p => p.availabilityStatus === "no-disponible" },
-    { key: "sin-precio", label: "Sin precio", cumple: p => !tienePrecio(p) },
+// Los de disponibilidad y foto miran solo lo publicado (lo que ve el cliente).
+// "Sin stock" aparece solo cuando hay alguno.
+const FILTROS: { key: Filtro; label: string; punto?: string; siHay?: boolean; cumple: (p: Producto, auto: EstadoAutomatico) => boolean }[] = [
+    { key: "publicados", label: "Publicados", cumple: enCatalogo },
+    { key: "hay", label: "Con stock", punto: "bg-[#1baf7a]", cumple: (p, a) => enCatalogo(p) && a.estado === "disponible" },
+    { key: "demora", label: "Con demora", punto: "bg-[#C9A877]", cumple: (p, a) => enCatalogo(p) && a.estado === "demora" },
+    { key: "sin-stock", label: "Sin stock", punto: "bg-[#eb6834]", siHay: true, cumple: (p, a) => enCatalogo(p) && a.estado === "sin-stock" },
     { key: "sin-foto", label: "Sin foto", cumple: p => enCatalogo(p) && !p.imageUrl },
+    { key: "no-publicados", label: "No publicados", cumple: p => !enCatalogo(p) },
+    { key: "todos", label: "Todos", cumple: () => true },
 ];
 
-const DISPONIBILIDAD: { key: AvailabilityStatus; label: string; punto: string; activo: string }[] = [
-    { key: "disponible", label: "Hay", punto: "bg-[#1baf7a]", activo: "bg-white dark:bg-[#2B3A33] text-[#128a5f] dark:text-[#4fd1a0]" },
-    { key: "demora", label: "Demora", punto: "bg-[#DAC4AA]", activo: "bg-white dark:bg-[#3A352C] text-[#7A5C34] dark:text-[#DAC4AA]" },
-    { key: "no-disponible", label: "Sin stock", punto: "bg-[#eb6834]", activo: "bg-white dark:bg-[#3A2F2A] text-[#c4501f] dark:text-[#f2895c]" },
-];
+// Disponibilidad automática (sale del stock de perfumes hechos y de la esencia de la receta)
+const DISPONIBILIDAD: Record<EstadoAutomatico["estado"], { label: string; punto: string; color: string }> = {
+    disponible: { label: "Hay", punto: "bg-[#1baf7a]", color: "bg-[#1baf7a]/10 text-[#128a5f] dark:text-[#4fd1a0]" },
+    demora: { label: "Demora", punto: "bg-[#C9A877]", color: "bg-[#DAC4AA]/25 text-[#7A5C34] dark:text-[#DAC4AA]" },
+    "sin-stock": { label: "Sin stock", punto: "bg-[#eb6834]", color: "bg-[#eb6834]/10 text-[#c4501f] dark:text-[#f2895c]" },
+};
+const motivo = (a: EstadoAutomatico) =>
+    a.estado === "disponible" ? `${a.hechos} ${a.hechos === 1 ? "hecho" : "hechos"} en stock`
+        : a.estado === "demora" ? `Sin hechos · ${a.dias} días`
+            : "Esencia a consultar";
 
 // Interruptor de encendido/apagado (el círculo se desliza)
 function Interruptor({ encendido, onCambiar, etiqueta }: { encendido: boolean; onCambiar: () => void; etiqueta: string }) {
@@ -78,9 +84,16 @@ function Interruptor({ encendido, onCambiar, etiqueta }: { encendido: boolean; o
 }
 
 export default function MiCatalogoPage() {
-    const { productos, setProductosSinGuardar, categorias, isLoading, addSystemLog } = useAppContext();
+    const { productos, setProductosSinGuardar, categorias, isLoading, addSystemLog, inventario, esencias } = useAppContext();
+
+    // Disponibilidad de cada producto, calculada sola con la misma regla que el catálogo público
+    const autoDe = useMemo(() => {
+        const calcular = calculadorDisponibilidad(inventario, esencias);
+        return new Map(productos.map(p => [p.id, calcular(p)]));
+    }, [productos, inventario, esencias]);
+    const auto = (p: Producto) => autoDe.get(p.id) ?? { estado: "demora" as const, dias: 0, hechos: 0 };
     const [busqueda, setBusqueda] = useState("");
-    const [filtro, setFiltro] = useState<Filtro>("todos");
+    const [filtro, setFiltro] = useState<Filtro>("publicados");
     const [categoria, setCategoria] = useState("Todas");
     const [pagina, setPagina] = useState(1);
     const [seleccion, setSeleccion] = useState<Set<string>>(new Set());
@@ -105,16 +118,17 @@ export default function MiCatalogoPage() {
     }, [ordenados, busqueda, categoria]);
 
     const conteos = useMemo(
-        () => Object.fromEntries(FILTROS.map(f => [f.key, base.filter(f.cumple).length])) as Record<Filtro, number>,
-        [base],
+        () => Object.fromEntries(FILTROS.map(f => [f.key, base.filter(p => f.cumple(p, auto(p))).length])) as Record<Filtro, number>,
+        [base, autoDe],
     );
-    const visibles = useMemo(() => base.filter(FILTROS.find(f => f.key === filtro)!.cumple), [base, filtro]);
+    const visibles = useMemo(() => base.filter(p => FILTROS.find(f => f.key === filtro)!.cumple(p, auto(p))), [base, filtro, autoDe]);
     const totalPaginas = Math.max(1, Math.ceil(visibles.length / POR_PAGINA));
     const paginaActual = Math.min(pagina, totalPaginas);
     const deLaPagina = visibles.slice((paginaActual - 1) * POR_PAGINA, paginaActual * POR_PAGINA);
 
     const totalCatalogo = productos.filter(enCatalogo).length;
     const conFoto = productos.filter(p => enCatalogo(p) && p.imageUrl).length;
+    const conStock = productos.filter(p => enCatalogo(p) && auto(p).estado === "disponible").length;
 
     const irA = (cambio: () => void) => { cambio(); setPagina(1); };
 
@@ -208,52 +222,38 @@ export default function MiCatalogoPage() {
                 }}
             />
 
-            {/* Encabezado centrado, igual que la Lista de Precios */}
-            <header className="anim-entrada relative overflow-hidden bg-white dark:bg-[#242723] rounded-[2rem] px-6 py-9 md:px-10 md:py-11 border border-[#E6DFD5] dark:border-[#353B33] shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.2)]">
-                {/* Luz suave detrás del título */}
-                <div aria-hidden className="pointer-events-none absolute left-1/2 -translate-x-1/2 -top-36 w-[760px] max-w-full h-72 rounded-full bg-[#7D9878]/[0.14] dark:bg-[#A3B69B]/[0.07] blur-3xl" />
-
-                <div className="relative flex flex-col items-center text-center">
-                    <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#7D9878]/10 text-[#5A7356] dark:text-[#A3B69B] border border-[#7D9878]/20 text-[11px] font-bold tracking-widest uppercase">
-                        <Store className="w-3.5 h-3.5" />
-                        Vidriera
+            {/* Encabezado compacto: título, números clave y acciones */}
+            <header className="anim-entrada bg-white dark:bg-[#242723] rounded-2xl border border-[#E6DFD5] dark:border-[#353B33] shadow-sm p-5 md:p-6 flex flex-col lg:flex-row lg:items-center gap-5">
+                <div className="flex items-center gap-4 flex-1 min-w-0">
+                    <span className="w-11 h-11 shrink-0 rounded-xl flex items-center justify-center bg-[#7D9878]/15 text-[#5A7356] dark:bg-[#A3B69B]/15 dark:text-[#A3B69B]">
+                        <Store className="w-5 h-5" />
                     </span>
-                    <h1 className="mt-4 text-4xl md:text-5xl font-extrabold tracking-tight text-[#2C2C2C] dark:text-[#F4EFEA] font-brand">Catálogo</h1>
-                    <p className="mt-3 text-sm font-semibold text-[#2C2C2C]/70 dark:text-[#F4EFEA]/65">
-                        {totalCatalogo} en el catálogo · {productos.length} productos en total
-                    </p>
-                    <p className="mt-2 max-w-2xl text-sm md:text-base text-[#2C2C2C]/60 dark:text-[#F4EFEA]/55 leading-relaxed">
-                        Lo que ven los clientes en el catálogo. <strong className="font-semibold text-[#2C2C2C]/80 dark:text-[#F4EFEA]/80">Visible</strong> apagado
-                        lo saca del catálogo sin borrarlo. <strong className="font-semibold text-[#2C2C2C]/80 dark:text-[#F4EFEA]/80">Sin stock</strong> lo
-                        muestra marcado así y no se puede pedir. Tocá la foto (o arrastrá una encima) para cargarla o cambiarla.
-                    </p>
-
-                    <div className="mt-7 flex flex-wrap items-center justify-center gap-3">
-                        <a
-                            href="/catalogo"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-2 h-11 px-4 rounded-xl bg-white dark:bg-[#1B1D1A] border border-[#E6DFD5] dark:border-[#353B33] text-sm font-semibold text-[#2C2C2C]/80 dark:text-[#F4EFEA]/80 hover:text-[#2C2C2C] dark:hover:text-[#F4EFEA] hover:border-[#7D9878]/50 active:scale-[0.97] transition-[border-color,color,transform] duration-150"
-                        >
-                            <ExternalLink className="w-4 h-4" />
-                            Ver catálogo
-                        </a>
-                        <Link
-                            href="/crear-producto"
-                            className="inline-flex items-center gap-2 h-11 px-4 rounded-xl bg-[#7D9878] text-white text-sm font-semibold shadow-md shadow-[#7D9878]/25 hover:bg-[#6B8566] active:scale-[0.97] transition-[background-color,transform] duration-150"
-                        >
-                            <Plus className="w-4 h-4" />
-                            Nuevo producto
-                        </Link>
+                    <div className="min-w-0">
+                        <h1 className="text-2xl md:text-[28px] font-bold tracking-tight leading-tight text-[#2C2C2C] dark:text-[#F4EFEA] font-brand">Mi catálogo</h1>
+                        <p className="text-sm text-[#2C2C2C]/60 dark:text-[#F4EFEA]/55">
+                            Lo que ven tus clientes. La disponibilidad se calcula sola con tu stock.
+                        </p>
                     </div>
+                </div>
 
-                    {/* Avance de fotos */}
-                    <div className="mt-6 w-full max-w-sm">
-                        <div className="flex justify-between text-xs text-[#2C2C2C]/60 dark:text-[#F4EFEA]/55 mb-1.5">
-                            <span>Productos del catálogo con foto</span>
-                            <span className="font-semibold text-[#2C2C2C]/80 dark:text-[#F4EFEA]/80">{conFoto} de {totalCatalogo}</span>
+                <dl className="flex items-stretch gap-2">
+                    {[
+                        { titulo: "Publicados", valor: totalCatalogo, extra: `de ${productos.length}` },
+                        { titulo: "Con stock", valor: conStock, extra: "listos" },
+                    ].map(d => (
+                        <div key={d.titulo} className="px-3.5 py-2 rounded-xl bg-[#F9F6F0] dark:bg-[#1B1D1A] min-w-[92px]">
+                            <dt className="text-[11px] text-[#2C2C2C]/55 dark:text-[#F4EFEA]/50">{d.titulo}</dt>
+                            <dd className="text-lg font-bold tabular-nums leading-tight text-[#2C2C2C] dark:text-[#F4EFEA]">
+                                {d.valor} <span className="text-xs font-medium text-[#2C2C2C]/45 dark:text-[#F4EFEA]/40">{d.extra}</span>
+                            </dd>
                         </div>
-                        <div className="h-2 rounded-full bg-[#7D9878]/15 overflow-hidden">
+                    ))}
+                    <div className="px-3.5 py-2 rounded-xl bg-[#F9F6F0] dark:bg-[#1B1D1A] min-w-[120px]">
+                        <dt className="text-[11px] text-[#2C2C2C]/55 dark:text-[#F4EFEA]/50">Con foto</dt>
+                        <dd className="text-lg font-bold tabular-nums leading-tight text-[#2C2C2C] dark:text-[#F4EFEA]">
+                            {conFoto} <span className="text-xs font-medium text-[#2C2C2C]/45 dark:text-[#F4EFEA]/40">de {totalCatalogo}</span>
+                        </dd>
+                        <div className="mt-1 h-1 rounded-full bg-[#7D9878]/15 overflow-hidden">
                             <motion.div
                                 className="h-full rounded-full bg-[#7D9878] dark:bg-[#A3B69B]"
                                 initial={false}
@@ -262,39 +262,57 @@ export default function MiCatalogoPage() {
                             />
                         </div>
                     </div>
+                </dl>
+
+                <div className="flex items-center gap-2">
+                    <a
+                        href="/catalogo"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-2 h-10 px-3.5 rounded-xl border border-[#E6DFD5] dark:border-[#353B33] text-sm font-semibold text-[#2C2C2C]/80 dark:text-[#F4EFEA]/80 hover:text-[#2C2C2C] dark:hover:text-[#F4EFEA] hover:border-[#7D9878]/50 active:scale-[0.97] transition-[border-color,color,transform] duration-150 whitespace-nowrap"
+                    >
+                        <ExternalLink className="w-4 h-4" />
+                        Ver catálogo
+                    </a>
+                    <Link
+                        href="/crear-producto"
+                        className="inline-flex items-center gap-2 h-10 px-3.5 rounded-xl bg-[#7D9878] text-white text-sm font-semibold shadow-sm shadow-[#7D9878]/25 hover:bg-[#6B8566] active:scale-[0.97] transition-[background-color,transform] duration-150 whitespace-nowrap"
+                    >
+                        <Plus className="w-4 h-4" />
+                        Nuevo producto
+                    </Link>
                 </div>
             </header>
 
             {/* Filtros y buscador */}
-            <div className="anim-entrada [animation-delay:60ms] flex flex-col xl:flex-row xl:items-center gap-3">
-                <div role="group" aria-label="Filtrar" className="flex gap-1.5 overflow-x-auto -mx-1 px-1 pb-1 xl:pb-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                    {FILTROS.map(f => {
+            <div className="anim-entrada [animation-delay:60ms] flex flex-wrap items-center gap-3">
+                <div role="group" aria-label="Filtrar" className="shrink-0 max-w-full flex gap-1 p-1 rounded-xl bg-[#F4EFEA] dark:bg-[#1B1D1A] border border-[#E6DFD5] dark:border-[#353B33] overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                    {FILTROS.filter(f => !f.siHay || conteos[f.key] > 0 || filtro === f.key).map(f => {
                         const activo = filtro === f.key;
                         return (
                             <button
                                 key={f.key}
                                 onClick={() => irA(() => setFiltro(f.key))}
                                 aria-pressed={activo}
-                                className={`shrink-0 inline-flex items-center gap-2 h-9 px-3.5 rounded-xl text-[13px] font-semibold border transition-[background-color,color,border-color,transform] duration-150 active:scale-[0.97] ${activo
-                                    ? "bg-[#2C2C2C] dark:bg-[#F4EFEA] border-transparent text-white dark:text-[#1B1D1A]"
-                                    : "bg-white dark:bg-[#242723] border-[#E6DFD5] dark:border-[#353B33] text-[#2C2C2C]/75 dark:text-[#F4EFEA]/75 hover:text-[#2C2C2C] dark:hover:text-[#F4EFEA]"}`}
+                                className={`shrink-0 inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-[13px] font-semibold transition-[background-color,color,box-shadow,transform] duration-150 active:scale-[0.97] ${activo
+                                    ? "bg-white dark:bg-[#353B33] text-[#2C2C2C] dark:text-[#F4EFEA] shadow-sm"
+                                    : "text-[#2C2C2C]/60 dark:text-[#F4EFEA]/55 hover:text-[#2C2C2C] dark:hover:text-[#F4EFEA]"}`}
                             >
+                                {f.punto && <span className={`w-1.5 h-1.5 rounded-full ${f.punto}`} />}
                                 {f.label}
-                                <span className={`min-w-5 h-5 px-1.5 rounded-md text-[11px] font-bold tabular-nums flex items-center justify-center ${activo ? "bg-white/20 dark:bg-[#1B1D1A]/15" : "bg-[#F4EFEA] dark:bg-[#1B1D1A] text-[#2C2C2C]/60 dark:text-[#F4EFEA]/60"}`}>
-                                    {conteos[f.key]}
-                                </span>
+                                <span className="text-xs font-medium tabular-nums text-[#2C2C2C]/45 dark:text-[#F4EFEA]/40">{conteos[f.key]}</span>
                             </button>
                         );
                     })}
                 </div>
-                <div className="flex gap-3 xl:ml-auto">
+                <div className="flex-1 min-w-[min(100%,420px)] flex gap-3">
                     <Selector
                         value={categoria}
                         onChange={(e) => irA(() => setCategoria(e.target.value))}
                         aria-label="Categoría"
                         icono={<Tags className="w-4 h-4" />}
                         resaltado={categoria !== "Todas"}
-                        className="h-10 bg-white w-60 shrink-0"
+                        className="h-10 bg-white w-52 shrink-0"
                     >
                         <option value="Todas">Todas las categorías</option>
                         {categorias.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
@@ -304,7 +322,7 @@ export default function MiCatalogoPage() {
                         onCambiar={v => irA(() => setBusqueda(v))}
                         placeholder="Buscar producto…"
                         aria-label="Buscar producto"
-                        className="flex-1 xl:w-72"
+                        className="flex-1 min-w-0"
                     />
                 </div>
             </div>
@@ -322,9 +340,6 @@ export default function MiCatalogoPage() {
                         {[
                             { label: "Mostrar", icono: Eye, cambios: { visible: true }, aviso: "Ahora se ven en el catálogo" },
                             { label: "Ocultar", icono: EyeOff, cambios: { visible: false }, aviso: "Ocultos del catálogo" },
-                            { label: "Hay stock", icono: PackageCheck, cambios: { disponibilidad: "disponible" as const }, aviso: "Marcados con stock" },
-                            { label: "Demora", icono: Clock, cambios: { disponibilidad: "demora" as const }, aviso: "Marcados con demora" },
-                            { label: "Sin stock", icono: PackageX, cambios: { disponibilidad: "no-disponible" as const }, aviso: "Marcados sin stock" },
                         ].map(a => (
                             <button
                                 key={a.label}
@@ -376,7 +391,8 @@ export default function MiCatalogoPage() {
                                 {deLaPagina.map((p, i) => {
                                     const { title, brand } = extractBrand(p.name);
                                     const visible = p.visibleCatalogo !== false;
-                                    const estado = p.availabilityStatus || "disponible";
+                                    const disp = auto(p);
+                                    const d = DISPONIBILIDAD[disp.estado];
                                     const elegido = seleccion.has(p.id);
                                     const cargando = subiendo === p.id;
                                     return (
@@ -463,47 +479,12 @@ export default function MiCatalogoPage() {
                                                 )}
                                             </td>
                                             <td className="py-3 px-3">
-                                                <div className="flex items-center gap-2">
-                                                    <div role="radiogroup" aria-label={`Disponibilidad de ${p.name}`} className="inline-flex p-0.5 rounded-lg bg-[#F4EFEA] dark:bg-[#1B1D1A] border border-[#E6DFD5] dark:border-[#353B33]">
-                                                        {DISPONIBILIDAD.map(d => {
-                                                            const activo = estado === d.key;
-                                                            return (
-                                                                <button
-                                                                    key={d.key}
-                                                                    type="button"
-                                                                    role="radio"
-                                                                    aria-checked={activo}
-                                                                    onClick={() => !activo && aplicar([p.id], { disponibilidad: d.key })}
-                                                                    className={`inline-flex items-center gap-1.5 h-7 px-2.5 rounded-md text-xs font-semibold whitespace-nowrap transition-[background-color,color,box-shadow] duration-150 ${activo
-                                                                        ? `${d.activo} shadow-sm`
-                                                                        : "text-[#2C2C2C]/50 dark:text-[#F4EFEA]/45 hover:text-[#2C2C2C] dark:hover:text-[#F4EFEA]"}`}
-                                                                >
-                                                                    <span className={`w-1.5 h-1.5 rounded-full ${activo ? d.punto : "bg-current opacity-40"}`} />
-                                                                    {d.label}
-                                                                </button>
-                                                            );
-                                                        })}
-                                                    </div>
-                                                    {estado === "demora" && (
-                                                        <label className="inline-flex items-center gap-1 text-xs text-[#2C2C2C]/60 dark:text-[#F4EFEA]/55">
-                                                            <input
-                                                                key={`${p.id}-${p.deliveryDays}`}
-                                                                type="number"
-                                                                min={0}
-                                                                max={365}
-                                                                defaultValue={p.deliveryDays || ""}
-                                                                placeholder="0"
-                                                                aria-label={`Días de demora de ${p.name}`}
-                                                                onBlur={(e) => {
-                                                                    const dias = Number(e.target.value) || 0;
-                                                                    if (dias !== (p.deliveryDays || 0)) aplicar([p.id], { dias });
-                                                                }}
-                                                                onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
-                                                                className="w-12 h-7 px-1.5 rounded-md bg-white dark:bg-[#1B1D1A] border border-[#E6DFD5] dark:border-[#353B33] text-center font-semibold text-[#2C2C2C] dark:text-[#F4EFEA] focus:outline-none focus:border-[#7D9878]"
-                                                            />
-                                                            días
-                                                        </label>
-                                                    )}
+                                                <div className="flex flex-col items-start gap-1">
+                                                    <span className={`inline-flex items-center gap-1.5 h-7 px-2.5 rounded-md text-xs font-semibold whitespace-nowrap ${d.color}`}>
+                                                        <span className={`w-1.5 h-1.5 rounded-full ${d.punto}`} />
+                                                        {d.label}
+                                                    </span>
+                                                    <span className="text-[11px] text-[#2C2C2C]/50 dark:text-[#F4EFEA]/45 whitespace-nowrap">{motivo(disp)}</span>
                                                 </div>
                                             </td>
                                             <td className="py-3 px-3 text-center">

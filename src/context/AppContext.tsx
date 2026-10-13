@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { fetchTable, fetchTables, upsertRecord, upsertRecords, deleteRecord, deleteRecords, clearTable } from "@/lib/db-actions";
 import { sesionActual, cerrarSesion } from "@/lib/auth-actions";
 import { sendOrderNotification } from "@/lib/email-service";
+import { mismoNombre, idPerfumeHecho, buscarPerfumeHecho } from "@/lib/perfume-hecho";
 
 
 export type Categoria = { id: string; name: string; count: number };
@@ -347,9 +348,7 @@ function genId(prefix = "") {
 }
 
 // Mismo nombre ignorando mayúsculas y espacios de los bordes: "vainilla" = "Vainilla",
-// pero "Vainilla" ≠ "Vainilla y Chocolate".
-const mismoNombre = (a?: string, b?: string) =>
-    (a ?? "").trim().toLowerCase() === (b ?? "").trim().toLowerCase();
+// pero "Vainilla" ≠ "Vainilla y Chocolate". (Vive en lib/perfume-hecho para usarlo también en el servidor.)
 
 // Ítem de stock (esencia o insumo) que usa un componente de receta: primero por código, si no por nombre exacto.
 function buscarIndiceStock<T extends { id: string; name: string }>(lista: T[], comp: { id: string; name: string }) {
@@ -357,16 +356,8 @@ function buscarIndiceStock<T extends { id: string; name: string }>(lista: T[], c
     return porId !== -1 ? porId : lista.findIndex(x => mismoNombre(x.name, comp.name));
 }
 
-// Perfumes ya preparados: una fila de inventario por producto, con código fijo "PH-<código del producto>".
-export const idPerfumeHecho = (productoId: string) => `PH-${productoId}`;
-
-// Fila de perfumes hechos de un producto (las cargadas antes de usar el código se buscan por nombre, presentación y género).
-export function buscarPerfumeHecho(inventario: InventarioItem[], producto: { id: string; name: string; category: string; gender?: string }) {
-    return inventario.find(i => i.id === idPerfumeHecho(producto.id))
-        ?? inventario.find(i => i.type === "Perfume Hecho" && !i.id.startsWith("PH-")
-            && mismoNombre(i.name, producto.name) && mismoNombre(i.category, producto.category)
-            && (!i.gender || !producto.gender || mismoNombre(i.gender, producto.gender)));
-}
+// Perfumes ya preparados (código fijo "PH-<código del producto>"): ver lib/perfume-hecho
+export { idPerfumeHecho, buscarPerfumeHecho };
 
 export type LineaIngresoStock = { tipo: "Esencia" | "Insumo" | "Perfume Hecho"; id: string; cantidad: number };
 

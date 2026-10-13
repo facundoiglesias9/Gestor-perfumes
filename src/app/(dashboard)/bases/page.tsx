@@ -1,6 +1,7 @@
 "use client";
 
 import { Search, Plus, Minus, Layers, Trash2, X, Edit2, FlaskConical, Package, Sparkles, ChevronDown, ChevronLeft, ChevronRight, AlertTriangle, TriangleAlert, Loader2, CheckSquare, Square, Check, Wand2, Flower2, Car, Info, type LucideIcon } from "lucide-react";
+import EncabezadoPagina, { BOTON_ENC_BORDE, BOTON_ENC_PELIGRO, BOTON_ENC } from "@/components/EncabezadoPagina";
 import { AnimatePresence, motion } from "framer-motion";
 import { useState, useCallback, useMemo } from "react";
 import { useAppContext, Base, BaseComponent } from "@/context/AppContext";
@@ -335,55 +336,34 @@ export default function BasesPage() {
 
     return (
         <div className="space-y-8 pb-12 anim-entrada relative">
-            <header className="flex flex-col items-center text-center gap-6 bg-white dark:bg-[#242723] p-8 md:p-10 rounded-[2.5rem] shadow-sm border border-[#E6DFD5] dark:border-[#353B33] transition-colors duration-300">
-                <div className="flex flex-col items-center space-y-3 max-w-2xl mx-auto">
-                    <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#7D9878]/10 text-[#7D9878] dark:text-[#A3B69B] text-xs font-bold tracking-widest uppercase">
-                        <Layers className="w-3.5 h-3.5" />
-                        Fórmulas
-                    </div>
-                    <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight text-[#2C2C2C] dark:text-[#F4EFEA] transition-colors font-brand">
-                        Bases de Productos
-                    </h1>
-                    <p className="text-[#2C2C2C]/70 dark:text-[#F4EFEA]/70 text-lg leading-relaxed font-medium transition-colors">
-                        Definí los componentes y cantidades predeterminadas para cada tipo de producto.
-                    </p>
-                </div>
-
-                <div className="flex flex-wrap items-center justify-center gap-3">
-                    <button
-                        onClick={removeDuplicateProducts}
-                        className="flex items-center gap-2.5 px-7 py-3.5 rounded-2xl bg-[#F9F6F0] dark:bg-[#1B1D1A] text-[#C9866F] border border-[#E6DFD5] dark:border-[#353B33] font-bold hover:bg-[#C9866F]/10 transition"
-                    >
-                        <Sparkles className="w-5 h-5" />
-                        Limpiar Duplicados
-                    </button>
-                    <button
-                        onClick={clearAllProductos}
-                        className="flex items-center gap-2.5 px-7 py-3.5 rounded-2xl bg-[#F9F6F0] dark:bg-[#1B1D1A] text-[#C9866F] border border-[#E6DFD5] dark:border-[#353B33] font-bold hover:bg-[#C9866F]/10 transition"
-                    >
-                        <Trash2 className="w-5 h-5" />
-                        Vaciar Catálogo
-                    </button>
-                    <button
-                        onClick={() => {
-                            const defaultCat = categorias[0]?.name || "Frascos de 50 ML";
-                            setFormData({
-                                name: defaultCat,
-                                components: [],
-                                essenceGender: defaultCat.toLowerCase().includes("difusor") || defaultCat.toLowerCase().includes("auto") ? "Ambiente" : "Todos",
-                                essenceGrams: defaultCat.toLowerCase().includes("50") ? 15 : defaultCat.toLowerCase().includes("30") ? 10 : defaultCat.toLowerCase().includes("difusor") ? 35 : 5,
-                                category: defaultCat
-                            });
-                            applySuggestedInsumosForCategory(defaultCat);
-                            setIsAddModalOpen(true);
-                        }}
-                        className="flex items-center gap-2.5 px-7 py-3.5 rounded-2xl bg-[#7D9878] hover:bg-[#6b8566] text-white font-bold hover:shadow-xl hover:shadow-[#7D9878]/20 active:scale-95 transition"
-                    >
-                        <Plus className="w-5 h-5" strokeWidth={2.5} />
-                        Nueva Base
-                    </button>
-                </div>
-            </header>
+            <EncabezadoPagina icono={Layers} titulo="Bases de productos" descripcion="Los componentes y cantidades de cada tipo de producto.">
+                <button onClick={removeDuplicateProducts} className={BOTON_ENC_BORDE}>
+                    <Sparkles className="w-4 h-4" />
+                    Limpiar duplicados
+                </button>
+                <button onClick={clearAllProductos} className={BOTON_ENC_PELIGRO}>
+                    <Trash2 className="w-4 h-4" />
+                    Vaciar catálogo
+                </button>
+                <button
+                    onClick={() => {
+                        const defaultCat = categorias[0]?.name || "Frascos de 50 ML";
+                        setFormData({
+                            name: defaultCat,
+                            components: [],
+                            essenceGender: defaultCat.toLowerCase().includes("difusor") || defaultCat.toLowerCase().includes("auto") ? "Ambiente" : "Todos",
+                            essenceGrams: defaultCat.toLowerCase().includes("50") ? 15 : defaultCat.toLowerCase().includes("30") ? 10 : defaultCat.toLowerCase().includes("difusor") ? 35 : 5,
+                            category: defaultCat
+                        });
+                        applySuggestedInsumosForCategory(defaultCat);
+                        setIsAddModalOpen(true);
+                    }}
+                    className={BOTON_ENC}
+                >
+                    <Plus className="w-4 h-4" strokeWidth={2.5} />
+                    Nueva base
+                </button>
+            </EncabezadoPagina>
 
             <div className="space-y-4">
                 {bases.map((base) => {

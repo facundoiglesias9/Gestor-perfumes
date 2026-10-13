@@ -1,6 +1,7 @@
 "use client";
 
 import { Package, Clock, CheckCircle2, Truck, ClipboardList, Filter, ShoppingCart, ArrowRight, X, Trash2, AlertTriangle } from "lucide-react";
+import EncabezadoPagina from "@/components/EncabezadoPagina";
 import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { useAppContext, OrderStatus, Order, Transaccion, InventarioItem } from "@/context/AppContext";
@@ -95,20 +96,7 @@ function PedidosSolicitudContent() {
 
     return (
         <div className="space-y-8 pb-12 anim-entrada">
-            <header className="flex flex-col md:flex-row md:justify-between md:items-end gap-6 bg-white dark:bg-slate-900 p-8 md:p-10 rounded-[2.5rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.2)] border border-slate-100 dark:border-slate-800 transition-colors duration-300">
-                <div className="space-y-3">
-                    <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 text-xs font-bold tracking-widest uppercase mb-1">
-                        <Package className="w-3.5 h-3.5" />
-                        Logística de Ventas
-                    </div>
-                    <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight text-slate-900 dark:text-slate-50 transition-colors">
-                        Solicitud de Pedidos
-                    </h1>
-                    <p className="text-slate-500 dark:text-slate-400 text-lg max-w-xl leading-relaxed font-medium transition-colors">
-                        Gestioná el flujo de tus pedidos desde que entran hasta que salen.
-                    </p>
-                </div>
-            </header>
+            <EncabezadoPagina icono={Package} titulo="Solicitud de pedidos" descripcion="El recorrido de los pedidos desde que entran hasta que salen." />
 
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 {stages.map((stage) => (

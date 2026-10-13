@@ -3,22 +3,8 @@
 import {
     useState,
     useMemo } from "react";
-import { Search,
-    Plus,
-    Trash2,
-    Edit2,
-    Users as UsersIcon,
-    ListTree,
-    Sparkles,
-    Droplets,
-    Car,
-    Wind,
-    Package,
-    User,
-    UserCheck,
-    Users,
-    Check,
-} from "lucide-react";
+import { Search, Plus, Trash2, Edit2, Users as UsersIcon, ListTree, Sparkles, Droplets, Car, Wind, Package, User, UserCheck, Users, Check, SlidersHorizontal } from "lucide-react";
+import EncabezadoPagina, { BOTON_ENC_BORDE, BOTON_ENC } from "@/components/EncabezadoPagina";
 import { useAppContext } from "@/context/AppContext";
 import ConfirmModal from "@/components/ConfirmModal";
 import Ventana from "@/components/Ventana";
@@ -162,57 +148,45 @@ export default function ParametrosPage() {
     return (
         <div className="space-y-8 pb-12 anim-entrada relative max-w-[1400px] mx-auto">
             {/* Header */}
-            <header className="relative text-center p-8 md:p-10 bg-white dark:bg-[#242723] rounded-[2.5rem] border border-[#E6DFD5] dark:border-[#353B33] shadow-sm flex flex-col items-center justify-center">
-                <div className="space-y-2 flex flex-col items-center">
-                    <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight text-[#2C2C2C] dark:text-[#F4EFEA] font-brand text-center">
-                        Parámetros y Clasificación
-                    </h1>
-                    <p className="text-[#2C2C2C]/70 dark:text-[#F4EFEA]/70 text-lg font-medium text-center">
-                        {activeTab === "proveedores" && "Gestioná la base de datos de tus proveedores de insumos y esencias."}
-                        {activeTab === "categorias" && "Gestioná las secciones de tu catálogo de productos y aromas."}
-                        {activeTab === "generos" && "Configurá los perfiles y géneros de tus fragancias."}
-                    </p>
-                </div>
-
-                <div className="mt-6 flex items-center gap-3">
-                    {activeTab === "categorias" && (
-                        <button
-                            onClick={() => {
-                                const defaultOfficialCategories = [
-                                    { id: "CAT-50ML", name: "Frascos de 50 ML", count: 0 },
-                                    { id: "CAT-30ML", name: "Frascos de 30 ML", count: 0 },
-                                    { id: "CAT-DIF", name: "Frascos Difusores", count: 0 },
-                                    { id: "CAT-AUTO", name: "Frascos de Auto", count: 0 }
-                                ];
-                                setCategorias(defaultOfficialCategories);
-                                localStorage.setItem("categorias", JSON.stringify(defaultOfficialCategories));
-                            }}
-                            className="px-5 py-3.5 rounded-2xl bg-[#F9F6F0] dark:bg-[#1B1D1A] text-[#2C2C2C] dark:text-[#F4EFEA] font-bold border border-[#E6DFD5] dark:border-[#353B33] hover:bg-[#7D9878]/10 transition text-sm"
-                        >
-                            Cargar Categorías Oficiales
-                        </button>
-                    )}
-                    {activeTab === "generos" && (
-                        <button
-                            onClick={() => {
-                                const officialGeneros = ["Femenino", "Masculino", "Unisex", "Ambiente"];
-                                setGeneros(officialGeneros);
-                                localStorage.setItem("generos", JSON.stringify(officialGeneros));
-                            }}
-                            className="px-5 py-3.5 rounded-2xl bg-[#F9F6F0] dark:bg-[#1B1D1A] text-[#2C2C2C] dark:text-[#F4EFEA] font-bold border border-[#E6DFD5] dark:border-[#353B33] hover:bg-[#7D9878]/10 transition text-sm"
-                        >
-                            Cargar Géneros Oficiales
-                        </button>
-                    )}
+            <EncabezadoPagina
+                icono={SlidersHorizontal}
+                titulo="Parámetros"
+                descripcion={activeTab === "proveedores" ? "Tus proveedores de insumos y esencias." : activeTab === "categorias" ? "Las secciones de tu catálogo de productos y aromas." : "Los perfiles y géneros de tus fragancias."}
+            >
+                {activeTab === "categorias" && (
                     <button
-                        onClick={handleOpenAddModal}
-                        className="flex items-center justify-center gap-2.5 px-7 py-3.5 rounded-2xl bg-[#7D9878] hover:bg-[#6b8566] text-white font-bold transition shadow-lg shadow-[#7D9878]/20 active:scale-95 whitespace-nowrap"
+                        onClick={() => {
+                            const defaultOfficialCategories = [
+                                { id: "CAT-50ML", name: "Frascos de 50 ML", count: 0 },
+                                { id: "CAT-30ML", name: "Frascos de 30 ML", count: 0 },
+                                { id: "CAT-DIF", name: "Frascos Difusores", count: 0 },
+                                { id: "CAT-AUTO", name: "Frascos de Auto", count: 0 }
+                            ];
+                            setCategorias(defaultOfficialCategories);
+                            localStorage.setItem("categorias", JSON.stringify(defaultOfficialCategories));
+                        }}
+                        className={BOTON_ENC_BORDE}
                     >
-                        <Plus className="w-5 h-5" strokeWidth={2.5} />
-                        Nuevo {activeTab === "proveedores" ? "Proveedor" : activeTab === "categorias" ? "Categoría" : "Género"}
+                        Cargar categorías oficiales
                     </button>
-                </div>
-            </header>
+                )}
+                {activeTab === "generos" && (
+                    <button
+                        onClick={() => {
+                            const officialGeneros = ["Femenino", "Masculino", "Unisex", "Ambiente"];
+                            setGeneros(officialGeneros);
+                            localStorage.setItem("generos", JSON.stringify(officialGeneros));
+                        }}
+                        className={BOTON_ENC_BORDE}
+                    >
+                        Cargar géneros oficiales
+                    </button>
+                )}
+                <button onClick={handleOpenAddModal} className={BOTON_ENC}>
+                    <Plus className="w-4 h-4" strokeWidth={2.5} />
+                    Nuevo {activeTab === "proveedores" ? "proveedor" : activeTab === "categorias" ? "categoría" : "género"}
+                </button>
+            </EncabezadoPagina>
 
             {/* CENTERED TAB SWITCHER (Between Header and Search Bar) */}
             <div className="flex justify-center my-6">

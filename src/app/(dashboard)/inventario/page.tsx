@@ -1,6 +1,7 @@
 "use client";
 
 import { Search, Plus, Trash2, FlaskConical, Pencil, Sparkles, Layers, Package, Check, Bell, BellRing, AlertCircle, Boxes } from "lucide-react";
+import EncabezadoPagina, { BOTON_ENC_PELIGRO, BOTON_ENC } from "@/components/EncabezadoPagina";
 import { useState, useMemo, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useAppContext, buscarPerfumeHecho, type InventarioItem } from "@/context/AppContext";
@@ -168,37 +169,18 @@ export default function InventarioPage() {
 
     return (
         <div className="max-w-6xl mx-auto space-y-6 pb-12 relative">
-            <header className="anim-entrada relative overflow-hidden bg-white dark:bg-[#242723] rounded-[2rem] px-6 py-9 md:px-10 md:py-11 border border-[#E6DFD5] dark:border-[#353B33] shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.2)]">
-                <div aria-hidden className="pointer-events-none absolute left-1/2 -translate-x-1/2 -top-36 w-[760px] max-w-full h-72 rounded-full bg-[#7D9878]/[0.14] dark:bg-[#A3B69B]/[0.07] blur-3xl" />
-                <div className="relative flex flex-col items-center text-center">
-                    <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#7D9878]/10 text-[#5A7356] dark:text-[#A3B69B] border border-[#7D9878]/20 text-[11px] font-bold tracking-widest uppercase">
-                        <Boxes className="w-3.5 h-3.5" />
-                        Stock
-                    </span>
-                    <h1 className="mt-4 text-4xl md:text-5xl font-extrabold tracking-tight text-[#2C2C2C] dark:text-[#F4EFEA] font-brand">Inventario</h1>
-                    <p className="mt-3 max-w-xl text-base md:text-lg text-[#2C2C2C]/65 dark:text-[#F4EFEA]/60 leading-relaxed text-balance">
-                        Lo que tenés hoy: perfumes ya hechos, esencias e insumos.
-                    </p>
-                    <div className="mt-7 flex flex-wrap items-center justify-center gap-2">
-                        <button
-                            onClick={() => setIsAddModalOpen(true)}
-                            className="flex items-center gap-2 h-11 px-5 rounded-xl bg-[#7D9878] text-white text-sm font-semibold shadow-md shadow-[#7D9878]/25 hover:bg-[#6B8566] active:scale-[0.97] transition-[background-color,transform] duration-150"
-                        >
-                            <Plus className="w-4 h-4" strokeWidth={2.5} />
-                            Ingresar stock
-                        </button>
-                        {inventario.length > 0 && (
-                            <button
-                                onClick={clearAllInventario}
-                                className="flex items-center gap-2 h-11 px-4 rounded-xl text-sm font-semibold text-[#2C2C2C]/55 dark:text-[#F4EFEA]/50 hover:text-[#B5654A] dark:hover:text-[#DBA793] hover:bg-[#C9866F]/10 active:scale-[0.97] transition-[background-color,color,transform] duration-150"
-                            >
-                                <Trash2 className="w-4 h-4" />
-                                Vaciar inventario
-                            </button>
-                        )}
-                    </div>
-                </div>
-            </header>
+            <EncabezadoPagina icono={Boxes} titulo="Inventario" descripcion="Lo que tenés hoy: perfumes ya hechos, esencias e insumos.">
+                {inventario.length > 0 && (
+                    <button onClick={clearAllInventario} className={BOTON_ENC_PELIGRO}>
+                        <Trash2 className="w-4 h-4" />
+                        Vaciar inventario
+                    </button>
+                )}
+                <button onClick={() => setIsAddModalOpen(true)} className={BOTON_ENC}>
+                    <Plus className="w-4 h-4" strokeWidth={2.5} />
+                    Ingresar stock
+                </button>
+            </EncabezadoPagina>
 
             {/* Resumen: tres datos en una franja, sin números gigantes */}
             <section aria-label="Resumen del stock" className="anim-entrada [animation-delay:60ms] grid grid-cols-1 sm:grid-cols-3 rounded-2xl bg-white dark:bg-[#242723] border border-[#E6DFD5] dark:border-[#353B33] shadow-sm divide-y sm:divide-y-0 sm:divide-x divide-[#E6DFD5] dark:divide-[#353B33]">
@@ -518,13 +500,21 @@ export default function InventarioPage() {
 
 // ── Piezas de la tabla ───────────────────────────────────────────
 
+// Cada tamaño con su propio estilo para distinguirlos de un vistazo: el de 50 ml relleno en dorado
+// y el de 30 ml solo con borde. Se diferencian por color y por relleno (sirve aunque no se distingan
+// bien los colores), y no usan el verde ni el terracota, que ya marcan el género.
+const ESTILO_TAMANO: Record<string, string> = {
+    "50": "bg-[#D9BC8C] text-[#2C2C2C] shadow-sm shadow-[#B8925A]/30",
+    "30": "border-[1.5px] border-[#2C2C2C]/70 dark:border-[#F4EFEA]/70 text-[#2C2C2C] dark:text-[#F4EFEA]",
+};
+
 /** Cuadrito de la izquierda: el tamaño bien marcado (50 ml / 30 ml) o el ícono de esencia / insumo */
 function Distintivo({ item }: { item: InventarioItem }) {
     if (item.type === "Perfume Hecho") {
         const ml = item.category?.match(/(\d+)\s*ML/i)?.[1];
         if (ml) {
             return (
-                <span className="w-10 h-10 shrink-0 rounded-xl flex flex-col items-center justify-center bg-[#2C2C2C] dark:bg-[#F4EFEA] text-white dark:text-[#1B1D1A]" aria-label={`${ml} ml`}>
+                <span className={`w-10 h-10 shrink-0 rounded-xl flex flex-col items-center justify-center ${ESTILO_TAMANO[ml] ?? "bg-[#2C2C2C] dark:bg-[#F4EFEA] text-white dark:text-[#1B1D1A]"}`} aria-label={`${ml} ml`}>
                     <span className="text-sm font-black leading-none tabular-nums">{ml}</span>
                     <span className="text-[9px] font-bold leading-none mt-0.5">ml</span>
                 </span>

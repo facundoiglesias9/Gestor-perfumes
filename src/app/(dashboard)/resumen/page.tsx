@@ -11,6 +11,7 @@ import {
     PieChart, Wallet, ArrowDownLeft, ArrowUpRight, Coins, Clock, Package,
     Table2, BarChart3, ArrowRight, Info, type LucideIcon
 } from "lucide-react";
+import EncabezadoPagina from "@/components/EncabezadoPagina";
 import { useAppContext, type Order, type Transaccion } from "@/context/AppContext";
 
 // ── Colores de los gráficos ─────────────────────────────────────────
@@ -357,21 +358,12 @@ export default function ResumenPage() {
     return (
         <div className={`space-y-6 pb-12 ${VARIABLES_GRAFICOS}`}>
             {/* Encabezado + período (el período manda sobre todo lo de abajo) */}
-            <header className="anim-entrada relative overflow-hidden bg-white dark:bg-[#242723] rounded-[2rem] px-6 py-9 md:px-10 md:py-10 border border-[#E6DFD5] dark:border-[#353B33] shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.2)]">
-                <div aria-hidden className="pointer-events-none absolute left-1/2 -translate-x-1/2 -top-36 w-[760px] max-w-full h-72 rounded-full bg-[#1baf7a]/[0.10] dark:bg-[#199e70]/[0.07] blur-3xl" />
-                <div className="relative flex flex-col items-center text-center">
-                    <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#7D9878]/10 text-[#5A7356] dark:text-[#A3B69B] border border-[#7D9878]/20 text-[11px] font-bold tracking-widest uppercase">
-                        <PieChart className="w-3.5 h-3.5" />
-                        Finanzas
-                    </span>
-                    <h1 className="mt-4 text-4xl md:text-5xl font-extrabold tracking-tight text-[#2C2C2C] dark:text-[#F4EFEA] font-brand">
-                        Resumen
-                    </h1>
-                    <p className="mt-3 max-w-xl text-base md:text-lg text-[#2C2C2C]/65 dark:text-[#F4EFEA]/60 leading-relaxed">
-                        Cuánta plata entró, cuánta salió, qué se vende y cuánto vale lo que tenés en stock.
-                    </p>
-
-                    <div role="tablist" aria-label="Período" className="mt-7 inline-flex flex-wrap justify-center gap-0.5 p-1 rounded-2xl bg-[#F4EFEA]/80 dark:bg-[#1B1D1A] border border-[#E6DFD5] dark:border-[#353B33]">
+            <EncabezadoPagina
+                icono={PieChart}
+                titulo="Resumen"
+                descripcion={<>Lo que entró, lo que salió, qué se vende y cuánto vale tu stock. <span className="text-[#2C2C2C]/45 dark:text-[#F4EFEA]/40">Desde el {datos.inicio.toLocaleDateString("es-AR", { day: "numeric", month: "long", year: "numeric" })}.</span></>}
+            >
+                    <div role="tablist" aria-label="Período" className="inline-flex flex-wrap gap-0.5 p-1 rounded-xl bg-[#F4EFEA]/80 dark:bg-[#1B1D1A] border border-[#E6DFD5] dark:border-[#353B33]">
                         {PERIODOS.map(p => {
                             const activo = periodo === p.key;
                             return (
@@ -380,7 +372,7 @@ export default function ResumenPage() {
                                     role="tab"
                                     aria-selected={activo}
                                     onClick={() => setPeriodo(p.key)}
-                                    className={`relative h-9 px-4 rounded-xl text-sm font-semibold whitespace-nowrap transition-[color,transform] duration-150 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7D9878]/50 ${activo
+                                    className={`relative h-8 px-3 rounded-lg text-sm font-semibold whitespace-nowrap transition-[color,transform] duration-150 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7D9878]/50 ${activo
                                         ? "text-[#2C2C2C] dark:text-[#F4EFEA]"
                                         : "text-[#2C2C2C]/60 dark:text-[#F4EFEA]/55 hover:text-[#2C2C2C] dark:hover:text-[#F4EFEA]"}`}
                                 >
@@ -388,7 +380,7 @@ export default function ResumenPage() {
                                         <motion.span
                                             layoutId="periodo-pastilla"
                                             transition={{ type: "spring", bounce: 0.15, duration: 0.35 }}
-                                            className="absolute inset-0 rounded-xl bg-white dark:bg-[#353B33] shadow-sm shadow-[#2C2C2C]/[0.06] ring-1 ring-[#E6DFD5]/80 dark:ring-white/[0.04]"
+                                            className="absolute inset-0 rounded-lg bg-white dark:bg-[#353B33] shadow-sm shadow-[#2C2C2C]/[0.06] ring-1 ring-[#E6DFD5]/80 dark:ring-white/[0.04]"
                                         />
                                     )}
                                     <span className="relative">{p.label}</span>
@@ -396,11 +388,7 @@ export default function ResumenPage() {
                             );
                         })}
                     </div>
-                    <p className="mt-3 text-xs text-[#2C2C2C]/50 dark:text-[#F4EFEA]/45">
-                        Desde el {datos.inicio.toLocaleDateString("es-AR", { day: "numeric", month: "long", year: "numeric" })} hasta hoy
-                    </p>
-                </div>
-            </header>
+            </EncabezadoPagina>
 
             {isLoading ? (
                 <p className="text-center py-16 text-sm text-[#2C2C2C]/55 dark:text-[#F4EFEA]/50">Cargando datos…</p>

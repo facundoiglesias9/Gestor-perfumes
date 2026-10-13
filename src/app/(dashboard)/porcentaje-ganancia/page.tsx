@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Minus, Plus, Percent, RotateCcw, RefreshCw, Check, Loader2, TriangleAlert } from "lucide-react";
+import EncabezadoPagina from "@/components/EncabezadoPagina";
 import { useAppContext, Producto } from "@/context/AppContext";
 import { upsertRecords } from "@/lib/db-actions";
 import ConfirmModal from "@/components/ConfirmModal";
@@ -172,22 +173,15 @@ export default function PorcentajeGananciaPage() {
     return (
         <div className="space-y-6 pb-16 max-w-[1200px] mx-auto">
             {/* Encabezado centrado, igual que el resto de las páginas */}
-            <header className="anim-entrada relative overflow-hidden bg-white dark:bg-[#242723] rounded-[2rem] px-6 py-9 md:px-10 md:py-11 border border-[#E6DFD5] dark:border-[#353B33] shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.2)]">
-                <div aria-hidden className="pointer-events-none absolute left-1/2 -translate-x-1/2 -top-36 w-[760px] max-w-full h-72 rounded-full bg-[#7D9878]/[0.14] dark:bg-[#A3B69B]/[0.07] blur-3xl" />
-                <div className="relative flex flex-col items-center text-center">
-                    <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#7D9878]/10 text-[#5A7356] dark:text-[#A3B69B] border border-[#7D9878]/20 text-[11px] font-bold tracking-widest uppercase">
-                        <Percent className="w-3.5 h-3.5" />
-                        Precios
-                    </span>
-                    <h1 className="mt-4 text-4xl md:text-5xl font-extrabold tracking-tight text-[#2C2C2C] dark:text-[#F4EFEA] font-brand">% de ganancia</h1>
-                    <p className="mt-3 max-w-2xl text-base md:text-lg text-[#2C2C2C]/65 dark:text-[#F4EFEA]/60 leading-relaxed text-balance">
-                        Cuánto se le suma al costo de cada producto para armar su precio. Los precios se redondean hacia arriba a $100.
-                    </p>
-                    <p className="mt-2 text-sm text-[#2C2C2C]/55 dark:text-[#F4EFEA]/50">
-                        {categorias.length} {categorias.length === 1 ? "categoría" : "categorías"} · {totalProductos} productos
-                    </p>
-                </div>
-            </header>
+            <EncabezadoPagina
+                icono={Percent}
+                titulo="% de ganancia"
+                descripcion="Lo que se le suma al costo de cada producto para armar su precio (redondeado hacia arriba a $100)."
+            >
+                <span className="px-3.5 py-2 rounded-xl bg-[#F9F6F0] dark:bg-[#1B1D1A] text-sm text-[#2C2C2C]/65 dark:text-[#F4EFEA]/60 whitespace-nowrap">
+                    <strong className="font-semibold text-[#2C2C2C] dark:text-[#F4EFEA]">{categorias.length}</strong> {categorias.length === 1 ? "categoría" : "categorías"} · <strong className="font-semibold text-[#2C2C2C] dark:text-[#F4EFEA]">{totalProductos}</strong> productos
+                </span>
+            </EncabezadoPagina>
 
             {categorias.length === 0 ? (
                 <div className="anim-entrada flex flex-col items-center text-center py-16 px-6 rounded-[2rem] border border-dashed border-[#E6DFD5] dark:border-[#353B33]">

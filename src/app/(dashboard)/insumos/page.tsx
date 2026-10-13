@@ -1,6 +1,7 @@
 "use client";
 
 import { Plus, Filter, Layers, Trash2, Edit2, Download, Check } from "lucide-react";
+import EncabezadoPagina, { BOTON_ENC_BORDE, BOTON_ENC } from "@/components/EncabezadoPagina";
 import { useState } from "react";
 import { useAppContext } from "@/context/AppContext";
 import ConfirmModal from "@/components/ConfirmModal";
@@ -177,37 +178,16 @@ export default function InsumosPage() {
 
     return (
         <div className="space-y-8 pb-12 anim-entrada relative">
-            <header className="flex flex-col items-center text-center gap-6 bg-white dark:bg-[#242723] p-8 md:p-10 rounded-[2.5rem] shadow-sm border border-[#E6DFD5] dark:border-[#353B33] transition-colors duration-300">
-                <div className="flex flex-col items-center space-y-3 max-w-2xl mx-auto">
-                    <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#7D9878]/10 text-[#7D9878] dark:text-[#A3B69B] text-xs font-bold tracking-widest uppercase">
-                        <Layers className="w-3.5 h-3.5" />
-                        Componentes
-                    </div>
-                    <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight text-[#2C2C2C] dark:text-[#F4EFEA] transition-colors">
-                        Insumos
-                    </h1>
-                    <p className="text-[#2C2C2C]/70 dark:text-[#F4EFEA]/70 text-lg leading-relaxed font-medium transition-colors">
-                        Catálogo de piezas, frascos, tapas y etiquetas necesarios para el ensamblado.
-                    </p>
-                </div>
-
-                <div className="flex flex-wrap items-center justify-center gap-3">
-                    <button
-                        onClick={handlePerformExport}
-                        className="flex items-center gap-2.5 px-6 py-3.5 rounded-2xl bg-white dark:bg-[#1B1D1A] text-[#2C2C2C] dark:text-[#F4EFEA] font-bold hover:bg-[#7D9878]/10 shadow-sm border border-[#E6DFD5] dark:border-[#353B33] active:scale-95 transition"
-                    >
-                        <Download className="w-5 h-5" strokeWidth={2.5} />
-                        Exportar Excel
-                    </button>
-                    <button
-                        onClick={() => setIsAddModalOpen(true)}
-                        className="flex items-center gap-2.5 px-7 py-3.5 rounded-2xl bg-[#7D9878] hover:bg-[#6b8566] text-white font-bold hover:shadow-xl hover:shadow-[#7D9878]/20 active:scale-95 transition"
-                    >
-                        <Plus className="w-5 h-5" strokeWidth={2.5} />
-                        Agregar Insumo
-                    </button>
-                </div>
-            </header>
+            <EncabezadoPagina icono={Layers} titulo="Insumos" descripcion="Frascos, tapas, etiquetas y todo lo que se usa para armar los productos.">
+                <button onClick={handlePerformExport} className={BOTON_ENC_BORDE}>
+                    <Download className="w-4 h-4" />
+                    Exportar Excel
+                </button>
+                <button onClick={() => setIsAddModalOpen(true)} className={BOTON_ENC}>
+                    <Plus className="w-4 h-4" strokeWidth={2.5} />
+                    Agregar insumo
+                </button>
+            </EncabezadoPagina>
 
             <div className="bg-white dark:bg-[#242723] border border-[#E6DFD5] dark:border-[#353B33] rounded-[2.5rem] shadow-sm overflow-hidden transition-colors duration-300 relative min-h-[400px] flex flex-col">
                 <div className="p-6 md:p-8 flex flex-col sm:flex-row gap-4 border-b border-[#E6DFD5] dark:border-[#353B33]">

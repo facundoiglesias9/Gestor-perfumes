@@ -322,6 +322,76 @@
   }
 }
 
+/* ── Botón "Agregar" con carrito (<BotonCarrito>) ─────────────────
+   Una sola corrida de 1,2 s para todas las piezas: el carrito va al centro, cae un frasquito
+   adentro, el carrito sale por la derecha y vuelve a su lugar entrando por la izquierda.
+   El frasquito existe dos veces: uno del color del botón por detrás (se ve mientras cae por
+   encima del botón) y otro claro adentro, recortado por el botón, que viaja con el carrito.
+   Las distancias las mide el componente (--al-centro, --a-la-salida, --desde-izquierda, --caida). */
+.carrito-viaje .carrito-auto {
+  animation: carrito-auto 1.2s linear both;
+}
+.carrito-viaje .carrito-icono {
+  animation: carrito-golpe 1.2s linear both;
+}
+.carrito-frasco,
+.carrito-frasco-fuera {
+  opacity: 0;
+}
+.carrito-viaje .carrito-frasco {
+  animation: carrito-frasco 1.2s linear both;
+}
+.carrito-viaje .carrito-frasco-fuera {
+  animation: carrito-frasco-fuera 1.2s linear both;
+}
+.carrito-viaje .carrito-texto {
+  animation: carrito-texto 1.2s linear both;
+}
+
+@keyframes carrito-auto {
+  0% { transform: translateX(0); animation-timing-function: cubic-bezier(0.23, 1, 0.32, 1); }
+  24% { transform: translateX(var(--al-centro)); }
+  48% { transform: translateX(var(--al-centro)); animation-timing-function: cubic-bezier(0.77, 0, 0.175, 1); }
+  /* sale por la derecha y, sin que se vea, pasa a la izquierda */
+  72% { transform: translateX(var(--a-la-salida)); animation-timing-function: step-end; }
+  72.01% { transform: translateX(var(--desde-izquierda)); animation-timing-function: cubic-bezier(0.23, 1, 0.32, 1); }
+  100% { transform: translateX(0); }
+}
+/* El carrito se hunde apenas cuando le cae el frasco */
+@keyframes carrito-golpe {
+  0%, 40% { transform: translateY(0); }
+  44% { transform: translateY(2px); animation-timing-function: cubic-bezier(0.23, 1, 0.32, 1); }
+  54%, 100% { transform: translateY(0); }
+}
+@keyframes carrito-frasco {
+  0%, 18% { opacity: 0; transform: translateY(var(--caida)); }
+  21% { opacity: 1; transform: translateY(var(--caida)); animation-timing-function: cubic-bezier(0.77, 0, 0.175, 1); }
+  40%, 72% { opacity: 1; transform: translateY(0); }
+  72.01%, 100% { opacity: 0; transform: translateY(0); }
+}
+@keyframes carrito-frasco-fuera {
+  0%, 18% { opacity: 0; transform: translateY(var(--caida)); }
+  21% { opacity: 1; transform: translateY(var(--caida)); animation-timing-function: cubic-bezier(0.77, 0, 0.175, 1); }
+  40% { opacity: 1; transform: translateY(0); }
+  40.01%, 100% { opacity: 0; transform: translateY(0); }
+}
+@keyframes carrito-texto {
+  0% { opacity: 1; }
+  10%, 84% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+/* Con menos movimiento el componente no hace el viaje: muestra un tilde y listo */
+@media (prefers-reduced-motion: reduce) {
+  .carrito-viaje .carrito-auto,
+  .carrito-viaje .carrito-icono,
+  .carrito-viaje .carrito-frasco,
+  .carrito-viaje .carrito-frasco-fuera,
+  .carrito-viaje .carrito-texto {
+    animation: none;
+  }
+}
+
 /* Panel de <Ventana>: lo que pone cada pantalla recibe los clics; el resto deja pasar al fondo */
 .ventana-panel > * {
   pointer-events: auto;

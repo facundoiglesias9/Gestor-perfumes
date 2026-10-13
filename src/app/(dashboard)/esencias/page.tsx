@@ -1,6 +1,7 @@
 "use client";
 
 import { Search, Plus, Filter, FlaskConical, Trash2, X, Edit2, RefreshCw, ChevronDown, ChevronLeft, ChevronRight, Droplet, Wind, Check, Download, Sparkles } from "lucide-react";
+import EncabezadoPagina, { BOTON_ENC_BORDE, BOTON_ENC } from "@/components/EncabezadoPagina";
 import { useState, useMemo, useEffect } from "react";
 import { useAppContext } from "@/context/AppContext";
 import ConfirmModal from "@/components/ConfirmModal";
@@ -331,83 +332,43 @@ export default function EsenciasPage() {
 
     return (
         <div className="space-y-8 pb-12 anim-entrada relative">
-            <header className="flex flex-col items-center text-center gap-6 bg-white dark:bg-[#242723] p-8 md:p-10 rounded-[2.5rem] shadow-sm border border-[#E6DFD5] dark:border-[#353B33] transition-colors duration-300">
-                <div className="flex flex-col items-center space-y-3 max-w-2xl mx-auto">
-                    <div className="flex items-center gap-3">
-                        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#7D9878]/10 text-[#7D9878] dark:text-[#A3B69B] text-xs font-bold tracking-widest uppercase">
-                            <FlaskConical className="w-3.5 h-3.5" />
-                            Base Líquida
-                        </div>
-
-                        {activeTab === "Perfumería" && (
-                            <div className="group relative">
-                                <div className={`w-3.5 h-3.5 rounded-full border-2 border-white dark:border-[#242723] shadow-sm ${scraperStatus.status === "success" ? "bg-[#7D9878] animate-pulse" :
-                                    scraperStatus.status === "failure" ? "bg-[#C9866F]" :
-                                        scraperStatus.status === "loading" ? "bg-[#DAC4AA] animate-spin border-dashed" :
-                                            "bg-[#353B33]"
-                                    }`} />
-                                <div className="absolute left-1/2 -translate-x-1/2 top-full mt-2 hidden group-hover:block z-50">
-                                    <div className="bg-[#1B1D1A] text-[#F4EFEA] text-[10px] font-bold px-3 py-2 rounded-lg whitespace-nowrap shadow-xl border border-[#353B33]">
-                                        {scraperStatus.status === "success" && `Sincronización Exitosa: ${scraperStatus.lastRun}`}
-                                        {scraperStatus.status === "failure" && `Error en Scraping: ${scraperStatus.message || "Fallo desconocido"}`}
-                                        {scraperStatus.status === "loading" && "Sincronizando con Van Rossum..."}
-                                        {scraperStatus.status === "idle" && "Sin sincronizar todavía"}
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-                    </div>
-
-                    <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight text-[#2C2C2C] dark:text-[#F4EFEA] transition-colors font-brand">
-                        Materia Prima: Esencias
-                    </h1>
-                    <p className="text-[#2C2C2C]/70 dark:text-[#F4EFEA]/70 text-lg leading-relaxed font-medium transition-colors">
-                        Catálogo de componentes olfativos con sincronización diaria de precios.
-                    </p>
-                    <div className="pt-1">
-                        <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#7D9878]/10 text-[#7D9878] dark:text-[#A3B69B] border border-[#7D9878]/20 font-black text-xs uppercase tracking-widest">
-                            <Sparkles className="w-3.5 h-3.5" />
-                            {filteredEsencias.length} Esencias Encontradas
+            <EncabezadoPagina
+                icono={FlaskConical}
+                titulo="Esencias"
+                descripcion={<>La materia prima, con los precios del proveedor sincronizados. <span className="tabular-nums">{filteredEsencias.length}</span> {filteredEsencias.length === 1 ? "encontrada" : "encontradas"}.</>}
+            >
+                {activeTab === "Perfumería" && (
+                    <span className="inline-flex items-center gap-2 h-10 px-3 rounded-xl bg-[#F9F6F0] dark:bg-[#1B1D1A] text-xs font-medium text-[#2C2C2C]/65 dark:text-[#F4EFEA]/60 max-w-[260px]">
+                        <span className={`w-2 h-2 shrink-0 rounded-full ${scraperStatus.status === "success" ? "bg-[#7D9878]" : scraperStatus.status === "failure" ? "bg-[#C9866F]" : scraperStatus.status === "loading" ? "bg-[#DAC4AA] animate-pulse" : "bg-[#2C2C2C]/25 dark:bg-white/25"}`} />
+                        <span className="truncate">
+                            {scraperStatus.status === "success" && `Sincronizado: ${scraperStatus.lastRun}`}
+                            {scraperStatus.status === "failure" && `Error al sincronizar: ${scraperStatus.message || "fallo desconocido"}`}
+                            {scraperStatus.status === "loading" && "Sincronizando con Van Rossum…"}
+                            {scraperStatus.status === "idle" && "Sin sincronizar todavía"}
                         </span>
-                    </div>
-                </div>
-
-                <div className="flex flex-wrap items-center justify-center gap-3">
-                    <button
-                        onClick={handleExportEsencias}
-                        className="flex items-center gap-2.5 px-6 py-3.5 rounded-2xl bg-white dark:bg-[#1B1D1A] text-[#2C2C2C] dark:text-[#F4EFEA] font-bold hover:bg-[#7D9878]/10 shadow-sm border border-[#E6DFD5] dark:border-[#353B33] active:scale-95 transition"
-                    >
-                        <Download className="w-5 h-5" strokeWidth={2.5} />
-                        Exportar Excel
+                    </span>
+                )}
+                <button onClick={handleExportEsencias} className={BOTON_ENC_BORDE}>
+                    <Download className="w-4 h-4" />
+                    Exportar Excel
+                </button>
+                {activeTab === "Perfumería" && (
+                    <button onClick={runScraper} disabled={scraperStatus.status === "loading"} className={BOTON_ENC_BORDE}>
+                        <RefreshCw className={`w-4 h-4 ${scraperStatus.status === "loading" ? "animate-spin" : ""}`} />
+                        Sincronizar
                     </button>
-                    {activeTab === "Perfumería" && (
-                        <button
-                            onClick={runScraper}
-                            disabled={scraperStatus.status === "loading"}
-                            className="flex items-center gap-2.5 px-6 py-3.5 rounded-2xl bg-[#F9F6F0] dark:bg-[#1B1D1A] text-[#2C2C2C] dark:text-[#F4EFEA] border border-[#E6DFD5] dark:border-[#353B33] font-bold hover:bg-[#7D9878]/10 transition disabled:opacity-50"
-                        >
-                            <RefreshCw className={`w-5 h-5 ${scraperStatus.status === "loading" ? "animate-spin" : ""}`} strokeWidth={2.5} />
-                            Sincronizar
-                        </button>
-                    )}
-                    {activeTab === "Ambiente" && (
-                        <button
-                            onClick={() => setIsAIModalOpen(true)}
-                            className="flex items-center gap-2.5 px-6 py-3.5 rounded-2xl bg-[#7D9878]/10 text-[#7D9878] dark:text-[#A3B69B] font-bold hover:bg-[#7D9878]/20 transition border border-[#7D9878]/20"
-                        >
-                            <Search className="w-5 h-5" strokeWidth={2.5} />
-                            Escanear PDF / Captura
-                        </button>
-                    )}
-                    <button
-                        onClick={openAddModal}
-                        className="flex items-center gap-2.5 px-7 py-3.5 rounded-2xl bg-[#7D9878] hover:bg-[#6b8566] text-white font-bold hover:shadow-xl hover:shadow-[#7D9878]/20 active:scale-95 transition"
-                    >
-                        <Plus className="w-5 h-5" strokeWidth={2.5} />
-                        Agregar Esencia
+                )}
+                {activeTab === "Ambiente" && (
+                    <button onClick={() => setIsAIModalOpen(true)} className={BOTON_ENC_BORDE}>
+                        <Search className="w-4 h-4" />
+                        Escanear PDF / captura
                     </button>
-                </div>
-            </header>
+                )}
+                <button onClick={openAddModal} className={BOTON_ENC}>
+                    <Plus className="w-4 h-4" strokeWidth={2.5} />
+                    Agregar esencia
+                </button>
+            </EncabezadoPagina>
 
             <AIExtractModal
                 isOpen={isAIModalOpen}

@@ -5,6 +5,7 @@ import { useAppContext } from "@/context/AppContext";
 import Ventana from "@/components/Ventana";
 import { PanelVentana, CabeceraVentana, CuerpoVentana, PieVentana, ETIQUETA_CAMPO, AYUDA_CAMPO, CAMPO, BOTON_PRINCIPAL, BOTON_SECUNDARIO } from "@/components/ventana-partes";
 import { ClipboardList, TrendingUp, DollarSign, Package, PlusCircle, History, X, Check, Trash2, Receipt, Wallet, MinusCircle } from "lucide-react";
+import EncabezadoPagina from "@/components/EncabezadoPagina";
 
 type SaleRecord = {
     id: string;
@@ -146,20 +147,7 @@ export default function HistorialComprasPage() {
 
     return (
         <div className="space-y-8 pb-12 anim-entrada">
-            <header className="flex flex-col md:flex-row md:justify-between md:items-end gap-6 bg-white dark:bg-slate-900 p-8 md:p-10 rounded-[2.5rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.2)] border border-slate-100 dark:border-slate-800 transition-colors duration-300">
-                <div className="space-y-3">
-                    <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 text-xs font-bold tracking-widest uppercase mb-1">
-                        <ClipboardList className="w-3.5 h-3.5" />
-                        Mis Finanzas
-                    </div>
-                    <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight text-slate-900 dark:text-slate-50 transition-colors">
-                        Historial de Compras
-                    </h1>
-                    <p className="text-slate-500 dark:text-slate-400 text-lg max-w-xl leading-relaxed font-medium transition-colors">
-                        Revisá las compras que nos realizaste, gestioná tu inventario y calculá tus ganancias profesionalmente observando el retorno sobre tu inversión real.
-                    </p>
-                </div>
-            </header>
+            <EncabezadoPagina icono={ClipboardList} titulo="Historial de compras" descripcion="Las compras que hiciste, tu inventario y tus ganancias." />
 
             {/* Widgets */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
