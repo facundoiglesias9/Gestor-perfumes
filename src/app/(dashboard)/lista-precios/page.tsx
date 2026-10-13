@@ -12,7 +12,6 @@ import {
     ShoppingCart,
     ShoppingBag,
     Store,
-    X,
     CheckCircle2,
     ChevronDown,
     ChevronLeft,
@@ -28,8 +27,6 @@ import {
     MessageCircle,
     XCircle,
     Clock,
-    FileSpreadsheet,
-    FileText,
     Wind,
     Car,
     Droplets,
@@ -43,7 +40,7 @@ import {
     Info,
     FlaskConical,
     ArrowRight,
-    type LucideIcon
+    type LucideIcon,
 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import Image from "next/image";
@@ -57,11 +54,13 @@ import { toast } from "sonner";
 import { formatNumber } from "@/lib/format-utils";
 import { extractBrand } from "@/lib/product-utils";
 import ExportModal from "@/components/ExportModal";
+import BotonDescarga, { type EstadoDescarga } from "@/components/BotonDescarga";
 import { Selector } from "@/components/Desplegable";
 import Ventana from "@/components/Ventana";
 import { PanelVentana, CabeceraVentana, CuerpoVentana, BotonCerrar } from "@/components/ventana-partes";
 import ListSelectorToggle from "@/components/ListSelectorToggle";
 import PaginationControls from "@/components/PaginationControls";
+import Buscador from "@/components/Buscador";
 
 // ── Animaciones ─────────────────────────────────────────────────────
 const EASE_OUT = [0.23, 1, 0.32, 1] as const;
@@ -434,6 +433,8 @@ export default function ListaPreciosPage() {
     const [isGeneratingQR, setIsGeneratingQR] = useState(false);
     const [copiedField, setCopiedField] = useState<string | null>(null);
     const [exportFormat, setExportFormat] = useState<"excel" | "pdf" | null>(null);
+    // Descarga en curso (se ve en el botón redondo de Excel o PDF)
+    const [descarga, setDescarga] = useState<{ formato: "excel" | "pdf"; estado: EstadoDescarga; progreso: number } | null>(null);
     const itemsPerPage = 10;
 
     // "Agregar" se convierte un momento en "Agregado" para confirmar el clic
@@ -665,20 +666,30 @@ export default function ListaPreciosPage() {
         setGlobalDiscountValue(0);
     };
 
+    // Al confirmar en la ventana de exportar, la ventana se cierra y el avance se ve en el botón redondo
     const handlePerformExport = async (data: Producto[], format: "excel" | "pdf") => {
         const lista = isMinorista ? "Minorista" : "Mayorista";
+        setExportFormat(null);
+        setDescarga({ formato: format, estado: "descargando", progreso: 0 });
+        const alAvanzar = (progreso: number) => setDescarga(d => d && d.formato === format ? { ...d, progreso } : d);
+        // Que la animación se llegue a ver aunque el archivo salga enseguida
+        const minimo = new Promise(r => setTimeout(r, 900));
         try {
-            if (format === "excel") await exportarListaExcel({ lista, productos: data });
-            else await exportarListaPDF({ lista, productos: data });
-            toast.success(format === "excel" ? "Excel descargado" : "PDF descargado", {
-                description: `${data.length} productos de la lista ${lista.toLowerCase()}.`,
-            });
-            setExportFormat(null);
+            await (format === "excel"
+                ? exportarListaExcel({ lista, productos: data, alAvanzar })
+                : exportarListaPDF({ lista, productos: data, alAvanzar }));
+            await minimo;
+            setDescarga({ formato: format, estado: "listo", progreso: 1 });
+            setTimeout(() => setDescarga(d => d?.estado === "listo" ? null : d), 2600);
         } catch (err) {
             console.error("Error al exportar:", err);
+            await minimo;
+            setDescarga(d => d ? { ...d, estado: "error" } : d);
             toast.error("No se pudo generar el archivo", { description: "Probá de nuevo en un momento." });
+            setTimeout(() => setDescarga(d => d?.estado === "error" ? null : d), 3500);
         }
     };
+    const estadoDescarga = (formato: "excel" | "pdf"): EstadoDescarga => descarga?.formato === formato ? descarga.estado : "reposo";
 
     const unidadesCarrito = cartFiltered.reduce((acc, i) => acc + i.quantity, 0);
     const hayFiltros = search !== "" || categoryFilter !== "Todas" || genderFilter !== "Todos" || sortBy !== "none";
@@ -752,23 +763,17 @@ export default function ListaPreciosPage() {
                             </span>
                         </button>
 
-                        <div className="flex items-center gap-3">
-                        <button
-                            onClick={() => setExportFormat("excel")}
-                            className="flex items-center gap-2 h-11 px-3.5 rounded-xl bg-white dark:bg-[#1B1D1A] border border-[#E6DFD5] dark:border-[#353B33] text-sm font-semibold text-[#2C2C2C]/75 dark:text-[#F4EFEA]/75 hover:text-[#2C2C2C] dark:hover:text-[#F4EFEA] hover:border-[#7D9878]/50 active:scale-[0.97] transition-[border-color,color,transform] duration-150"
-                            title="Exportar a Excel"
-                        >
-                            <FileSpreadsheet className="w-4 h-4 text-[#7D9878] dark:text-[#A3B69B]" />
-                            Excel
-                        </button>
-                        <button
-                            onClick={() => setExportFormat("pdf")}
-                            className="flex items-center gap-2 h-11 px-3.5 rounded-xl bg-white dark:bg-[#1B1D1A] border border-[#E6DFD5] dark:border-[#353B33] text-sm font-semibold text-[#2C2C2C]/75 dark:text-[#F4EFEA]/75 hover:text-[#2C2C2C] dark:hover:text-[#F4EFEA] hover:border-[#C9866F]/50 active:scale-[0.97] transition-[border-color,color,transform] duration-150"
-                            title="Exportar a PDF"
-                        >
-                            <FileText className="w-4 h-4 text-[#C9866F]" />
-                            PDF
-                        </button>
+                        <div className="flex items-start gap-2">
+                            {(["excel", "pdf"] as const).map(formato => (
+                                <BotonDescarga
+                                    key={formato}
+                                    formato={formato}
+                                    estado={estadoDescarga(formato)}
+                                    progreso={descarga?.formato === formato ? descarga.progreso : 0}
+                                    deshabilitado={descarga?.estado === "descargando"}
+                                    onClick={() => setExportFormat(formato)}
+                                />
+                            ))}
                         </div>
                     </div>
                 </div>
@@ -776,26 +781,14 @@ export default function ListaPreciosPage() {
 
             {/* Buscador y filtros en una sola barra pareja */}
             <div className="anim-entrada [animation-delay:60ms] bg-white dark:bg-[#242723] p-3 rounded-2xl border border-[#E6DFD5] dark:border-[#353B33] shadow-sm flex flex-col lg:flex-row gap-3">
-                <div className="relative flex-1 min-w-0">
-                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#2C2C2C]/45 dark:text-[#F4EFEA]/45 pointer-events-none" />
-                    <input
-                        type="search"
-                        aria-label="Buscar productos"
-                        placeholder="Buscar por nombre o código…"
-                        value={search}
-                        onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }}
-                        className="w-full h-11 pl-11 pr-10 bg-[#F9F6F0] dark:bg-[#1B1D1A] border border-[#E6DFD5] dark:border-[#353B33] rounded-xl text-sm font-medium text-[#2C2C2C] dark:text-[#F4EFEA] placeholder:text-[#2C2C2C]/45 dark:placeholder:text-[#F4EFEA]/40 focus:outline-none focus:border-[#7D9878] focus:ring-2 focus:ring-[#7D9878]/20 transition-[border-color,box-shadow] duration-150 [&::-webkit-search-cancel-button]:hidden"
-                    />
-                    {search && (
-                        <button
-                            onClick={() => { setSearch(""); setCurrentPage(1); }}
-                            aria-label="Borrar búsqueda"
-                            className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-lg flex items-center justify-center text-[#2C2C2C]/50 dark:text-[#F4EFEA]/50 hover:text-[#2C2C2C] dark:hover:text-[#F4EFEA] hover:bg-[#E6DFD5]/60 dark:hover:bg-[#353B33]"
-                        >
-                            <X className="w-4 h-4" />
-                        </button>
-                    )}
-                </div>
+                <Buscador
+                    valor={search}
+                    onCambiar={v => { setSearch(v); setCurrentPage(1); }}
+                    placeholder="Buscar por nombre o código…"
+                    aria-label="Buscar productos"
+                    fondo="crema"
+                    className="flex-1 min-w-0"
+                />
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 lg:flex gap-3">
                     <FiltroSelect

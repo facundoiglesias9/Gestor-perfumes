@@ -4,7 +4,19 @@
 import type { Producto } from "@/context/AppContext";
 
 type Lista = "Minorista" | "Mayorista";
-type Opciones = { lista: Lista; productos: Producto[] };
+type Opciones = {
+    lista: Lista;
+    productos: Producto[];
+    /** Avisa cuánto lleva armado el archivo (de 0 a 1), para mostrar el avance */
+    alAvanzar?: (fraccion: number) => void;
+};
+
+// Avisa el avance y deja que la pantalla se dibuje antes de seguir armando el archivo
+async function avanzar(alAvanzar: Opciones["alAvanzar"], fraccion: number) {
+    if (!alAvanzar) return;
+    alAvanzar(fraccion);
+    await new Promise(r => requestAnimationFrame(() => r(null)));
+}
 type RGB = [number, number, number];
 
 const WHATSAPP = "+54 9 11 2352-9147";
@@ -104,9 +116,11 @@ async function imagenBase64(src: string): Promise<string | null> {
 
 // ── Excel ────────────────────────────────────────────────────────────────────
 
-export async function exportarListaExcel({ lista, productos }: Opciones) {
+export async function exportarListaExcel({ lista, productos, alAvanzar }: Opciones) {
+    await avanzar(alAvanzar, 0.05);
     const mod: any = await import("exceljs");
     const ExcelJS = mod.Workbook ? mod : mod.default;
+    await avanzar(alAvanzar, 0.35);
     const { ordenados } = agrupar(productos);
     const conEstado = ordenados.some(p => estadoDe(p).tipo !== "disponible");
 
@@ -223,12 +237,15 @@ export async function exportarListaExcel({ lista, productos }: Opciones) {
     hoja.getColumn(3).width = Math.max(largo(2) + 4, 12);
     hoja.getColumn(4).width = 15;
     if (conEstado) hoja.getColumn(5).width = Math.max(largo(4) + 4, 16);
+    await avanzar(alAvanzar, 0.65);
 
     const buffer = await libro.xlsx.writeBuffer();
+    await avanzar(alAvanzar, 0.95);
     descargar(
         new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }),
         `Lista_Precios_${lista}_Scenta_${hoyArchivo()}.xlsx`,
     );
+    alAvanzar?.(1);
 }
 
 // ── PDF ──────────────────────────────────────────────────────────────────────
@@ -237,10 +254,12 @@ export async function exportarListaExcel({ lista, productos }: Opciones) {
 const limpiar = (s: string) =>
     String(s ?? "").normalize("NFC").replace(/[^\x20-\x7E\xA0-\xFF–—‘’“”•…€]/g, "");
 
-export async function exportarListaPDF({ lista, productos }: Opciones) {
+export async function exportarListaPDF({ lista, productos, alAvanzar }: Opciones) {
+    await avanzar(alAvanzar, 0.05);
     const { jsPDF } = await import("jspdf");
     const modTabla: any = await import("jspdf-autotable");
     const autoTable = modTabla.autoTable ?? modTabla.default;
+    await avanzar(alAvanzar, 0.2);
 
     const doc = new jsPDF({ unit: "mm", format: "a4", compress: true });
     const W = 210;
@@ -320,7 +339,9 @@ export async function exportarListaPDF({ lista, productos }: Opciones) {
 
     // ── Productos: cada categoría empieza en una hoja nueva ──
     const paginaDe: { categoria: string; cantidad: number; pagina: number }[] = [];
-    for (const grupo of grupos) {
+    await avanzar(alAvanzar, 0.3);
+    for (const [n, grupo] of grupos.entries()) {
+        if (n > 0) await avanzar(alAvanzar, 0.3 + 0.6 * (n / grupos.length));
         doc.addPage();
         paginaDe.push({ categoria: grupo.categoria, cantidad: grupo.items.length, pagina: doc.getNumberOfPages() });
 
@@ -391,6 +412,7 @@ export async function exportarListaPDF({ lista, productos }: Opciones) {
             },
         });
     }
+    await avanzar(alAvanzar, 0.9);
 
     // ── Encabezado y pie de cada hoja de productos ──
     const total = doc.getNumberOfPages();
@@ -463,5 +485,7 @@ export async function exportarListaPDF({ lista, productos }: Opciones) {
         });
     }
 
+    await avanzar(alAvanzar, 0.96);
     doc.save(`Lista_Precios_${lista}_Scenta_${hoyArchivo()}.pdf`);
+    alAvanzar?.(1);
 }

@@ -4,6 +4,7 @@ import crypto from "node:crypto";
 import sql from "./db";
 import { cifrarClave, revisarClave } from "./claves";
 import { abrirSesion, cerrarSesionCookie, usuarioActual, type UsuarioSesion } from "./sesion";
+import { GOOGLE_CLIENT_ID } from "./google";
 
 // Ingreso y manejo de usuarios del equipo. Todo pasa en el servidor: el navegador nunca
 // recibe contraseñas (ni cifradas) y no puede elegir quién es.
@@ -44,6 +45,49 @@ export async function iniciarSesion(usuario: string, clave: string): Promise<Res
     } catch (err) {
         console.error("Error al iniciar sesión:", err);
         return { ok: false, error: "No se pudo conectar con la base. Probá de nuevo en un momento." };
+    }
+}
+
+// Ingreso con Google: el navegador manda el aviso firmado que le dio Google y acá se le pregunta
+// a Google si es válido. Solo entra un administrador activo que tenga ese mail cargado en su usuario;
+// nunca se crea un usuario nuevo.
+export async function iniciarSesionConGoogle(credencial: string): Promise<Resultado<UsuarioSesion>> {
+    const token = String(credencial || "");
+    const noSePudo = { ok: false as const, error: "No se pudo comprobar tu cuenta de Google. Probá de nuevo." };
+    if (!token || token.length > 4096) return noSePudo;
+    try {
+        const r = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(token)}`, { cache: "no-store" });
+        if (!r.ok) {
+            await esperar(600);
+            return noSePudo;
+        }
+        const info = await r.json();
+        const valido = info.aud === GOOGLE_CLIENT_ID
+            && (info.iss === "accounts.google.com" || info.iss === "https://accounts.google.com")
+            && (info.email_verified === true || info.email_verified === "true")
+            && Number(info.exp) * 1000 > Date.now()
+            && typeof info.email === "string";
+        if (!valido) {
+            await esperar(600);
+            return noSePudo;
+        }
+
+        const email = info.email.trim().toLowerCase();
+        const filas = await sql`select id, username, role, status from usuarios where lower(email) = ${email}`;
+        const u = filas.find(f => f.role === "admin") ?? filas[0];
+        if (!u) {
+            await esperar(600);
+            return { ok: false, error: "Esa cuenta de Google no tiene acceso. Ingresá con tu usuario y contraseña." };
+        }
+        if (u.status === "Inactivo") return { ok: false, error: "Tu cuenta está inactiva. Contactá al administrador." };
+        if (u.role !== "admin") return { ok: false, error: SOLO_EQUIPO };
+
+        await sql`update usuarios set last_login = ${hoy()} where id = ${u.id}`;
+        await abrirSesion(u.id);
+        return { ok: true, dato: { id: u.id, username: u.username, role: u.role, status: u.status, lastLogin: hoy() } };
+    } catch (err) {
+        console.error("Error al iniciar sesión con Google:", err);
+        return { ok: false, error: "No se pudo conectar. Probá de nuevo en un momento." };
     }
 }
 

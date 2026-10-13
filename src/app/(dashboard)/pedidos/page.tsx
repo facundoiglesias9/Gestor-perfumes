@@ -6,6 +6,7 @@ import { useAppContext } from "@/context/AppContext";
 import Ventana from "@/components/Ventana";
 import { PanelVentana, CabeceraVentana, CAMPO } from "@/components/ventana-partes";
 import { Selector } from "@/components/Desplegable";
+import Buscador from "@/components/Buscador";
 
 export default function PedidosPage() {
     const { esencias, insumos, inventario, setInventario, transacciones, setTransacciones, getNextId, categorias, proveedores, generos } = useAppContext();
@@ -366,18 +367,15 @@ export default function PedidosPage() {
 
                         {/* Buscador y filtros */}
                         <div className="px-7 pt-5 pb-3 flex flex-wrap gap-2 shrink-0">
-                            <div className="relative flex-1 min-w-[200px]">
-                                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#2C2C2C]/40 dark:text-[#F4EFEA]/40 pointer-events-none" />
-                                <input
-                                    autoFocus
-                                    type="text"
-                                    aria-label="Buscar esencia"
-                                    placeholder="Buscar por nombre…"
-                                    value={esenciaSearch}
-                                    onChange={e => setEsenciaSearch(e.target.value)}
-                                    className={`${campoFiltro} pl-10`}
-                                />
-                            </div>
+                            <Buscador
+                                valor={esenciaSearch}
+                                onCambiar={v => setEsenciaSearch(v)}
+                                placeholder="Buscar por nombre…"
+                                aria-label="Buscar esencia"
+                                autoFocus
+                                fondo="crema"
+                                className="flex-1 min-w-[200px]"
+                            />
                             {esenciaTab === "Perfumería" ? (
                                 <>
                                     <Selector aria-label="Género" value={esenciaGenderFilter} onChange={e => setEsenciaGenderFilter(e.target.value)} className={selectFiltro}>

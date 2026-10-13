@@ -1,13 +1,32 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
-import { AnimatePresence, motion } from "framer-motion";
+import {
+    useCallback,
+    useEffect,
+    useMemo,
+    useRef,
+    useState,
+    type CSSProperties,
+    type ReactNode } from "react";
+import { AnimatePresence,
+    motion } from "framer-motion";
 import { toast } from "sonner";
 import {
-    StickyNote, Pin, PinOff, Palette, Trash2, Search, X, Check, LoaderCircle,
-    CircleAlert, CloudCheck, LockKeyhole, RotateCcw,
+    StickyNote,
+    Pin,
+    PinOff,
+    Palette,
+    Trash2,
+    Search,
+    Check,
+    LoaderCircle,
+    CircleAlert,
+    CloudCheck,
+    LockKeyhole,
+    RotateCcw,
 } from "lucide-react";
 import { useAppContext } from "@/context/AppContext";
+import Buscador from "@/components/Buscador";
 import {
     listarNotas, crearNota, actualizarNota, borrarNota, importarNotas,
     type Nota, type ColorNota,
@@ -758,26 +777,13 @@ export default function NotasPage() {
                 <div className="anim-entrada space-y-6">
                     {/* Buscador y filtro por color */}
                     <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-                        <div className="relative flex-1 sm:max-w-md">
-                            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#2C2C2C]/40 dark:text-[#F4EFEA]/40 pointer-events-none" />
-                            <input
-                                value={busqueda}
-                                onChange={e => setBusqueda(e.target.value)}
-                                placeholder="Buscar en tus notas…"
-                                aria-label="Buscar en tus notas"
-                                className="w-full h-11 pl-10 pr-10 rounded-xl bg-white dark:bg-[#242723] border border-[#E6DFD5] dark:border-[#353B33] text-sm text-[#2C2C2C] dark:text-[#F4EFEA] placeholder:text-[#2C2C2C]/40 dark:placeholder:text-[#F4EFEA]/35 outline-none focus:border-[#7D9878]/60 focus:ring-2 focus:ring-[#7D9878]/20 transition-[border-color,box-shadow] duration-150"
-                            />
-                            {busqueda && (
-                                <button
-                                    type="button"
-                                    onClick={() => setBusqueda("")}
-                                    aria-label="Limpiar búsqueda"
-                                    className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-lg flex items-center justify-center text-[#2C2C2C]/45 dark:text-[#F4EFEA]/45 hover:text-[#2C2C2C] dark:hover:text-[#F4EFEA] hover:bg-black/[0.05] dark:hover:bg-white/[0.07] transition-colors duration-150"
-                                >
-                                    <X className="w-4 h-4" />
-                                </button>
-                            )}
-                        </div>
+                        <Buscador
+                            valor={busqueda}
+                            onCambiar={v => setBusqueda(v)}
+                            placeholder="Buscar en tus notas…"
+                            aria-label="Buscar en tus notas"
+                            className="flex-1 sm:max-w-md"
+                        />
 
                         {coloresEnUso.length > 1 && (
                             <div role="group" aria-label="Filtrar por color" className="flex flex-wrap items-center gap-1.5 sm:ml-auto">

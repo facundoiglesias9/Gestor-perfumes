@@ -222,6 +222,39 @@
   contain: paint;
 }
 
+/* Ingreso: cuando el navegador autocompleta usuario y contraseña pinta el campo de celeste,
+   y ahí los íconos claros desaparecen. Se tapa ese color con el oscuro del campo. */
+.campo-ingreso:-webkit-autofill,
+.campo-ingreso:-webkit-autofill:hover {
+  -webkit-text-fill-color: #F4EFEA;
+  caret-color: #F4EFEA;
+  box-shadow: 0 0 0 1000px #121411 inset;
+  transition: background-color 9999s ease-out 0s;
+}
+.campo-ingreso:-webkit-autofill:focus {
+  -webkit-text-fill-color: #F4EFEA;
+  box-shadow: 0 0 0 1000px #121411 inset, 0 0 0 4px rgba(163, 182, 155, 0.1);
+}
+
+/* Ingreso: la lámpara late suave (solo opacidad y tamaño, que no traban) */
+.login-halo {
+  animation: login-halo 3.2s ease-in-out infinite;
+}
+.login-luz {
+  animation: login-luz 6.4s ease-in-out infinite;
+}
+@keyframes login-halo {
+  0%, 100% { opacity: 0.55; transform: scale(0.92); }
+  50% { opacity: 1; transform: scale(1.08); }
+}
+@keyframes login-luz {
+  0%, 100% { opacity: 0.75; }
+  50% { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .login-halo, .login-luz { animation: none; }
+}
+
 /* ── Animaciones compartidas ──────────────────────────────────────
    Entrada de bloques y filas: suben 6px mientras aparecen (solo opacidad y
    transform, así no traban aunque la página esté cargando datos). */

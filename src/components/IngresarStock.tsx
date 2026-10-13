@@ -9,6 +9,7 @@ import Ventana from "@/components/Ventana";
 import ConfirmModal from "@/components/ConfirmModal";
 import Desplegable from "@/components/Desplegable";
 import { PanelVentana, PieVentana, BotonCerrar, FilaInterruptor, CAMPO, BOTON_PRINCIPAL, BOTON_SECUNDARIO, BOTON_BORDE } from "@/components/ventana-partes";
+import Buscador from "@/components/Buscador";
 
 // Ventana "Ingresar stock" del Inventario, en dos partes:
 //  · izquierda: buscador y filtros para encontrar lo que llegó o lo que se preparó;
@@ -361,30 +362,17 @@ function Contenido({ onCerrar, onListo, onCambios }: { onCerrar: () => void; onL
                     <section aria-label={`Elegir ${nombreTipo}`} className={`${vistaActual === "elegidos" ? "hidden lg:flex" : "flex"} flex-1 min-w-0 flex-col`}>
                         <div className="px-5 sm:px-6 pt-5 pb-3 space-y-3 shrink-0">
                             <div className="flex flex-col sm:flex-row gap-2">
-                                <div className="relative flex-1 min-w-0">
-                                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-[#2C2C2C]/40 dark:text-[#F4EFEA]/40 pointer-events-none" aria-hidden />
-                                    <input
-                                        ref={buscador}
-                                        type="search"
-                                        enterKeyHint="search"
-                                        aria-label={`Buscar ${nombreTipo}`}
-                                        placeholder={textoBuscador}
-                                        value={busqueda}
-                                        onChange={e => { setBusqueda(e.target.value); alPrincipio(); }}
-                                        onKeyDown={e => { if (e.key === "Enter") e.preventDefault(); }}
-                                        className={`${CAMPO.replace("text-sm", "text-base sm:text-[15px]")} pl-11 pr-12 [&::-webkit-search-cancel-button]:hidden`}
-                                    />
-                                    {busqueda && (
-                                        <button
-                                            type="button"
-                                            onClick={() => { setBusqueda(""); buscador.current?.focus(); }}
-                                            aria-label="Borrar búsqueda"
-                                            className="absolute right-1.5 top-1/2 -translate-y-1/2 w-9 h-9 rounded-lg flex items-center justify-center text-[#2C2C2C]/45 dark:text-[#F4EFEA]/45 hover:text-[#2C2C2C] dark:hover:text-[#F4EFEA] hover:bg-[#2C2C2C]/[0.06] dark:hover:bg-white/[0.08] transition-colors duration-150"
-                                        >
-                                            <X className="w-4 h-4" />
-                                        </button>
-                                    )}
-                                </div>
+                                <Buscador
+                                    valor={busqueda}
+                                    onCambiar={v => { setBusqueda(v); alPrincipio(); }}
+                                    placeholder={textoBuscador}
+                                    aria-label={`Buscar ${nombreTipo}`}
+                                    ref={buscador}
+                                    onKeyDown={e => { if (e.key === "Enter") e.preventDefault(); }}
+                                    enterKeyHint="search"
+                                    fondo="crema"
+                                    className="flex-1 min-w-0"
+                                />
                                 {generos.length > 1 && (
                                     <Desplegable
                                         valor={generoActivo}

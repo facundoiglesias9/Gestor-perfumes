@@ -11,6 +11,7 @@ import PaginationControls from "@/components/PaginationControls";
 import Ventana from "@/components/Ventana";
 import { PanelVentana, CabeceraVentana, CuerpoVentana, PieVentana, TituloGrupo, opcion, ETIQUETA_CAMPO, CAMPO, BOTON_PRINCIPAL, BOTON_SECUNDARIO } from "@/components/ventana-partes";
 import { Selector } from "@/components/Desplegable";
+import Buscador from "@/components/Buscador";
 
 export default function EsenciasPage() {
     const { esencias, setEsencias, insumos, categorias, proveedores, scraperStatus, runScraper, generos, bases, setBases, productos, setProductos, getNextId } = useAppContext();
@@ -491,16 +492,14 @@ export default function EsenciasPage() {
             </div>
 
             <div className="flex flex-col lg:flex-row gap-4">
-                <div className="relative flex-1 group">
-                    <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-[#2C2C2C]/60 dark:text-[#F4EFEA]/60 group-focus-within:text-[#7D9878] transition-colors" />
-                    <input
-                        type="text"
-                        placeholder="Buscar esencia por nombre..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full bg-[#F9F6F0] dark:bg-[#1B1D1A] border border-[#E6DFD5] dark:border-[#353B33] rounded-2xl py-4 pl-14 pr-6 text-[#2C2C2C] dark:text-[#F4EFEA] placeholder:text-[#2C2C2C]/50 dark:placeholder:text-[#F4EFEA]/60 focus:outline-none focus:border-[#7D9878] transition font-semibold"
-                    />
-                </div>
+                <Buscador
+                    valor={searchTerm}
+                    onCambiar={v => setSearchTerm(v)}
+                    placeholder="Buscar esencia por nombre..."
+                    alto="lg"
+                    fondo="crema"
+                    className="flex-1"
+                />
 
                 {activeTab === "Perfumería" ? (
                     <>

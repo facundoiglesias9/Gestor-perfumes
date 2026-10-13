@@ -1,11 +1,27 @@
 "use client";
 
-import { useMemo, useRef, useState, type DragEvent } from "react";
-import Link from "next/link";
-import { AnimatePresence, motion } from "framer-motion";
 import {
-    Store, ExternalLink, Plus, Search, X, ImagePlus, Loader2, Pencil, Eye, EyeOff, Clock, PackageX, PackageCheck,
-    ImageOff, Tags,
+    useMemo,
+    useRef,
+    useState,
+    type DragEvent } from "react";
+import Link from "next/link";
+import { AnimatePresence,
+    motion } from "framer-motion";
+import {
+    Store,
+    ExternalLink,
+    Plus,
+    ImagePlus,
+    Loader2,
+    Pencil,
+    Eye,
+    EyeOff,
+    Clock,
+    PackageX,
+    PackageCheck,
+    ImageOff,
+    Tags,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAppContext, type Producto, type AvailabilityStatus } from "@/context/AppContext";
@@ -15,6 +31,7 @@ import { extractBrand } from "@/lib/product-utils";
 import PaginationControls from "@/components/PaginationControls";
 import ConfirmModal from "@/components/ConfirmModal";
 import { Selector } from "@/components/Desplegable";
+import Buscador from "@/components/Buscador";
 
 const POR_PAGINA = 20;
 const EASE_OUT = [0.23, 1, 0.32, 1] as const;
@@ -282,22 +299,13 @@ export default function MiCatalogoPage() {
                         <option value="Todas">Todas las categorías</option>
                         {categorias.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
                     </Selector>
-                    <div className="relative flex-1 xl:w-72">
-                        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#2C2C2C]/45 dark:text-[#F4EFEA]/45 pointer-events-none" />
-                        <input
-                            type="search"
-                            aria-label="Buscar producto"
-                            placeholder="Buscar producto…"
-                            value={busqueda}
-                            onChange={(e) => irA(() => setBusqueda(e.target.value))}
-                            className="w-full h-10 pl-10 pr-9 rounded-xl bg-white dark:bg-[#242723] border border-[#E6DFD5] dark:border-[#353B33] text-sm text-[#2C2C2C] dark:text-[#F4EFEA] placeholder:text-[#2C2C2C]/45 dark:placeholder:text-[#F4EFEA]/40 focus:outline-none focus:border-[#7D9878] focus:ring-2 focus:ring-[#7D9878]/20 [&::-webkit-search-cancel-button]:hidden"
-                        />
-                        {busqueda && (
-                            <button onClick={() => irA(() => setBusqueda(""))} aria-label="Borrar búsqueda" className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-lg flex items-center justify-center text-[#2C2C2C]/50 dark:text-[#F4EFEA]/50 hover:bg-[#F4EFEA] dark:hover:bg-[#1B1D1A]">
-                                <X className="w-4 h-4" />
-                            </button>
-                        )}
-                    </div>
+                    <Buscador
+                        valor={busqueda}
+                        onCambiar={v => irA(() => setBusqueda(v))}
+                        placeholder="Buscar producto…"
+                        aria-label="Buscar producto"
+                        className="flex-1 xl:w-72"
+                    />
                 </div>
             </div>
 

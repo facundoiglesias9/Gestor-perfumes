@@ -47,3 +47,9 @@ next-env.d.ts
 
 # Copias de seguridad de la base (tienen usuarios y contraseñas)
 respaldos/
+
+# Exportación de esencias con costos y proveedores (el repositorio es público)
+scratch/scenta-artifact/
+
+# Permisos personales de Claude Code
+.claude/settings.local.json

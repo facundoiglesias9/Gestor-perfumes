@@ -1,11 +1,29 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import { Search, Plus, Trash2, X, Edit2, Users as UsersIcon, ListTree, Sparkles, Droplets, Car, Wind, Package, User, UserCheck, Users, Check } from "lucide-react";
+import {
+    useState,
+    useMemo } from "react";
+import { Search,
+    Plus,
+    Trash2,
+    Edit2,
+    Users as UsersIcon,
+    ListTree,
+    Sparkles,
+    Droplets,
+    Car,
+    Wind,
+    Package,
+    User,
+    UserCheck,
+    Users,
+    Check,
+} from "lucide-react";
 import { useAppContext } from "@/context/AppContext";
 import ConfirmModal from "@/components/ConfirmModal";
 import Ventana from "@/components/Ventana";
 import { PanelVentana, CabeceraVentana, CuerpoVentana, PieVentana, ETIQUETA_CAMPO, CAMPO, BOTON_PRINCIPAL, BOTON_SECUNDARIO } from "@/components/ventana-partes";
+import Buscador from "@/components/Buscador";
 
 type TabType = "proveedores" | "categorias" | "generos";
 
@@ -237,16 +255,14 @@ export default function ParametrosPage() {
 
             {/* Search Bar */}
             <div className="bg-white dark:bg-[#242723] border border-[#E6DFD5] dark:border-[#353B33] rounded-3xl p-6 shadow-sm">
-                <div className="relative group w-full">
-                    <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-[#2C2C2C]/60 dark:text-[#F4EFEA]/60 group-focus-within:text-[#7D9878] transition-colors" />
-                    <input
-                        type="text"
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        placeholder={`Buscar ${activeTab}...`}
-                        className="w-full bg-[#F9F6F0] dark:bg-[#1B1D1A] border border-[#E6DFD5] dark:border-[#353B33] rounded-2xl py-3.5 pl-14 pr-6 text-[#2C2C2C] dark:text-[#F4EFEA] placeholder:text-[#2C2C2C]/50 dark:placeholder:text-[#F4EFEA]/60 focus:outline-none focus:border-[#7D9878] transition font-semibold"
-                    />
-                </div>
+                <Buscador
+                    valor={searchTerm}
+                    onCambiar={v => setSearchTerm(v)}
+                    placeholder={`Buscar ${activeTab}...`}
+                    alto="lg"
+                    fondo="crema"
+                    className="w-full"
+                />
             </div>
 
             {/* TAB CONTENT: PROVEEDORES */}

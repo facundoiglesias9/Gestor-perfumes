@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Respaldo local | Scenta</title>
+<style>
+  :root { --bg:#F9F6F0; --card:#fff; --fg:#2C2C2C; --muted:#7F7D74; --border:#E6DFD5; --primary:#7D9878; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#1B1D1A; --card:#242723; --fg:#F4EFEA; --muted:#A5A298; --border:#353B33; --primary:#A3B69B; } }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family: system-ui, sans-serif; background:var(--bg); color:var(--fg); padding:24px 16px; }
+  main { max-width:640px; margin:0 auto; background:var(--card); border:1px solid var(--border); border-radius:20px; padding:24px; }
+  h1 { margin:0 0 6px; font-size:22px; }
+  p { color:var(--muted); line-height:1.5; margin:0 0 16px; }
+  table { width:100%; border-collapse:collapse; font-size:14px; margin:16px 0; }
+  td { padding:8px 4px; border-bottom:1px solid var(--border); }
+  td:last-child { text-align:right; font-variant-numeric: tabular-nums; }
+  button { background:var(--primary); color:#fff; border:0; border-radius:12px; padding:12px 18px; font-weight:700; font-size:15px; cursor:pointer; width:100%; }
+  .aviso { font-size:13px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Respaldo de datos guardados en este navegador</h1>
+  <p>La app guarda una copia de los datos en el navegador cada vez que carga bien. Esta página la descarga en un archivo para poder cargarla en la base de datos nueva. No envía nada a ningún lado.</p>
+  <table id="tabla"></table>
+  <button id="descargar">Descargar respaldo</button>
+  <p class="aviso" style="margin-top:14px">El archivo incluye usuarios y contraseñas: guardalo en tu compu y no lo compartas.</p>
+</main>
+<script>
+  // Claves que usa la app de Scenta (el resto del navegador tiene datos de otros proyectos).
+  var CLAVES = ["productos", "categorias", "usuarios", "promociones", "esencias", "insumos", "bases",
+    "inventario", "transacciones", "orders", "proveedores", "generos", "categoryMargins",
+    "paymentInfo", "globalPermissions", "movements", "history", "system_logs", "app_notifications"];
+
+  function leer() {
+    var datos = {};
+    CLAVES.forEach(function (k) {
+      var v = null;
+      try { v = localStorage.getItem(k); } catch (e) {}
+      if (v === null) return;
+      try { datos[k] = JSON.parse(v); } catch (e) { datos[k] = v; }
+    });
+    return datos;
+  }
+
+  var datos = leer();
+  var tabla = document.getElementById("tabla");
+  var claves = Object.keys(datos);
+  if (claves.length === 0) {
+    tabla.outerHTML = "<p><strong>No hay datos de Scenta guardados en este navegador.</strong> Abrí esta página desde el mismo navegador y la misma dirección donde usás la app (por ejemplo http://localhost:3000/respaldo-local.html).</p>";
+    document.getElementById("descargar").disabled = true;
+  } else {
+    claves.forEach(function (k) {
+      var v = datos[k];
+      var n = Array.isArray(v) ? v.length + " registros" : "dato";
+      var tr = document.createElement("tr");
+      tr.innerHTML = "<td></td><td></td>";
+      tr.children[0].textContent = k;
+      tr.children[1].textContent = n;
+      tabla.appendChild(tr);
+    });
+  }
+
+  document.getElementById("descargar").addEventListener("click", function () {
+    var respaldo = { origen: location.origin, fecha: new Date().toISOString(), datos: datos };
+    var blob = new Blob([JSON.stringify(respaldo, null, 2)], { type: "application/json" });
+    var a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "respaldo-scenta-" + new Date().toISOString().slice(0, 10) + ".json";
+    a.click();
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
+  });
+</script>
+</body>
+</html>

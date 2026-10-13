@@ -1,6 +1,6 @@
 "use client";
 
-import { Search, Plus, Trash2, FlaskConical, Pencil, Sparkles, Layers, Package, Check, Bell, BellRing, AlertCircle, X, Boxes } from "lucide-react";
+import { Search, Plus, Trash2, FlaskConical, Pencil, Sparkles, Layers, Package, Check, Bell, BellRing, AlertCircle, Boxes } from "lucide-react";
 import { useState, useMemo, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useAppContext, buscarPerfumeHecho, type InventarioItem } from "@/context/AppContext";
@@ -9,6 +9,7 @@ import Ventana from "@/components/Ventana";
 import Desplegable from "@/components/Desplegable";
 import { PanelVentana, CabeceraVentana, CuerpoVentana, PieVentana, ETIQUETA_CAMPO, AYUDA_CAMPO, CAMPO, BOTON_PRINCIPAL, BOTON_SECUNDARIO } from "@/components/ventana-partes";
 import IngresarStock from "@/components/IngresarStock";
+import Buscador from "@/components/Buscador";
 
 const TIPOS = [
     { valor: "Todos", titulo: "Todo", Icono: Layers },
@@ -276,27 +277,14 @@ export default function InventarioPage() {
                     </div>
 
                     <div className="flex flex-col sm:flex-row gap-2 flex-1 min-w-0">
-                        <div className="relative flex-1 min-w-0">
-                            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#2C2C2C]/40 dark:text-[#F4EFEA]/40 pointer-events-none" aria-hidden />
-                            <input
-                                type="search"
-                                aria-label="Buscar en el stock"
-                                placeholder="Buscar por nombre, marca o tamaño"
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                className={`${CAMPO} pl-10 pr-10 [&::-webkit-search-cancel-button]:hidden`}
-                            />
-                            {searchTerm && (
-                                <button
-                                    type="button"
-                                    onClick={() => setSearchTerm("")}
-                                    aria-label="Borrar búsqueda"
-                                    className="absolute right-1.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-lg flex items-center justify-center text-[#2C2C2C]/45 dark:text-[#F4EFEA]/45 hover:text-[#2C2C2C] dark:hover:text-[#F4EFEA] hover:bg-[#2C2C2C]/[0.06] dark:hover:bg-white/[0.08] transition-colors duration-150"
-                                >
-                                    <X className="w-4 h-4" />
-                                </button>
-                            )}
-                        </div>
+                        <Buscador
+                            valor={searchTerm}
+                            onCambiar={v => setSearchTerm(v)}
+                            placeholder="Buscar por nombre, marca o tamaño"
+                            aria-label="Buscar en el stock"
+                            fondo="crema"
+                            className="flex-1 min-w-0"
+                        />
                         {presentaciones.length > 1 && (
                             <Desplegable
                                 valor={presentacionActiva}

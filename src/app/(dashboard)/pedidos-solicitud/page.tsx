@@ -1,12 +1,13 @@
 "use client";
 
-import { Package, Clock, CheckCircle2, Truck, ClipboardList, Search, Filter, ShoppingCart, ArrowRight, X, Trash2, AlertTriangle } from "lucide-react";
+import { Package, Clock, CheckCircle2, Truck, ClipboardList, Filter, ShoppingCart, ArrowRight, X, Trash2, AlertTriangle } from "lucide-react";
 import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { useAppContext, OrderStatus, Order, Transaccion, InventarioItem } from "@/context/AppContext";
 import ConfirmModal from "@/components/ConfirmModal";
 import Ventana from "@/components/Ventana";
 import { PanelVentana, CabeceraVentana, CuerpoVentana, PieVentana, ETIQUETA_CAMPO, AREA_TEXTO, BOTON_PELIGRO, BOTON_SECUNDARIO } from "@/components/ventana-partes";
+import Buscador from "@/components/Buscador";
 
 const Toast = ({ message, onClose, type = "success" }: { message: string, onClose: () => void, type?: "success" | "info" | "error" }) => (
     <div className="fixed bottom-8 right-8 z-[100] animate-in fade-in slide-in-from-bottom-4 duration-300">
@@ -125,16 +126,13 @@ function PedidosSolicitudContent() {
                 ))}
             </div>
 
-            <div className="mb-6 relative group">
-                <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 transition-colors group-focus-within:text-indigo-500" />
-                <input
-                    type="text"
-                    placeholder="Buscar por cliente o N° de pedido..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl py-4 pl-14 pr-6 text-slate-900 dark:text-slate-50 focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500/50 transition font-semibold"
-                />
-            </div>
+            <Buscador
+                valor={searchTerm}
+                onCambiar={v => setSearchTerm(v)}
+                placeholder="Buscar por cliente o N° de pedido..."
+                alto="lg"
+                className="mb-6"
+            />
 
             <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[2.5rem] shadow-sm overflow-hidden">
                 <table className="w-full text-left">

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useAppContext, Promotion } from "@/context/AppContext";
 import { Sparkles, Package, Percent, Save, Power, Search, ShoppingBag, Trash2, Calendar, Plus } from "lucide-react";
+import Buscador from "@/components/Buscador";
 
 export default function PromocionesPage() {
     const { productos, promotions, addPromotion, deletePromotion } = useAppContext();
@@ -94,16 +95,12 @@ export default function PromocionesPage() {
                         {/* Product Search */}
                         <div className="space-y-2">
                             <label className="text-xs font-black text-slate-400 uppercase tracking-widest pl-1">Seleccionar Producto</label>
-                            <div className="relative">
-                                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                                <input
-                                    type="text"
-                                    placeholder="Buscar por nombre..."
-                                    value={searchTerm}
-                                    onChange={(e) => setSearchTerm(e.target.value)}
-                                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800 rounded-2xl py-3 pl-11 pr-4 text-sm font-bold focus:ring-2 focus:ring-indigo-500/20 outline-none transition"
-                                />
-                            </div>
+                            <Buscador
+                                valor={searchTerm}
+                                onCambiar={v => setSearchTerm(v)}
+                                placeholder="Buscar por nombre..."
+                                alto="lg"
+                            />
 
                             <div className="grid grid-cols-1 gap-2 mt-4 max-h-[200px] overflow-y-auto custom-scrollbar p-1">
                                 {filteredProducts.map(p => (

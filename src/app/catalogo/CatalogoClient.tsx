@@ -6,6 +6,7 @@ import { Search, Plus, Minus, ShoppingBag, X, MessageCircle, Clock, Trash2, Chec
 import { formatNumber } from "@/lib/format-utils";
 import Desplegable from "@/components/Desplegable";
 import { extractBrand } from "@/lib/product-utils";
+import Buscador from "@/components/Buscador";
 import { whatsappUrl } from "@/lib/contacto";
 
 export type CatalogoProducto = {
@@ -273,17 +274,14 @@ export default function CatalogoClient({ productos }: { productos: CatalogoProdu
                         <section className="mb-6 rounded-3xl border border-[#E6DFD5] dark:border-[#353B33] bg-white dark:bg-[#242723] shadow-sm">
                             <div className="p-4 sm:p-5 space-y-4">
                                 <div className="flex flex-col sm:flex-row gap-2.5">
-                                    <div className="relative flex-1">
-                                        <Search className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-[#2C2C2C]/40 dark:text-[#F4EFEA]/40 pointer-events-none" />
-                                        <input
-                                            type="search"
-                                            value={search}
-                                            onChange={e => setSearch(e.target.value)}
-                                            placeholder="Buscar perfume, aroma o marca…"
-                                            aria-label="Buscar"
-                                            className="w-full h-11 rounded-xl border border-[#E6DFD5] dark:border-[#353B33] bg-[#F9F6F0] dark:bg-[#1B1D1A] pl-11 pr-4 text-sm placeholder:text-[#2C2C2C]/40 dark:placeholder:text-[#F4EFEA]/35 outline-none focus:border-[#7D9878]/70 focus:ring-2 focus:ring-[#7D9878]/20 transition-[border-color,box-shadow] duration-150"
-                                        />
-                                    </div>
+                                    <Buscador
+                                        valor={search}
+                                        onCambiar={v => setSearch(v)}
+                                        placeholder="Buscar perfume, aroma o marca…"
+                                        aria-label="Buscar"
+                                        fondo="crema"
+                                        className="flex-1"
+                                    />
                                     <Desplegable
                                         valor={orden}
                                         opciones={ORDENES.map(o => ({ valor: o.id, titulo: o.titulo }))}

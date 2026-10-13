@@ -1,9 +1,10 @@
 "use client";
 
-import { ShoppingBag, TrendingUp, Calendar, User, Search, Trophy, ArrowRight, BarChart3 } from "lucide-react";
+import { ShoppingBag, TrendingUp, Calendar, User, Trophy, ArrowRight, BarChart3 } from "lucide-react";
 import { useState, useMemo } from "react";
 import { useAppContext } from "@/context/AppContext";
 import { Selector } from "@/components/Desplegable";
+import Buscador from "@/components/Buscador";
 
 export default function VentasRevendedoresPage() {
     const { orders, usuarios } = useAppContext();
@@ -185,16 +186,13 @@ export default function VentasRevendedoresPage() {
                         <TrendingUp className="w-5 h-5 text-indigo-500" />
                         Ránking Mayoristas
                     </h2>
-                    <div className="relative w-full md:w-80">
-                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                        <input
-                            type="text"
-                            placeholder="Buscar mayorista..."
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            className="w-full bg-slate-50 dark:bg-slate-950 border-none rounded-2xl py-3 pl-10 pr-4 text-sm font-bold placeholder-slate-400 focus:ring-2 focus:ring-indigo-500/20"
-                        />
-                    </div>
+                    <Buscador
+                        valor={searchTerm}
+                        onCambiar={v => setSearchTerm(v)}
+                        placeholder="Buscar mayorista..."
+                        alto="lg"
+                        className="w-full md:w-80"
+                    />
                 </div>
 
                 <div className="overflow-x-auto">

@@ -1,14 +1,33 @@
 "use client";
 
-import { useState, useEffect, useMemo, useRef, type ReactNode } from "react";
 import {
-    Trash2, Search, Activity, ShieldCheck, ChevronDown, X, Lock, Copy,
-    ShoppingBag, Truck, Package, Users, DollarSign, Mail, Tags, Database,
-    type LucideIcon
+    useState,
+    useEffect,
+    useMemo,
+    useRef,
+    type ReactNode } from "react";
+import {
+    Trash2,
+    Search,
+    Activity,
+    ShieldCheck,
+    ChevronDown,
+    Lock,
+    Copy,
+    ShoppingBag,
+    Truck,
+    Package,
+    Users,
+    DollarSign,
+    Mail,
+    Tags,
+    Database,
+    type LucideIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAppContext } from "@/context/AppContext";
 import ConfirmModal from "@/components/ConfirmModal";
+import Buscador from "@/components/Buscador";
 
 type LogEntry = {
     id: string;
@@ -411,27 +430,14 @@ export default function LogsPage() {
             <section className="bg-white dark:bg-[#242723] border border-[#E6DFD5] dark:border-[#353B33] rounded-[2rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.2)]">
                 {/* Buscador y filtros */}
                 <div className="p-4 md:p-5 space-y-3 border-b border-[#E6DFD5] dark:border-[#353B33]">
-                    <div className="relative">
-                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#2C2C2C]/45 dark:text-[#F4EFEA]/45 pointer-events-none" />
-                        <input
-                            ref={buscadorRef}
-                            type="search"
-                            aria-label="Buscar en los registros"
-                            placeholder="Buscar en los registros…"
-                            value={busqueda}
-                            onChange={(e) => setBusqueda(e.target.value)}
-                            className="w-full h-11 bg-[#F9F6F0] dark:bg-[#1B1D1A] border border-[#E6DFD5] dark:border-[#353B33] rounded-xl pl-11 pr-10 text-sm text-[#2C2C2C] dark:text-[#F4EFEA] placeholder:text-[#2C2C2C]/45 dark:placeholder:text-[#F4EFEA]/40 focus:outline-none focus:border-[#7D9878] focus:ring-2 focus:ring-[#7D9878]/20 transition-[border-color,box-shadow] [&::-webkit-search-cancel-button]:hidden"
-                        />
-                        {busqueda && (
-                            <button
-                                onClick={() => { setBusqueda(""); buscadorRef.current?.focus(); }}
-                                aria-label="Borrar búsqueda"
-                                className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-lg flex items-center justify-center text-[#2C2C2C]/50 dark:text-[#F4EFEA]/50 hover:text-[#2C2C2C] dark:hover:text-[#F4EFEA] hover:bg-[#E6DFD5]/60 dark:hover:bg-[#353B33]"
-                            >
-                                <X className="w-4 h-4" />
-                            </button>
-                        )}
-                    </div>
+                    <Buscador
+                        valor={busqueda}
+                        onCambiar={v => setBusqueda(v)}
+                        placeholder="Buscar en los registros…"
+                        aria-label="Buscar en los registros"
+                        ref={buscadorRef}
+                        fondo="crema"
+                    />
 
                     <div role="group" aria-label="Filtrar por tipo" className="flex gap-1.5 overflow-x-auto -mx-1 px-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                         {filtros.map(f => {

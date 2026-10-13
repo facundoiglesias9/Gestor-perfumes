@@ -1,11 +1,12 @@
 "use client";
 
-import { Search, FlaskConical, Package, Plus, ChevronDown } from "lucide-react";
+import { FlaskConical, Package, Plus, ChevronDown } from "lucide-react";
 import { useState, useMemo } from "react";
 import { useAppContext } from "@/context/AppContext";
 import Ventana from "@/components/Ventana";
 import { PanelVentana, CabeceraVentana, CAMPO } from "@/components/ventana-partes";
 import { Selector } from "@/components/Desplegable";
+import Buscador from "@/components/Buscador";
 
 interface SelectorModalProps {
     isOpen: boolean;
@@ -88,18 +89,15 @@ export default function SelectorModal({ isOpen, onClose, title, items, type, onS
 
                 {/* Buscador y filtros */}
                 <div className="px-7 pt-5 pb-3 flex flex-wrap gap-2 shrink-0">
-                    <div className="relative flex-1 min-w-[200px]">
-                        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#2C2C2C]/40 dark:text-[#F4EFEA]/40 pointer-events-none" />
-                        <input
-                            autoFocus
-                            type="text"
-                            placeholder={`Buscar ${type.toLowerCase()}…`}
-                            aria-label={`Buscar ${type.toLowerCase()}`}
-                            value={searchTerm}
-                            onChange={e => setSearchTerm(e.target.value)}
-                            className={`${campoFiltro} pl-10`}
-                        />
-                    </div>
+                    <Buscador
+                        valor={searchTerm}
+                        onCambiar={v => setSearchTerm(v)}
+                        placeholder={`Buscar ${type.toLowerCase()}…`}
+                        aria-label={`Buscar ${type.toLowerCase()}`}
+                        autoFocus
+                        fondo="crema"
+                        className="flex-1 min-w-[200px]"
+                    />
 
                     {type === "Esencia" && esenciaTab === "Perfumería" && (
                         <>

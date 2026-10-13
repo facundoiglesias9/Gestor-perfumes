@@ -1,6 +1,6 @@
 "use client";
 
-import { Search, Plus, Filter, Layers, Trash2, Edit2, Download, Check } from "lucide-react";
+import { Plus, Filter, Layers, Trash2, Edit2, Download, Check } from "lucide-react";
 import { useState } from "react";
 import { useAppContext } from "@/context/AppContext";
 import ConfirmModal from "@/components/ConfirmModal";
@@ -8,6 +8,7 @@ import { exportToExcel } from "@/lib/export-utils";
 import Ventana from "@/components/Ventana";
 import { PanelVentana, CabeceraVentana, CuerpoVentana, PieVentana, ETIQUETA_CAMPO, AYUDA_CAMPO, CAMPO, BOTON_PRINCIPAL, BOTON_SECUNDARIO } from "@/components/ventana-partes";
 import { Selector } from "@/components/Desplegable";
+import Buscador from "@/components/Buscador";
 
 export default function InsumosPage() {
     const { insumos, setInsumos, categorias, proveedores, bases, setBases, productos, setProductos, getNextId } = useAppContext();
@@ -210,16 +211,14 @@ export default function InsumosPage() {
 
             <div className="bg-white dark:bg-[#242723] border border-[#E6DFD5] dark:border-[#353B33] rounded-[2.5rem] shadow-sm overflow-hidden transition-colors duration-300 relative min-h-[400px] flex flex-col">
                 <div className="p-6 md:p-8 flex flex-col sm:flex-row gap-4 border-b border-[#E6DFD5] dark:border-[#353B33]">
-                    <div className="relative flex-1 group">
-                        <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-[#2C2C2C]/60 dark:text-[#F4EFEA]/60 group-focus-within:text-[#7D9878] transition-colors" />
-                        <input
-                            type="text"
-                            value={searchTerm}
-                            onChange={e => setSearchTerm(e.target.value)}
-                            placeholder="Buscar insumo o proveedor..."
-                            className="w-full bg-[#F9F6F0] dark:bg-[#1B1D1A] border border-[#E6DFD5] dark:border-[#353B33] rounded-2xl py-3.5 pl-14 pr-6 text-[#2C2C2C] dark:text-[#F4EFEA] placeholder:text-[#2C2C2C]/50 dark:placeholder:text-[#F4EFEA]/60 focus:outline-none focus:border-[#7D9878] transition font-semibold"
-                        />
-                    </div>
+                    <Buscador
+                        valor={searchTerm}
+                        onCambiar={v => setSearchTerm(v)}
+                        placeholder="Buscar insumo o proveedor..."
+                        alto="lg"
+                        fondo="crema"
+                        className="flex-1"
+                    />
                 </div>
 
                 <div className="overflow-x-auto flex-1">
