@@ -1,6 +1,7 @@
 
 'use server'
 
+import { revalidatePath } from 'next/cache';
 import sql from './db';
 import { esAdmin } from './sesion';
 
@@ -20,6 +21,13 @@ const sinClave = (tabla: string, registro: any) => {
   const { password, ...resto } = registro;
   return resto;
 };
+
+// El catálogo público calcula la disponibilidad con productos, perfumes hechos y esencias:
+// si cambia alguna de esas tablas, se regenera ya (sin esperar los 5 minutos).
+const AFECTAN_CATALOGO = new Set(['productos', 'inventario', 'esencias']);
+function refrescarCatalogo(tabla: string) {
+  if (AFECTAN_CATALOGO.has(tabla)) revalidatePath('/catalogo');
+}
 
 async function permitido(tabla: string) {
   return TABLAS.has(tabla) && await esAdmin();
@@ -97,6 +105,7 @@ export async function upsertRecord(tableName: string, record: any) {
         ${sql(record, ...updateColumns)}
       RETURNING *
     `;
+    refrescarCatalogo(tableName);
     return { data: result[0], error: null };
   } catch (err: any) {
     console.error(`DB Error (upsertRecord ${tableName}):`, err);
@@ -109,6 +118,7 @@ export async function deleteRecord(tableName: string, id: string | number) {
   try {
     const conflictCol = tableName === 'config' ? 'key' : 'id';
     await sql`DELETE FROM ${sql(tableName)} WHERE ${sql(conflictCol)} = ${id}`;
+    refrescarCatalogo(tableName);
     return { error: null };
   } catch (err: any) {
     console.error(`DB Error (deleteRecord ${tableName}):`, err);
@@ -121,6 +131,7 @@ export async function clearTable(tableName: string) {
   if (tableName === 'usuarios' || !(await permitido(tableName))) return { error: NO_AUTORIZADO };
   try {
     await sql`DELETE FROM ${sql(tableName)}`;
+    refrescarCatalogo(tableName);
     return { error: null };
   } catch (err: any) {
     console.error(`DB Error (clearTable ${tableName}):`, err);
@@ -150,6 +161,7 @@ export async function upsertRecords(tableName: string, records: any[]) {
       `;
       results.push(...res);
     }
+    refrescarCatalogo(tableName);
     return { data: results, error: null };
   } catch (err: any) {
     if (err.severity_local) {
@@ -166,6 +178,7 @@ export async function deleteRecords(tableName: string, ids: string[]) {
     if (!(await permitido(tableName))) return { error: NO_AUTORIZADO };
     try {
         await sql`DELETE FROM ${sql(tableName)} WHERE id IN ${sql(ids)}`;
+        refrescarCatalogo(tableName);
         return { error: null };
     } catch (err: any) {
         console.error(`DB Error (deleteRecords ${tableName}):`, err);

@@ -3,6 +3,7 @@
 import { Wallet, ArrowDownLeft, ArrowUpRight, Plus, Trash2, Loader2, Check, ReceiptText } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import Buscador from "@/components/Buscador";
+import EncabezadoPagina, { BOTON_ENC } from "@/components/EncabezadoPagina";
 import { AnimatePresence, animate, motion, useReducedMotion } from "framer-motion";
 import { toast } from "sonner";
 import { useAppContext, type Transaccion } from "@/context/AppContext";
@@ -207,22 +208,12 @@ export default function CajaPage() {
 
     return (
         <div className="space-y-5 pb-12 relative">
-            {/* Encabezado compacto */}
-            <header className="anim-entrada bg-white dark:bg-[#242723] rounded-2xl border border-[#E6DFD5] dark:border-[#353B33] shadow-sm p-5 md:p-6 flex flex-col sm:flex-row sm:items-center gap-4">
-                <div className="flex items-center gap-4 flex-1 min-w-0">
-                    <span className="w-11 h-11 shrink-0 rounded-xl flex items-center justify-center bg-[#7D9878]/15 text-[#5A7356] dark:bg-[#A3B69B]/15 dark:text-[#A3B69B]">
-                        <Wallet className="w-5 h-5" />
-                    </span>
-                    <div className="min-w-0">
-                        <h1 className="text-2xl md:text-[28px] font-bold tracking-tight leading-tight text-[#2C2C2C] dark:text-[#F4EFEA] font-brand">Caja</h1>
-                        <p className="text-sm text-[#2C2C2C]/60 dark:text-[#F4EFEA]/55">Saldo, ingresos y gastos del negocio.</p>
-                    </div>
-                </div>
-                <button onClick={abrirModal} className={BOTON_PRINCIPAL}>
+            <EncabezadoPagina icono={Wallet} titulo="Caja" descripcion="Saldo, ingresos y gastos del negocio.">
+                <button onClick={abrirModal} className={BOTON_ENC}>
                     <Plus className="w-4 h-4" strokeWidth={2.5} />
                     Nuevo movimiento
                 </button>
-            </header>
+            </EncabezadoPagina>
 
             {/* Números */}
             <div className="anim-entrada [animation-delay:60ms] grid grid-cols-1 md:grid-cols-3 gap-4">

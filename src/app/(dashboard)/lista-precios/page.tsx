@@ -397,7 +397,8 @@ export default function ListaPreciosPage() {
         generos,
         promotions,
         paymentInfo,
-        isLoading
+        isLoading,
+        disponibilidadDe
     } = useAppContext();
 
     const [profitModalProduct, setProfitModalProduct] = useState<Producto | null>(null);
@@ -491,7 +492,7 @@ export default function ListaPreciosPage() {
         }
 
         if (!showOutOfStock) {
-            result = result.filter(p => !p.availabilityStatus || p.availabilityStatus !== "no-disponible");
+            result = result.filter(p => disponibilidadDe(p).estado !== "sin-stock");
         }
 
         if (!showConsult) {
@@ -522,7 +523,7 @@ export default function ListaPreciosPage() {
         }
 
         return result;
-    }, [productos, search, categoryFilter, genderFilter, sortBy, showOutOfStock, showConsult, isMinorista]);
+    }, [productos, search, categoryFilter, genderFilter, sortBy, showOutOfStock, showConsult, isMinorista, disponibilidadDe]);
 
     const totalPages = Math.ceil(filteredAndSortedProductos.length / itemsPerPage);
     const paginatedProductos = useMemo(() => {

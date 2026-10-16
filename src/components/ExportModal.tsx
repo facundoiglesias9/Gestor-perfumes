@@ -1,11 +1,10 @@
 "use client";
 
 import { Check, FileSpreadsheet, FileText, LoaderCircle, Layers, PackageCheck, Clock } from "lucide-react";
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { Producto, useAppContext } from "@/context/AppContext";
 import Ventana from "@/components/Ventana";
 import { PanelVentana, CabeceraVentana, CuerpoVentana, PieVentana, TodoNada, BOTON_PRINCIPAL, BOTON_SECUNDARIO } from "@/components/ventana-partes";
-import { calculadorDisponibilidad, type EstadoAutomatico } from "@/lib/perfume-hecho";
 
 interface ExportModalProps {
     isOpen: boolean;
@@ -65,20 +64,16 @@ export default function ExportModal({
     type,
     lista
 }: ExportModalProps) {
-    const { inventario, esencias } = useAppContext();
+    const { disponibilidadDe: auto } = useAppContext();
     const [generando, setGenerando] = useState(false);
     const [stock, setStock] = useState<Stock>("todo");
     const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
     const [selectedGenders, setSelectedGenders] = useState<string[]>([]);
     const [incluirSinPrecio, setIncluirSinPrecio] = useState(false);
+    // Los "sin stock" de verdad (esencia a consultar): solo si la página los estaba mostrando
+    const [incluirSinStock, setIncluirSinStock] = useState(false);
     const [mostrarDisponibilidad, setMostrarDisponibilidad] = useState(true);
 
-    // Disponibilidad automática (la misma regla que el catálogo): hechos en stock → disponible
-    const autoDe = useMemo(() => {
-        const calcular = calculadorDisponibilidad(inventario, esencias);
-        return new Map(productos.map(p => [p.id, calcular(p)]));
-    }, [productos, inventario, esencias]);
-    const auto = (p: Producto): EstadoAutomatico => autoDe.get(p.id) ?? { estado: "demora", dias: 0, hechos: 0 };
 
     const availableCategories = useMemo(() => {
         const catMap = new Map<string, string>();
@@ -101,23 +96,31 @@ export default function ExportModal({
         return !availableCategories.some(c => c.toLowerCase().includes(gLower) || gLower.includes(c.toLowerCase()));
     }), [generos, availableCategories]);
 
-    // Al abrir, arranca con los filtros que tiene la página
-    const { category: catInicial, gender: generoInicial, showConsult: sinPrecioInicial } = initialFilters;
+    // Al abrir (y solo al abrir), arranca con los filtros que tiene la página; si después se
+    // actualizan los datos de fondo, lo que eligió el usuario no se pierde.
+    const { category: catInicial, gender: generoInicial, showConsult: sinPrecioInicial, showOutOfStock: sinStockInicial } = initialFilters;
+    const iniciales = useRef({ catInicial, generoInicial, sinPrecioInicial, sinStockInicial, availableCategories, availableGenders });
+    iniciales.current = { catInicial, generoInicial, sinPrecioInicial, sinStockInicial, availableCategories, availableGenders };
     useEffect(() => {
         if (!isOpen) return;
-        setSelectedCategories(catInicial && catInicial !== "Todas" ? [catInicial] : availableCategories);
-        setSelectedGenders(generoInicial && generoInicial !== "Todos" ? [generoInicial] : availableGenders);
-        setIncluirSinPrecio(sinPrecioInicial || false);
+        const i = iniciales.current;
+        setSelectedCategories(i.catInicial && i.catInicial !== "Todas" ? [i.catInicial] : i.availableCategories);
+        setSelectedGenders(i.generoInicial && i.generoInicial !== "Todos" ? [i.generoInicial] : i.availableGenders);
+        setIncluirSinPrecio(i.sinPrecioInicial || false);
+        setIncluirSinStock(i.sinStockInicial || false);
         setStock("todo");
-    }, [isOpen, catInicial, generoInicial, sinPrecioInicial, availableCategories, availableGenders]);
+    }, [isOpen]);
 
     // Filtros por separado, así cada grupo cuenta cuántos quedarían
     const conPrecio = (p: Producto) => {
         const precio = Number(lista === "Mayorista" ? p.price : p.priceMinorista);
         return incluirSinPrecio || (Number.isFinite(precio) && precio > 0);
     };
-    const pasaStock = (p: Producto, s: Stock = stock) =>
-        s === "todo" || (s === "con-stock" ? auto(p).estado === "disponible" : auto(p).estado !== "disponible");
+    const pasaStock = (p: Producto, s: Stock = stock) => {
+        const estado = auto(p).estado;
+        if (estado === "sin-stock" && !incluirSinStock) return false;
+        return s === "todo" || (s === "con-stock" ? estado === "disponible" : estado !== "disponible");
+    };
     const pasaCategoria = (p: Producto) =>
         selectedCategories.some(c => c.trim().toUpperCase() === (p.category || "").trim().toUpperCase());
     const pasaGenero = (p: Producto) => {
@@ -248,6 +251,12 @@ export default function ExportModal({
                             onCambiar={setMostrarDisponibilidad}
                             titulo="Mostrar la disponibilidad"
                             detalle="Columna con «Disponible», «Demora 7 días» o «Sin stock», según tu stock de hoy"
+                        />
+                        <Casilla
+                            activo={incluirSinStock}
+                            onCambiar={setIncluirSinStock}
+                            titulo="Incluir productos sin stock"
+                            detalle="Los que tienen la esencia a consultar con el proveedor"
                         />
                         <Casilla
                             activo={incluirSinPrecio}

@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { fetchTable, fetchTables, upsertRecord, upsertRecords, deleteRecord, deleteRecords, clearTable } from "@/lib/db-actions";
 import { sesionActual, cerrarSesion } from "@/lib/auth-actions";
 import { sendOrderNotification } from "@/lib/email-service";
-import { mismoNombre, idPerfumeHecho, buscarPerfumeHecho } from "@/lib/perfume-hecho";
+import { mismoNombre, idPerfumeHecho, buscarPerfumeHecho, calculadorDisponibilidad, type EstadoAutomatico } from "@/lib/perfume-hecho";
 
 
 export type Categoria = { id: string; name: string; count: number };
@@ -301,6 +301,8 @@ interface AppContextProps {
     usdLastUpdate: string;
     syncUsdRate: () => Promise<{ rate: number, date: string } | null>;
     addSystemLog: (type: "info" | "error" | "db" | "auth" | "warn", message: string, details?: any) => void;
+    /** Disponibilidad automática de un producto (perfumes hechos en stock / demora / sin stock) */
+    disponibilidadDe: (p: Producto) => EstadoAutomatico;
     isLoading: boolean;
     notifications: AppNotification[];
     unreadCount: number;
@@ -2503,7 +2505,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         return () => clearInterval(intervalId);
     }, [mounted, currentUser?.role]); // Removemos las dependencias excesivas para evitar loops, leer de localstorage es seguro aqui
 
+    // Disponibilidad automática: se calcula una sola vez para todo el sistema (misma regla que el catálogo público)
+    const disponibilidadDe = React.useMemo(() => {
+        const calcular = calculadorDisponibilidad(inventario, esencias);
+        const porId = new Map(productos.map(p => [p.id, calcular(p)]));
+        return (p: Producto): EstadoAutomatico => porId.get(p.id) ?? calcular(p);
+    }, [productos, inventario, esencias]);
+
     const contextValue = React.useMemo(() => ({
+        disponibilidadDe,
         categorias, setCategorias: _setCategorias,
         proveedores, setProveedores: _setProveedores,
         esencias, setEsencias: _setEsencias,
@@ -2583,7 +2593,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         bases, productos, usuarios, globalPermissions, cart, orders,
         scraperStatus, currentUser, generos, mounted, categoryMargins,
         promotions, paymentInfo, isLoading, usdRate, notifications, unreadCount,
-        solicitudesMinoristas, solicitudPropia
+        solicitudesMinoristas, solicitudPropia, disponibilidadDe
     ]);
 
     if (!mounted) {

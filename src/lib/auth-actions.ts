@@ -5,13 +5,13 @@ import sql from "./db";
 import { cifrarClave, revisarClave } from "./claves";
 import { abrirSesion, cerrarSesionCookie, usuarioActual, type UsuarioSesion } from "./sesion";
 import { GOOGLE_CLIENT_ID } from "./google";
+import { CORREO_VALIDO } from "./correo";
 
 // Ingreso y manejo de usuarios del equipo. Todo pasa en el servidor: el navegador nunca
 // recibe contraseñas (ni cifradas) y no puede elegir quién es.
 
 const SOLO_EQUIPO = "Este acceso es solo para el equipo de Scenta. Para comprar, mirá nuestro catálogo.";
 const USUARIO_VALIDO = /^[a-z0-9._-]{3,30}$/;
-const CORREO_VALIDO = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 const MIN_CLAVE = 8;
 
 type Resultado<T = undefined> = { ok: true; dato?: T } | { ok: false; error: string };

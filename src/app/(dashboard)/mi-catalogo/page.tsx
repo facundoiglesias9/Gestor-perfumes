@@ -22,7 +22,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAppContext, type Producto } from "@/context/AppContext";
-import { calculadorDisponibilidad, type EstadoAutomatico } from "@/lib/perfume-hecho";
+import type { EstadoAutomatico } from "@/lib/perfume-hecho";
 import { actualizarPublicaciones, guardarFotoProducto, quitarFotoProducto, type CambiosPublicacion } from "@/lib/catalogo-actions";
 import { prepararFoto } from "@/lib/foto-cliente";
 import { extractBrand } from "@/lib/product-utils";
@@ -30,6 +30,7 @@ import PaginationControls from "@/components/PaginationControls";
 import ConfirmModal from "@/components/ConfirmModal";
 import { Selector } from "@/components/Desplegable";
 import Buscador from "@/components/Buscador";
+import EncabezadoPagina, { BOTON_ENC, BOTON_ENC_BORDE } from "@/components/EncabezadoPagina";
 
 const POR_PAGINA = 20;
 const EASE_OUT = [0.23, 1, 0.32, 1] as const;
@@ -84,14 +85,8 @@ function Interruptor({ encendido, onCambiar, etiqueta }: { encendido: boolean; o
 }
 
 export default function MiCatalogoPage() {
-    const { productos, setProductosSinGuardar, categorias, isLoading, addSystemLog, inventario, esencias } = useAppContext();
+    const { productos, setProductosSinGuardar, categorias, isLoading, addSystemLog, disponibilidadDe: auto } = useAppContext();
 
-    // Disponibilidad de cada producto, calculada sola con la misma regla que el catálogo público
-    const autoDe = useMemo(() => {
-        const calcular = calculadorDisponibilidad(inventario, esencias);
-        return new Map(productos.map(p => [p.id, calcular(p)]));
-    }, [productos, inventario, esencias]);
-    const auto = (p: Producto) => autoDe.get(p.id) ?? { estado: "demora" as const, dias: 0, hechos: 0 };
     const [busqueda, setBusqueda] = useState("");
     const [filtro, setFiltro] = useState<Filtro>("publicados");
     const [categoria, setCategoria] = useState("Todas");
@@ -119,9 +114,9 @@ export default function MiCatalogoPage() {
 
     const conteos = useMemo(
         () => Object.fromEntries(FILTROS.map(f => [f.key, base.filter(p => f.cumple(p, auto(p))).length])) as Record<Filtro, number>,
-        [base, autoDe],
+        [base, auto],
     );
-    const visibles = useMemo(() => base.filter(p => FILTROS.find(f => f.key === filtro)!.cumple(p, auto(p))), [base, filtro, autoDe]);
+    const visibles = useMemo(() => base.filter(p => FILTROS.find(f => f.key === filtro)!.cumple(p, auto(p))), [base, filtro, auto]);
     const totalPaginas = Math.max(1, Math.ceil(visibles.length / POR_PAGINA));
     const paginaActual = Math.min(pagina, totalPaginas);
     const deLaPagina = visibles.slice((paginaActual - 1) * POR_PAGINA, paginaActual * POR_PAGINA);
@@ -139,8 +134,6 @@ export default function MiCatalogoPage() {
         setProductosSinGuardar(prev => prev.map(p => !idsSet.has(p.id) ? p : {
             ...p,
             ...(cambios.visible !== undefined && { visibleCatalogo: cambios.visible }),
-            ...(cambios.disponibilidad && { availabilityStatus: cambios.disponibilidad }),
-            ...(cambios.dias !== undefined && { deliveryDays: cambios.dias }),
         }));
         const r = await actualizarPublicaciones(ids, cambios).catch(() => ({ ok: false as const, error: "Revisá la conexión." }));
         if (!r.ok) {
@@ -222,67 +215,54 @@ export default function MiCatalogoPage() {
                 }}
             />
 
-            {/* Encabezado compacto: título, números clave y acciones */}
-            <header className="anim-entrada bg-white dark:bg-[#242723] rounded-2xl border border-[#E6DFD5] dark:border-[#353B33] shadow-sm p-5 md:p-6 flex flex-col lg:flex-row lg:items-center gap-5">
-                <div className="flex items-center gap-4 flex-1 min-w-0">
-                    <span className="w-11 h-11 shrink-0 rounded-xl flex items-center justify-center bg-[#7D9878]/15 text-[#5A7356] dark:bg-[#A3B69B]/15 dark:text-[#A3B69B]">
-                        <Store className="w-5 h-5" />
-                    </span>
-                    <div className="min-w-0">
-                        <h1 className="text-2xl md:text-[28px] font-bold tracking-tight leading-tight text-[#2C2C2C] dark:text-[#F4EFEA] font-brand">Mi catálogo</h1>
-                        <p className="text-sm text-[#2C2C2C]/60 dark:text-[#F4EFEA]/55">
-                            Lo que ven tus clientes. La disponibilidad se calcula sola con tu stock.
-                        </p>
-                    </div>
-                </div>
-
-                <dl className="flex items-stretch gap-2">
-                    {[
-                        { titulo: "Publicados", valor: totalCatalogo, extra: `de ${productos.length}` },
-                        { titulo: "Con stock", valor: conStock, extra: "listos" },
-                    ].map(d => (
-                        <div key={d.titulo} className="px-3.5 py-2 rounded-xl bg-[#F9F6F0] dark:bg-[#1B1D1A] min-w-[92px]">
-                            <dt className="text-[11px] text-[#2C2C2C]/55 dark:text-[#F4EFEA]/50">{d.titulo}</dt>
-                            <dd className="text-lg font-bold tabular-nums leading-tight text-[#2C2C2C] dark:text-[#F4EFEA]">
-                                {d.valor} <span className="text-xs font-medium text-[#2C2C2C]/45 dark:text-[#F4EFEA]/40">{d.extra}</span>
-                            </dd>
-                        </div>
-                    ))}
-                    <div className="px-3.5 py-2 rounded-xl bg-[#F9F6F0] dark:bg-[#1B1D1A] min-w-[120px]">
-                        <dt className="text-[11px] text-[#2C2C2C]/55 dark:text-[#F4EFEA]/50">Con foto</dt>
+            <EncabezadoPagina icono={Store} titulo="Mi catálogo" descripcion="Lo que ven tus clientes. La disponibilidad se calcula sola con tu stock.">
+            <dl className="flex items-stretch gap-2">
+                {[
+                    { titulo: "Publicados", valor: totalCatalogo, extra: `de ${productos.length}` },
+                    { titulo: "Con stock", valor: conStock, extra: "listos" },
+                ].map(d => (
+                    <div key={d.titulo} className="px-3.5 py-2 rounded-xl bg-[#F9F6F0] dark:bg-[#1B1D1A] min-w-[92px]">
+                        <dt className="text-[11px] text-[#2C2C2C]/55 dark:text-[#F4EFEA]/50">{d.titulo}</dt>
                         <dd className="text-lg font-bold tabular-nums leading-tight text-[#2C2C2C] dark:text-[#F4EFEA]">
-                            {conFoto} <span className="text-xs font-medium text-[#2C2C2C]/45 dark:text-[#F4EFEA]/40">de {totalCatalogo}</span>
+                            {d.valor} <span className="text-xs font-medium text-[#2C2C2C]/45 dark:text-[#F4EFEA]/40">{d.extra}</span>
                         </dd>
-                        <div className="mt-1 h-1 rounded-full bg-[#7D9878]/15 overflow-hidden">
-                            <motion.div
-                                className="h-full rounded-full bg-[#7D9878] dark:bg-[#A3B69B]"
-                                initial={false}
-                                animate={{ width: `${totalCatalogo ? Math.round((conFoto / totalCatalogo) * 100) : 0}%` }}
-                                transition={{ duration: 0.6, ease: EASE_OUT }}
-                            />
-                        </div>
                     </div>
-                </dl>
-
-                <div className="flex items-center gap-2">
-                    <a
-                        href="/catalogo"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-2 h-10 px-3.5 rounded-xl border border-[#E6DFD5] dark:border-[#353B33] text-sm font-semibold text-[#2C2C2C]/80 dark:text-[#F4EFEA]/80 hover:text-[#2C2C2C] dark:hover:text-[#F4EFEA] hover:border-[#7D9878]/50 active:scale-[0.97] transition-[border-color,color,transform] duration-150 whitespace-nowrap"
-                    >
-                        <ExternalLink className="w-4 h-4" />
-                        Ver catálogo
-                    </a>
-                    <Link
-                        href="/crear-producto"
-                        className="inline-flex items-center gap-2 h-10 px-3.5 rounded-xl bg-[#7D9878] text-white text-sm font-semibold shadow-sm shadow-[#7D9878]/25 hover:bg-[#6B8566] active:scale-[0.97] transition-[background-color,transform] duration-150 whitespace-nowrap"
-                    >
-                        <Plus className="w-4 h-4" />
-                        Nuevo producto
-                    </Link>
+                ))}
+                <div className="px-3.5 py-2 rounded-xl bg-[#F9F6F0] dark:bg-[#1B1D1A] min-w-[120px]">
+                    <dt className="text-[11px] text-[#2C2C2C]/55 dark:text-[#F4EFEA]/50">Con foto</dt>
+                    <dd className="text-lg font-bold tabular-nums leading-tight text-[#2C2C2C] dark:text-[#F4EFEA]">
+                        {conFoto} <span className="text-xs font-medium text-[#2C2C2C]/45 dark:text-[#F4EFEA]/40">de {totalCatalogo}</span>
+                    </dd>
+                    <div className="mt-1 h-1 rounded-full bg-[#7D9878]/15 overflow-hidden">
+                        <motion.div
+                            className="h-full rounded-full bg-[#7D9878] dark:bg-[#A3B69B]"
+                            initial={false}
+                            animate={{ width: `${totalCatalogo ? Math.round((conFoto / totalCatalogo) * 100) : 0}%` }}
+                            transition={{ duration: 0.6, ease: EASE_OUT }}
+                        />
+                    </div>
                 </div>
-            </header>
+            </dl>
+
+            <div className="flex items-center gap-2">
+                <a
+                    href="/catalogo"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={BOTON_ENC_BORDE}
+                >
+                    <ExternalLink className="w-4 h-4" />
+                    Ver catálogo
+                </a>
+                <Link
+                    href="/crear-producto"
+                    className={BOTON_ENC}
+                >
+                    <Plus className="w-4 h-4" />
+                    Nuevo producto
+                </Link>
+            </div>
+            </EncabezadoPagina>
 
             {/* Filtros y buscador */}
             <div className="anim-entrada [animation-delay:60ms] flex flex-wrap items-center gap-3">

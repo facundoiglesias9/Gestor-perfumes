@@ -55,24 +55,18 @@ export async function quitarFotoProducto(productoId: string): Promise<Resultado>
     }
 }
 
+// La disponibilidad no se guarda a mano: se calcula sola con el stock (ver lib/perfume-hecho)
 export type CambiosPublicacion = {
     visible?: boolean;
-    disponibilidad?: "disponible" | "demora" | "no-disponible";
-    dias?: number;
 };
 
-// Cambia uno o varios productos a la vez (visible en el catálogo y disponibilidad)
+// Muestra u oculta uno o varios productos en el catálogo
 export async function actualizarPublicaciones(ids: string[], cambios: CambiosPublicacion): Promise<Resultado> {
     if (!(await esAdmin())) return { ok: false, error: NO_AUTORIZADO };
     if (!Array.isArray(ids) || ids.length === 0) return { ok: true };
 
     const columnas: Record<string, unknown> = {};
     if (typeof cambios.visible === "boolean") columnas.visible_catalogo = cambios.visible;
-    if (cambios.disponibilidad) {
-        if (!["disponible", "demora", "no-disponible"].includes(cambios.disponibilidad)) return { ok: false, error: "Disponibilidad no válida." };
-        columnas.availability_status = cambios.disponibilidad;
-    }
-    if (cambios.dias !== undefined) columnas.delivery_days = Math.max(0, Math.min(365, Math.round(Number(cambios.dias) || 0)));
     if (Object.keys(columnas).length === 0) return { ok: true };
 
     try {

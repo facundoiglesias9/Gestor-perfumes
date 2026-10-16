@@ -8,6 +8,7 @@ import {
 import EncabezadoPagina from "@/components/EncabezadoPagina";
 import { toast } from "sonner";
 import { useAppContext, type Usuario } from "@/context/AppContext";
+import { CORREO_VALIDO } from "@/lib/correo";
 import { crearUsuarioEquipo, cambiarClaveUsuario, cambiarEstadoUsuario, cambiarGmailUsuario, eliminarUsuario } from "@/lib/auth-actions";
 
 const EASE_OUT = [0.23, 1, 0.32, 1] as const;
@@ -18,7 +19,6 @@ const aparecer = {
 };
 
 const USUARIO_VALIDO = /^[a-z0-9._-]{3,30}$/;
-const CORREO_VALIDO = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 const MIN_CLAVE = 8;
 
 const inicial = (nombre?: string) => (nombre || "?").charAt(0).toUpperCase();
