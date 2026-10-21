@@ -17,6 +17,8 @@ export type OpcionDesplegable<T extends string = string> = {
     valor: T;
     titulo: string;
     deshabilitada?: boolean;
+    /** Texto chico a la derecha de la opción en la lista (por ejemplo, cuántos productos hay) */
+    extra?: string;
 };
 
 const ALTOS = { sm: "h-9 text-sm", md: "h-10 text-sm", lg: "h-11 text-sm" } as const;
@@ -244,7 +246,10 @@ export default function Desplegable<T extends string = string>({
                                                 : "text-[#2C2C2C]/80 dark:text-[#F4EFEA]/80"}`}`}
                                     >
                                         <span className="min-w-0">{o.titulo}</span>
-                                        {esElegida && <Check className="w-4 h-4 shrink-0 text-[#7D9878] dark:text-[#A3B69B]" strokeWidth={2.5} />}
+                                        <span className="flex items-center gap-2 shrink-0">
+                                            {o.extra && <span className="text-xs font-normal tabular-nums text-[#2C2C2C]/40 dark:text-[#F4EFEA]/35">{o.extra}</span>}
+                                            <Check className={`w-4 h-4 text-[#7D9878] dark:text-[#A3B69B] ${esElegida ? "" : "invisible"}`} strokeWidth={2.5} />
+                                        </span>
                                     </li>
                                 );
                             })}

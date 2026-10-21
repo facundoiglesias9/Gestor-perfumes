@@ -1,28 +1,31 @@
 "use client";
 
 import { useEffect } from "react";
-import { motion, useReducedMotion, useSpring, useTransform } from "framer-motion";
+import { AnimatePresence, motion, useReducedMotion, useSpring, useTransform } from "framer-motion";
+import { Check, FileSpreadsheet, FileText, LoaderCircle, TriangleAlert, Download } from "lucide-react";
 
 export type EstadoDescarga = "reposo" | "descargando" | "listo" | "error";
 
-// Botón redondo de descarga. Una sola línea cambia de forma según el momento:
-// flecha (para descargar) → onda que se mueve (armando el archivo, con el anillo llenándose
-// según el avance real) → tilde (listo) o línea quieta (no se pudo).
-// Todas las formas tienen los mismos puntos, así una se transforma en la otra sin cortes.
-
-const FLECHA = "M -8 2 Q -4 6 0 10 Q 4 6 8 2";
-const ONDA_A = "M -12 0 Q -6 -6 0 0 Q 6 6 12 0";
-const ONDA_B = "M -12 0 Q -6 6 0 0 Q 6 -6 12 0";
-const TILDE = "M -9 0 Q -6 3.5 -3 7 Q 3.5 0 10 -7";
-const PLANA = "M -10 0 Q -5 0 0 0 Q 5 0 10 0";
+// Botón de descarga con el mismo alto que "Ver pedido". Mientras se arma el archivo,
+// el fondo se va llenando de izquierda a derecha según el avance real; al terminar
+// muestra un tilde (o un aviso si no se pudo) y vuelve solo a como estaba.
 
 const FORMATOS = {
-    excel: { nombre: "Excel", fondo: "#1D7044", brillo: "rgba(29,112,68,0.45)", titulo: "text-[#1D7044] dark:text-[#4CC38A]" },
-    pdf: { nombre: "PDF", fondo: "#C8372D", brillo: "rgba(200,55,45,0.45)", titulo: "text-[#C8372D] dark:text-[#F0786C]" },
+    excel: {
+        nombre: "Excel",
+        Icono: FileSpreadsheet,
+        boton: "border-[#7D9878]/55 bg-[#7D9878]/[0.08] text-[#3F5A3C] dark:text-[#C5D6BF] [@media(hover:hover)]:hover:bg-[#7D9878]/[0.16] [@media(hover:hover)]:hover:border-[#7D9878]",
+        relleno: "bg-[#7D9878]/25 dark:bg-[#7D9878]/35",
+    },
+    pdf: {
+        nombre: "PDF",
+        Icono: FileText,
+        boton: "border-[#C9866F]/55 bg-[#C9866F]/[0.08] text-[#97604D] dark:text-[#DBA793] [@media(hover:hover)]:hover:bg-[#C9866F]/[0.16] [@media(hover:hover)]:hover:border-[#C9866F]",
+        relleno: "bg-[#C9866F]/25 dark:bg-[#C9866F]/35",
+    },
 } as const;
-const FONDO_ERROR = "#8A5446";
 
-const RESORTE = { type: "spring", stiffness: 260, damping: 22 } as const;
+const EASE_OUT = [0.23, 1, 0.32, 1] as const;
 
 export default function BotonDescarga({ formato, estado, progreso, deshabilitado, onClick }: {
     formato: keyof typeof FORMATOS;
@@ -35,98 +38,64 @@ export default function BotonDescarga({ formato, estado, progreso, deshabilitado
     const f = FORMATOS[formato];
     const sinMovimiento = useReducedMotion();
 
-    // El anillo y el número siguen el avance con suavidad (el avance real llega a saltos)
-    const avance = useSpring(0, { stiffness: 90, damping: 20 });
+    // El relleno sigue el avance con suavidad (el avance real llega a saltos)
+    const avance = useSpring(0, { stiffness: 120, damping: 22 });
     useEffect(() => {
-        avance.set(estado === "listo" ? 1 : estado === "reposo" ? 0 : progreso);
+        if (estado === "reposo") avance.jump(0);
+        else avance.set(estado === "listo" || estado === "error" ? 1 : progreso);
     }, [avance, estado, progreso]);
+    const recorte = useTransform(avance, v => `inset(0 ${100 - v * 100}% 0 0)`);
     const porcentaje = useTransform(avance, v => `${Math.round(v * 100)}%`);
 
     const descargando = estado === "descargando";
-    const linea = estado === "listo" ? TILDE : estado === "error" ? PLANA : descargando ? ONDA_A : FLECHA;
-    const subtitulo = descargando ? "Armando…" : estado === "listo" ? "Descargado" : estado === "error" ? "No se pudo" : "Descargar";
+    const ocupado = deshabilitado || descargando;
+
+    // Ícono y texto de cada momento
+    const contenido =
+        descargando ? { clave: "armando", icono: <LoaderCircle className="w-4 h-4 animate-spin" />, texto: <motion.span className="tabular-nums">{porcentaje}</motion.span> }
+            : estado === "listo" ? { clave: "listo", icono: <Check className="w-4 h-4" strokeWidth={3} />, texto: "Listo" }
+                : estado === "error" ? { clave: "error", icono: <TriangleAlert className="w-4 h-4" />, texto: "Error" }
+                    : { clave: "reposo", icono: <f.Icono className="w-4 h-4" />, texto: f.nombre };
 
     return (
-        <div className="flex flex-col items-center gap-2 w-20">
-            <motion.button
-                type="button"
-                onClick={onClick}
-                disabled={deshabilitado || descargando}
-                aria-label={`Descargar la lista en ${f.nombre}`}
-                aria-busy={descargando}
-                animate={{
-                    backgroundColor: estado === "error" ? FONDO_ERROR : f.fondo,
-                    scale: estado === "listo" ? [1, 1.08, 1] : 1,
-                }}
-                transition={{ backgroundColor: { duration: 0.3 }, scale: { duration: 0.45, ease: [0.34, 1.56, 0.64, 1] } }}
-                whileHover={estado === "reposo" && !deshabilitado ? { y: -2 } : undefined}
-                whileTap={estado === "reposo" && !deshabilitado ? { scale: 0.94 } : undefined}
-                style={{ boxShadow: `0 10px 26px -8px ${f.brillo}` }}
-                className="group relative w-14 h-14 rounded-full flex items-center justify-center cursor-pointer disabled:cursor-default disabled:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#7D9878]/60 focus-visible:ring-offset-white dark:focus-visible:ring-offset-[#242723]"
-            >
-                <svg viewBox="-28 -28 56 56" className="w-full h-full" aria-hidden>
-                    {/* Borde: en reposo es un aro suave; mientras arma el archivo se llena según el avance */}
-                    <circle r="23" fill="none" stroke="white" strokeOpacity={descargando || estado === "error" ? 0.22 : 0.45} strokeWidth="2.5" />
-                    <motion.circle
-                        r="23"
-                        fill="none"
-                        stroke="white"
-                        strokeWidth="2.5"
-                        strokeLinecap="round"
-                        transform="rotate(-90)"
-                        style={{ pathLength: avance }}
-                        animate={{ opacity: estado === "reposo" ? 0 : estado === "error" ? 0.55 : 1 }}
-                    />
+        <button
+            type="button"
+            onClick={onClick}
+            disabled={ocupado}
+            aria-label={`Descargar la lista en ${f.nombre}`}
+            aria-busy={descargando}
+            title={`Descargar en ${f.nombre}`}
+            className={`group relative overflow-hidden inline-flex items-center justify-center gap-2 h-10 min-w-[104px] px-3.5 rounded-xl border text-sm font-semibold shadow-sm shadow-black/[0.03] whitespace-nowrap active:scale-[0.97] disabled:active:scale-100 disabled:cursor-default transition-[background-color,border-color,transform] duration-150 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7D9878]/50 ${f.boton} ${deshabilitado && !descargando ? "opacity-60" : ""}`}
+        >
+            {/* Relleno de avance */}
+            <motion.span
+                aria-hidden
+                className={`absolute inset-0 ${f.relleno}`}
+                style={{ clipPath: recorte }}
+                animate={{ opacity: estado === "reposo" ? 0 : 1 }}
+                transition={{ duration: 0.2 }}
+            />
 
-                    <motion.g animate={{ y: descargando ? -3 : 0 }} transition={RESORTE}>
-                        <g className="transition-transform duration-200 group-hover:translate-y-[1.5px] group-disabled:translate-y-0">
-                            {/* Palito de la flecha: solo en reposo */}
-                            <motion.path
-                                d="M 0 -11 L 0 9"
-                                fill="none"
-                                stroke="white"
-                                strokeWidth="3"
-                                strokeLinecap="round"
-                                initial={false}
-                                animate={{ pathLength: estado === "reposo" ? 1 : 0, opacity: estado === "reposo" ? 1 : 0 }}
-                                transition={{ duration: 0.25 }}
-                            />
-                            <motion.path
-                                fill="none"
-                                stroke="white"
-                                strokeWidth="3"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                initial={false}
-                                animate={descargando && !sinMovimiento ? { d: [ONDA_A, ONDA_B] } : { d: linea }}
-                                transition={descargando && !sinMovimiento
-                                    ? { duration: 0.55, repeat: Infinity, repeatType: "mirror", ease: "easeInOut" }
-                                    : RESORTE}
-                            />
-                        </g>
-                    </motion.g>
-
-                    {descargando && (
-                        <motion.text
-                            y="15"
-                            textAnchor="middle"
-                            fill="white"
-                            fontSize="8"
-                            fontWeight="700"
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 0.9 }}
-                            className="tabular-nums"
-                        >
-                            {porcentaje}
-                        </motion.text>
+            <AnimatePresence mode="popLayout" initial={false}>
+                <motion.span
+                    key={contenido.clave}
+                    className="relative inline-flex items-center gap-2"
+                    initial={sinMovimiento ? { opacity: 0 } : { opacity: 0, scale: 0.9, filter: "blur(2px)" }}
+                    animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
+                    exit={sinMovimiento ? { opacity: 0 } : { opacity: 0, scale: 0.9, filter: "blur(2px)" }}
+                    transition={{ duration: 0.18, ease: EASE_OUT }}
+                >
+                    {contenido.icono}
+                    {contenido.texto}
+                    {estado === "reposo" && (
+                        <Download className="w-3.5 h-3.5 opacity-50 transition-[opacity,transform] duration-150 ease-out [@media(hover:hover)]:group-hover:opacity-100 [@media(hover:hover)]:group-hover:translate-y-[1px]" />
                     )}
-                </svg>
-            </motion.button>
+                </motion.span>
+            </AnimatePresence>
 
-            <span className="text-center leading-tight">
-                <span className={`block text-[11px] font-bold uppercase tracking-[0.14em] ${estado === "error" ? "text-[#B5654A] dark:text-[#DBA793]" : f.titulo}`}>{f.nombre}</span>
-                <span className="block mt-0.5 text-[11px] text-[#2C2C2C]/55 dark:text-[#F4EFEA]/50" aria-live="polite">{subtitulo}</span>
+            <span className="sr-only" aria-live="polite">
+                {descargando ? "Armando el archivo" : estado === "listo" ? "Descargado" : estado === "error" ? "No se pudo descargar" : ""}
             </span>
-        </div>
+        </button>
     );
 }

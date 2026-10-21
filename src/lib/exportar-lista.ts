@@ -337,13 +337,19 @@ export async function exportarListaPDF({ lista, productos, alAvanzar }: Opciones
     doc.setFontSize(7.5);
     doc.text("Precios en pesos argentinos, sujetos a cambios sin previo aviso.", W / 2, 280, { align: "center" });
 
-    // ── Productos: cada categoría empieza en una hoja nueva ──
+    // ── Productos: las categorías van una abajo de la otra; una pasa a la hoja siguiente
+    // solo si no entra entera en lo que queda (y sí entraría en una hoja limpia) ──
     const paginaDe: { categoria: string; cantidad: number; pagina: number }[] = [];
+    const INICIO = ARRIBA + 2;
+    const LIMITE = H - 20;
+    const SEPARACION = 10;
+    // Alto aproximado de cada fila (letra + márgenes de la celda), en mm
+    const ALTO_TITULO = 12.5;
+    const ALTO_FILA = 7.4;
+    let y: number | null = null;
     await avanzar(alAvanzar, 0.3);
     for (const [n, grupo] of grupos.entries()) {
         if (n > 0) await avanzar(alAvanzar, 0.3 + 0.6 * (n / grupos.length));
-        doc.addPage();
-        paginaDe.push({ categoria: grupo.categoria, cantidad: grupo.items.length, pagina: doc.getNumberOfPages() });
 
         const generos = new Set(grupo.items.map(generoDe));
         const conSubtitulos = generos.size > 1;
@@ -357,12 +363,14 @@ export async function exportarListaPDF({ lista, productos, alAvanzar }: Opciones
                 cuerpo.push([{
                     content: `${limpiar(g).toUpperCase()}   ·   ${cantidad}`,
                     colSpan: 2,
+                    // Subtítulo de género: letra chica salvia, sin fondo
                     styles: {
-                        fillColor: [239, 244, 237],
+                        fillColor: false,
                         textColor: SALVIA_OSC,
                         fontStyle: "bold",
-                        fontSize: 7.5,
-                        cellPadding: { top: 2.6, bottom: 2.6, left: 4, right: 4 },
+                        fontSize: 7,
+                        lineWidth: 0,
+                        cellPadding: { top: 3.4, bottom: 1.8, left: 4, right: 4 },
                     },
                 }]);
             }
@@ -379,28 +387,49 @@ export async function exportarListaPDF({ lista, productos, alAvanzar }: Opciones
             ]);
         }
 
+        const necesario = ALTO_TITULO + cuerpo.length * ALTO_FILA;
+        if (y === null) {
+            doc.addPage();
+            y = INICIO;
+        } else {
+            const queda = LIMITE - (y + SEPARACION);
+            const entraEnHojaNueva = necesario <= LIMITE - INICIO;
+            // Si no entra acá: hoja nueva cuando ahí sí entra entera, o cuando acá casi no queda lugar
+            if (necesario > queda && (entraEnHojaNueva || queda < 50)) {
+                doc.addPage();
+                y = INICIO;
+            } else {
+                y += SEPARACION;
+            }
+        }
+        paginaDe.push({ categoria: grupo.categoria, cantidad: grupo.items.length, pagina: doc.getNumberOfPages() });
+
         autoTable(doc, {
-            startY: ARRIBA + 2,
+            startY: y,
             margin: { top: ARRIBA, bottom: 20, left: M, right: M },
             theme: "plain",
             showHead: "everyPage",
             rowPageBreak: "avoid",
+            // Título de la categoría: nombre en oliva y una línea salvia fina debajo (sin barra de color)
             head: [[
                 { content: limpiar(grupo.categoria).toUpperCase(), styles: { halign: "left" } },
-                { content: `${grupo.items.length} ${grupo.items.length === 1 ? "producto" : "productos"}`, styles: { halign: "right", fontStyle: "normal", fontSize: 8, textColor: [205, 214, 201] } },
+                { content: `${grupo.items.length} ${grupo.items.length === 1 ? "producto" : "productos"}`, styles: { halign: "right", valign: "bottom", fontStyle: "normal", fontSize: 8, textColor: GRIS } },
             ]],
             body: cuerpo,
             headStyles: {
-                fillColor: OLIVA,
-                textColor: [255, 255, 255],
+                fillColor: false as any,
+                textColor: OLIVA,
                 fontStyle: "bold",
-                fontSize: 10,
-                cellPadding: { top: 3.6, bottom: 3.6, left: 4, right: 4 },
+                fontSize: 11.5,
+                valign: "bottom",
+                lineColor: SALVIA,
+                lineWidth: { bottom: 0.6 },
+                cellPadding: { top: 2, bottom: 2.8, left: 4, right: 4 },
             },
             bodyStyles: {
                 fontSize: 9,
                 textColor: TEXTO,
-                cellPadding: { top: 2.2, bottom: 2.2, left: 4, right: 4 },
+                cellPadding: { top: 1.9, bottom: 1.9, left: 4, right: 4 },
                 lineColor: BORDE,
                 lineWidth: { bottom: 0.15 },
                 valign: "middle",
@@ -411,6 +440,7 @@ export async function exportarListaPDF({ lista, productos, alAvanzar }: Opciones
                 1: { cellWidth: 34, halign: "right", fontStyle: "bold", textColor: OLIVA },
             },
         });
+        y = (doc as any).lastAutoTable.finalY as number;
     }
     await avanzar(alAvanzar, 0.9);
 

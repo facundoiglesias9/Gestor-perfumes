@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, MotionConfig, motion } from "framer-motion";
-import { Search, Plus, Minus, ShoppingBag, X, MessageCircle, Clock, Trash2, Check, ChevronLeft, ChevronRight, ChevronDown, ArrowUpDown, LayoutGrid, Car, Wind, SprayCan, Sparkles } from "lucide-react";
+import { Search, Plus, Minus, ShoppingBag, X, MessageCircle, Clock, Trash2, Check, ChevronLeft, ChevronRight, ChevronDown, ArrowUpDown, LayoutGrid, Car, Wind, SprayCan, Sparkles, Users, Ruler } from "lucide-react";
 import { formatNumber } from "@/lib/format-utils";
 import Desplegable from "@/components/Desplegable";
 import { extractBrand } from "@/lib/product-utils";
@@ -53,6 +53,14 @@ const ORDENES: { id: Orden; titulo: string }[] = [
 ];
 const PESO_DISPONIBILIDAD: Record<CatalogoProducto["availability"], number> = { disponible: 0, demora: 1, "sin-stock": 2 };
 
+// Filtro de disponibilidad (los sin stock solo aparecen en "Todos")
+type FiltroStock = "todos" | "disponible" | "demora";
+const STOCKS: { id: FiltroStock; titulo: string }[] = [
+    { id: "todos", titulo: "Todos los productos" },
+    { id: "disponible", titulo: "En stock" },
+    { id: "demora", titulo: "Con demora" },
+];
+
 // Números de página a mostrar: siempre la primera y la última, y dos a cada lado de la actual.
 function paginasVisibles(actual: number, total: number): (number | "…")[] {
     const out: (number | "…")[] = [];
@@ -71,6 +79,7 @@ export default function CatalogoClient({ productos }: { productos: CatalogoProdu
     const [tipo, setTipo] = useState<Tipo>("todo");
     const [genero, setGenero] = useState("Todos");
     const [tamano, setTamano] = useState("Todos");
+    const [stock, setStock] = useState<FiltroStock>("todos");
     const [orden, setOrden] = useState<Orden>("recomendados");
     const [page, setPage] = useState(1);
     const gridRef = useRef<HTMLDivElement>(null);
@@ -111,6 +120,8 @@ export default function CatalogoClient({ productos }: { productos: CatalogoProdu
     const esPerfumes = tipo === "perfumes";
     const pasaGenero = (p: CatalogoProducto) => !esPerfumes || genero === "Todos" || p.gender === genero;
     const pasaTamano = (p: CatalogoProducto) => !esPerfumes || tamano === "Todos" || p.category === tamano;
+    const pasaStock = (p: CatalogoProducto) => stock === "todos" || p.availability === stock;
+    const pasaTipo = (p: CatalogoProducto) => tipo === "todo" || tipoDe(p) === tipo;
 
     // Opciones de los perfumes: géneros (sin "Ambiente") y tamaños (30 ml, 50 ml…)
     const perfumes = useMemo(() => lista.filter(p => tipoDe(p) === "perfumes"), [lista]);
@@ -125,45 +136,52 @@ export default function CatalogoClient({ productos }: { productos: CatalogoProdu
 
     const filtered = useMemo(() => {
         const r = lista.filter(p =>
-            (tipo === "todo" || tipoDe(p) === tipo) && pasaGenero(p) && pasaTamano(p) && coincideBusqueda(p)
+            pasaTipo(p) && pasaGenero(p) && pasaTamano(p) && pasaStock(p) && coincideBusqueda(p)
         );
         if (orden === "precio-asc") return [...r].sort((a, b) => a.price - b.price);
         if (orden === "precio-desc") return [...r].sort((a, b) => b.price - a.price);
         if (orden === "nombre") return [...r].sort((a, b) => a.name.localeCompare(b.name, "es"));
         // Recomendados: primero lo que se puede pedir ya, al final lo que no tiene stock
         return [...r].sort((a, b) => PESO_DISPONIBILIDAD[a.availability] - PESO_DISPONIBILIDAD[b.availability]);
-    }, [lista, q, tipo, genero, tamano, orden]);
+    }, [lista, q, tipo, genero, tamano, stock, orden]);
 
     // Cantidad que quedaría al tocar cada opción (respetando la búsqueda y los otros filtros)
     const cuentaTipo = useMemo(() => {
         const c: Record<Tipo, number> = { todo: 0, perfumes: 0, difusores: 0, auto: 0 };
         for (const p of lista) {
-            if (!coincideBusqueda(p)) continue;
+            if (!coincideBusqueda(p) || !pasaStock(p)) continue;
             c.todo++;
             c[tipoDe(p)]++;
         }
         return c;
-    }, [lista, q]);
+    }, [lista, q, stock]);
 
     const cuentaGenero = useMemo(() => {
-        const base = perfumes.filter(p => pasaTamano(p) && coincideBusqueda(p));
+        const base = perfumes.filter(p => pasaTamano(p) && pasaStock(p) && coincideBusqueda(p));
         const c: Record<string, number> = { Todos: base.length };
         for (const p of base) c[p.gender] = (c[p.gender] ?? 0) + 1;
         return c;
-    }, [perfumes, q, tamano, tipo]);
+    }, [perfumes, q, tamano, tipo, stock]);
 
     const cuentaTamano = useMemo(() => {
-        const base = perfumes.filter(p => pasaGenero(p) && coincideBusqueda(p));
+        const base = perfumes.filter(p => pasaGenero(p) && pasaStock(p) && coincideBusqueda(p));
         const c: Record<string, number> = { Todos: base.length };
         for (const p of base) c[p.category] = (c[p.category] ?? 0) + 1;
         return c;
-    }, [perfumes, q, genero, tipo]);
+    }, [perfumes, q, genero, tipo, stock]);
+
+    const cuentaStock = useMemo(() => {
+        const base = lista.filter(p => pasaTipo(p) && pasaGenero(p) && pasaTamano(p) && coincideBusqueda(p));
+        const c: Record<FiltroStock, number> = { todos: base.length, disponible: 0, demora: 0 };
+        for (const p of base) if (p.availability !== "sin-stock") c[p.availability]++;
+        return c;
+    }, [lista, q, tipo, genero, tamano]);
 
     const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
     const pageItems = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
-    const hayFiltros = tipo !== "todo" || q !== "" || orden !== "recomendados";
+    const hayFiltros = tipo !== "todo" || q !== "" || orden !== "recomendados" || stock !== "todos";
 
-    useEffect(() => { setPage(1); }, [search, tipo, genero, tamano, orden]);
+    useEffect(() => { setPage(1); }, [search, tipo, genero, tamano, stock, orden]);
 
     const elegirTipo = (t: Tipo) => {
         setTipo(t);
@@ -178,6 +196,7 @@ export default function CatalogoClient({ productos }: { productos: CatalogoProdu
 
     const limpiarFiltros = () => {
         setSearch("");
+        setStock("todos");
         elegirTipo("todo");
         setOrden("recomendados");
     };
@@ -283,14 +302,26 @@ export default function CatalogoClient({ productos }: { productos: CatalogoProdu
                                         fondo="crema"
                                         className="flex-1"
                                     />
-                                    <Desplegable
-                                        valor={orden}
-                                        opciones={ORDENES.map(o => ({ valor: o.id, titulo: o.titulo }))}
-                                        onCambiar={setOrden}
-                                        etiqueta="Ordenar por"
-                                        icono={<ArrowUpDown className="w-4 h-4" />}
-                                        className="sm:w-60 shrink-0"
-                                    />
+                                    <div className="grid grid-cols-2 sm:flex gap-2.5">
+                                        <Desplegable
+                                            valor={stock}
+                                            opciones={STOCKS.map(s => ({ valor: s.id, titulo: s.titulo, extra: String(cuentaStock[s.id]), deshabilitada: s.id !== stock && cuentaStock[s.id] === 0 }))}
+                                            onCambiar={setStock}
+                                            etiqueta="Disponibilidad"
+                                            icono={<span aria-hidden className={`w-2 h-2 rounded-full ${stock === "disponible" ? "bg-[#1baf7a]" : stock === "demora" ? "bg-[#C9A877]" : "bg-[#2C2C2C]/30 dark:bg-[#F4EFEA]/35"}`} />}
+                                            resaltado={stock !== "todos"}
+                                            className="sm:w-56 shrink-0"
+                                        />
+                                        <Desplegable
+                                            valor={orden}
+                                            opciones={ORDENES.map(o => ({ valor: o.id, titulo: o.titulo }))}
+                                            onCambiar={setOrden}
+                                            etiqueta="Ordenar por"
+                                            icono={<ArrowUpDown className="w-4 h-4" />}
+                                            resaltado={orden !== "recomendados"}
+                                            className="sm:w-56 shrink-0"
+                                        />
+                                    </div>
                                 </div>
 
                                 {/* Tipo de producto: la pastilla se desliza a la opción elegida */}
@@ -337,22 +368,35 @@ export default function CatalogoClient({ productos }: { productos: CatalogoProdu
                                             exit={{ height: 0, opacity: 0, transition: { duration: 0.16, ease: "easeOut" } }}
                                             className="overflow-hidden"
                                         >
-                                            <div className="flex flex-col lg:flex-row lg:items-center gap-3 lg:gap-8 pt-1">
-                                                <GrupoOpciones titulo="Género">
-                                                    {["Todos", ...generos].map(g => (
-                                                        <Opcion key={g} activa={genero === g} cantidad={cuentaGenero[g] ?? 0} onClick={() => setGenero(g)}>
-                                                            {g}
-                                                        </Opcion>
-                                                    ))}
-                                                </GrupoOpciones>
-                                                <span aria-hidden className="hidden lg:block w-px h-7 bg-[#E6DFD5] dark:bg-[#353B33]" />
-                                                <GrupoOpciones titulo="Tamaño">
-                                                    {["Todos", ...tamanos].map(t => (
-                                                        <Opcion key={t} activa={tamano === t} cantidad={cuentaTamano[t] ?? 0} onClick={() => setTamano(t)}>
-                                                            {t === "Todos" ? "Todos" : etiquetaCategoria(t).toLowerCase().replace(/\s*ml$/, " ml")}
-                                                        </Opcion>
-                                                    ))}
-                                                </GrupoOpciones>
+                                            <div className="grid grid-cols-2 sm:flex gap-2.5">
+                                                <Desplegable
+                                                    valor={genero}
+                                                    opciones={["Todos", ...generos].map(g => ({
+                                                        valor: g,
+                                                        titulo: g === "Todos" ? "Todos los géneros" : g,
+                                                        extra: String(cuentaGenero[g] ?? 0),
+                                                        deshabilitada: g !== genero && !cuentaGenero[g],
+                                                    }))}
+                                                    onCambiar={setGenero}
+                                                    etiqueta="Género"
+                                                    icono={<Users className="w-4 h-4" />}
+                                                    resaltado={genero !== "Todos"}
+                                                    className="sm:w-52"
+                                                />
+                                                <Desplegable
+                                                    valor={tamano}
+                                                    opciones={["Todos", ...tamanos].map(t => ({
+                                                        valor: t,
+                                                        titulo: t === "Todos" ? "Todos los tamaños" : etiquetaCategoria(t).toLowerCase().replace(/\s*ml$/, " ml"),
+                                                        extra: String(cuentaTamano[t] ?? 0),
+                                                        deshabilitada: t !== tamano && !cuentaTamano[t],
+                                                    }))}
+                                                    onCambiar={setTamano}
+                                                    etiqueta="Tamaño"
+                                                    icono={<Ruler className="w-4 h-4" />}
+                                                    resaltado={tamano !== "Todos"}
+                                                    className="sm:w-52"
+                                                />
                                             </div>
                                         </motion.div>
                                     )}
@@ -550,33 +594,6 @@ export default function CatalogoClient({ productos }: { productos: CatalogoProdu
     );
 }
 
-function GrupoOpciones({ titulo, children }: { titulo: string; children: React.ReactNode }) {
-    return (
-        <div role="group" aria-label={titulo} className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
-            <span className="shrink-0 text-xs font-semibold text-[#2C2C2C]/55 dark:text-[#F4EFEA]/50">{titulo}</span>
-            <div className="flex flex-wrap gap-1.5">{children}</div>
-        </div>
-    );
-}
-
-// Opción de filtro: tranquila cuando no está elegida, verde suave cuando sí
-function Opcion({ activa, cantidad, onClick, children }: { activa: boolean; cantidad: number; onClick: () => void; children: React.ReactNode }) {
-    return (
-        <button
-            type="button"
-            onClick={onClick}
-            disabled={!activa && cantidad === 0}
-            aria-pressed={activa}
-            className={`inline-flex items-center gap-1.5 h-9 px-3 rounded-full border text-sm font-medium active:scale-[0.97] disabled:opacity-35 disabled:cursor-not-allowed transition-[background-color,border-color,color,transform] duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7D9878]/50 ${activa
-                ? "border-[#7D9878] bg-[#7D9878]/[0.1] dark:bg-[#7D9878]/[0.16] text-[#3F5A3C] dark:text-[#C5D6BF]"
-                : "border-[#E6DFD5] dark:border-[#353B33] text-[#2C2C2C]/70 dark:text-[#F4EFEA]/65 hover:border-[#7D9878]/50 hover:text-[#2C2C2C] dark:hover:text-[#F4EFEA]"}`}
-        >
-            {activa && <Check className="w-3.5 h-3.5 -ml-0.5" strokeWidth={2.5} />}
-            {children}
-            <span className={`text-xs tabular-nums ${activa ? "text-[#3F5A3C]/70 dark:text-[#C5D6BF]/70" : "text-[#2C2C2C]/40 dark:text-[#F4EFEA]/35"}`}>{cantidad}</span>
-        </button>
-    );
-}
 
 // Estilo visual de la tarjeta según el tipo de producto: cuando no tiene foto, un recuadro con
 // degradé de la paleta Scenta + ícono + tamaño identifica cada producto de un vistazo.
@@ -648,9 +665,20 @@ function TarjetaProducto({ producto, qty, onQty }: { producto: CatalogoProducto;
                         <Check className="w-3 h-3" /> {qty} en tu pedido
                     </span>
                 )}
-                {sinStock && (
+                {/* Disponibilidad: en stock / demora / sin stock */}
+                {sinStock ? (
                     <span className="absolute bottom-3 left-3 rounded-full bg-[#C9866F] text-white px-2.5 py-1 text-[10px] font-black uppercase tracking-widest">
                         Sin stock
+                    </span>
+                ) : (
+                    <span className={`absolute bottom-3 left-3 inline-flex items-center gap-1.5 rounded-full bg-white/85 dark:bg-[#1B1D1A]/75 backdrop-blur px-2.5 py-1 text-[10px] font-black ${producto.availability === "disponible"
+                        ? "text-[#128a5f] dark:text-[#4fd1a0]"
+                        : "text-[#7A5C34] dark:text-[#DAC4AA]"}`}>
+                        {producto.availability === "disponible" ? (
+                            <><span aria-hidden className="w-1.5 h-1.5 rounded-full bg-[#1baf7a]" /> En stock</>
+                        ) : (
+                            <><Clock className="w-3 h-3" /> {producto.deliveryDays > 0 ? `Demora ${producto.deliveryDays} días` : "Con demora"}</>
+                        )}
                     </span>
                 )}
             </div>
@@ -663,20 +691,11 @@ function TarjetaProducto({ producto, qty, onQty }: { producto: CatalogoProducto;
                 {producto.description && (
                     <p className="text-sm text-[#2C2C2C]/65 dark:text-[#F4EFEA]/65 line-clamp-2 mt-1">{producto.description}</p>
                 )}
-                {producto.availability === "demora" && (
-                    <p className="inline-flex items-center gap-1 text-[11px] font-bold text-[#B5735C] dark:text-[#D29680] mt-1">
-                        <Clock className="w-3.5 h-3.5" />
-                        {producto.deliveryDays > 0 ? `Entrega en ${producto.deliveryDays} días` : "Entrega con demora"}
-                    </p>
-                )}
 
                 <div className="mt-auto pt-4 flex items-end justify-between gap-3">
                     <div>
                         <p className="text-[10px] font-bold uppercase tracking-widest text-[#2C2C2C]/40 dark:text-[#F4EFEA]/40">Precio</p>
-                        <p className="text-xl font-black tracking-tight">
-                            ${formatNumber(producto.price)}
-                            {ml && <span className="ml-1 text-sm font-semibold tracking-normal text-[#2C2C2C]/50 dark:text-[#F4EFEA]/50">/ {ml} ml</span>}
-                        </p>
+                        <p className="text-xl font-black tracking-tight">${formatNumber(producto.price)}</p>
                     </div>
                     {sinStock && !enPedido && !animando ? (
                         <span className="rounded-full border border-[#E6DFD5] dark:border-[#353B33] px-4 py-2.5 text-sm font-bold text-[#2C2C2C]/45 dark:text-[#F4EFEA]/45">

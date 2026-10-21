@@ -1,10 +1,11 @@
 "use client";
 
-import { Check, FileSpreadsheet, FileText, LoaderCircle, Layers, PackageCheck, Clock } from "lucide-react";
-import { useState, useMemo, useEffect, useRef } from "react";
+import { Check, FileSpreadsheet, FileText, LoaderCircle } from "lucide-react";
+import { useState, useMemo, useEffect, useRef, type ReactNode } from "react";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { Producto, useAppContext } from "@/context/AppContext";
 import Ventana from "@/components/Ventana";
-import { PanelVentana, CabeceraVentana, CuerpoVentana, PieVentana, TodoNada, BOTON_PRINCIPAL, BOTON_SECUNDARIO } from "@/components/ventana-partes";
+import { PanelVentana, CabeceraVentana, CuerpoVentana, PieVentana, TodoNada, FilaInterruptor, BOTON_PRINCIPAL, BOTON_SECUNDARIO } from "@/components/ventana-partes";
 
 interface ExportModalProps {
     isOpen: boolean;
@@ -18,38 +19,77 @@ interface ExportModalProps {
         gender?: string;
         showOutOfStock?: boolean;
         showConsult?: boolean;
+        stock?: FiltroStock;
     };
     type: "excel" | "pdf";
     /** Nombre de la lista que se exporta (Minorista o Mayorista) */
     lista?: string;
 }
 
-type Stock = "todo" | "con-stock" | "sin-stock";
+// Mismos valores que el filtro "Stock" de la lista de precios
+export type FiltroStock = "todos" | "disponible" | "demora" | "sin-stock";
 
-const OPCIONES_STOCK: { key: Stock; titulo: string; detalle: string; Icono: typeof Layers }[] = [
-    { key: "todo", titulo: "Todo", detalle: "La lista completa", Icono: Layers },
-    { key: "con-stock", titulo: "Con stock", detalle: "Perfumes hechos, entrega ya", Icono: PackageCheck },
-    { key: "sin-stock", titulo: "Sin stock", detalle: "Hay que prepararlos", Icono: Clock },
+// El punto de color es el mismo que la columna "Stock" de la lista
+const OPCIONES_STOCK: { key: FiltroStock; titulo: string; detalle: string; punto: string }[] = [
+    { key: "todos", titulo: "Todo", detalle: "En stock y con demora", punto: "bg-[#2C2C2C]/30 dark:bg-[#F4EFEA]/35" },
+    { key: "disponible", titulo: "En stock", detalle: "Perfumes hechos, se entregan ya", punto: "bg-[#1baf7a]" },
+    { key: "demora", titulo: "Con demora", detalle: "Hay que prepararlos antes de entregar", punto: "bg-[#C9A877]" },
+    { key: "sin-stock", titulo: "Sin stock", detalle: "La esencia hay que consultarla con el proveedor", punto: "bg-[#C9866F]" },
 ];
 
-// Chip chico para elegir categorías y géneros
-const chip = (elegido: boolean) =>
-    `inline-flex items-center gap-1.5 h-8 px-3 rounded-lg border text-[13px] font-medium active:scale-[0.97] transition-[border-color,background-color,color,transform] duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7D9878]/50 ${elegido
-        ? "border-[#7D9878] bg-[#7D9878]/[0.1] dark:bg-[#7D9878]/[0.16] text-[#3F5A3C] dark:text-[#C5D6BF]"
-        : "border-[#E6DFD5] dark:border-[#353B33] text-[#2C2C2C]/60 dark:text-[#F4EFEA]/55 hover:border-[#7D9878]/50"}`;
+// "Frascos de 30 ML" → "30 ml", "Frascos Difusores" → "Difusores": en el botón alcanza con lo que los distingue
+const nombreCorto = (cat: string) => {
+    const corto = cat.replace(/^frascos?\s+(de\s+)?/i, "").trim() || cat;
+    return corto.replace(/(\d)\s*ML\b/i, "$1 ml");
+};
 
-// Casilla de una opción de sí/no, en una línea
-function Casilla({ activo, onCambiar, titulo, detalle }: { activo: boolean; onCambiar: (v: boolean) => void; titulo: string; detalle: string }) {
+// Pista con las opciones adentro, igual que "Qué productos" pero se pueden elegir varias:
+// las elegidas se levantan como una pastilla clara, las otras quedan apagadas sobre el fondo.
+function PistaFiltros({ etiqueta, children }: { etiqueta: string; children: ReactNode }) {
     return (
-        <label className="flex items-start gap-3 py-2 cursor-pointer select-none">
-            <input type="checkbox" checked={activo} onChange={e => onCambiar(e.target.checked)} className="mt-0.5 w-4 h-4 accent-[#7D9878] cursor-pointer" />
-            <span className="text-sm">
-                <span className="font-medium text-[#2C2C2C] dark:text-[#F4EFEA]">{titulo}</span>
-                <span className="block text-xs text-[#2C2C2C]/50 dark:text-[#F4EFEA]/45">{detalle}</span>
-            </span>
-        </label>
+        <div role="group" aria-label={etiqueta} className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-1 p-1 rounded-2xl bg-[#F4EFEA] dark:bg-[#1B1D1A] border border-[#E6DFD5]/70 dark:border-[#353B33]/70">
+            {children}
+        </div>
     );
 }
+
+// Si con los otros filtros no tiene productos, se ve muy apagada, sin pastilla y no se puede tocar.
+function OpcionFiltro({ nombre, titulo, cantidad, elegida, onAlternar }: { nombre: string; titulo?: string; cantidad: number; elegida: boolean; onAlternar: () => void }) {
+    const vacia = cantidad === 0;
+    const marcada = elegida && !vacia;
+    return (
+        <button
+            type="button"
+            aria-pressed={marcada}
+            disabled={vacia}
+            onClick={onAlternar}
+            title={vacia ? "No hay productos con estos filtros" : titulo}
+            className="relative h-14 px-2 rounded-xl flex flex-col items-center justify-center gap-0.5 cursor-pointer active:scale-[0.97] disabled:active:scale-100 disabled:cursor-not-allowed disabled:opacity-35 transition-[transform,opacity] duration-150 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7D9878]/50"
+        >
+            <AnimatePresence initial={false}>
+                {marcada && (
+                    <motion.span
+                        aria-hidden
+                        className="absolute inset-0 rounded-xl bg-white dark:bg-[#2E332D] shadow-sm shadow-black/[0.06] ring-1 ring-[#E6DFD5] dark:ring-[#3F463D]"
+                        initial={{ opacity: 0, scale: 0.94 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.94, transition: { duration: 0.12 } }}
+                        transition={{ duration: 0.18, ease: [0.23, 1, 0.32, 1] }}
+                    />
+                )}
+            </AnimatePresence>
+            <span className={`relative flex items-center gap-1.5 max-w-full text-[13px] font-semibold transition-colors duration-150 ${marcada ? "text-[#2C2C2C] dark:text-[#F4EFEA]" : "text-[#2C2C2C]/50 dark:text-[#F4EFEA]/45"}`}>
+                <Check className={`w-3.5 h-3.5 shrink-0 text-[#7D9878] dark:text-[#A3B69B] transition-[opacity,transform] duration-150 ease-out ${marcada ? "opacity-100 scale-100" : "opacity-0 scale-50 -mr-5"}`} strokeWidth={3} />
+                <span className="truncate">{nombre}</span>
+            </span>
+            <span className={`relative text-xs tabular-nums transition-colors duration-150 ${marcada ? "text-[#2C2C2C]/60 dark:text-[#F4EFEA]/60" : "text-[#2C2C2C]/35 dark:text-[#F4EFEA]/30"}`}>
+                {cantidad} {cantidad === 1 ? "producto" : "productos"}
+            </span>
+        </button>
+    );
+}
+
+const TITULO_SECCION = "text-[11px] font-semibold uppercase tracking-[0.14em] text-[#2C2C2C]/45 dark:text-[#F4EFEA]/40";
 
 const esAmbiente = (cat: string) => /DIFUSOR|AUTO|LIMPIA|AMBIENTE/.test(cat);
 
@@ -66,7 +106,7 @@ export default function ExportModal({
 }: ExportModalProps) {
     const { disponibilidadDe: auto } = useAppContext();
     const [generando, setGenerando] = useState(false);
-    const [stock, setStock] = useState<Stock>("todo");
+    const [stock, setStock] = useState<FiltroStock>("todos");
     const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
     const [selectedGenders, setSelectedGenders] = useState<string[]>([]);
     const [incluirSinPrecio, setIncluirSinPrecio] = useState(false);
@@ -98,9 +138,9 @@ export default function ExportModal({
 
     // Al abrir (y solo al abrir), arranca con los filtros que tiene la página; si después se
     // actualizan los datos de fondo, lo que eligió el usuario no se pierde.
-    const { category: catInicial, gender: generoInicial, showConsult: sinPrecioInicial, showOutOfStock: sinStockInicial } = initialFilters;
-    const iniciales = useRef({ catInicial, generoInicial, sinPrecioInicial, sinStockInicial, availableCategories, availableGenders });
-    iniciales.current = { catInicial, generoInicial, sinPrecioInicial, sinStockInicial, availableCategories, availableGenders };
+    const { category: catInicial, gender: generoInicial, showConsult: sinPrecioInicial, showOutOfStock: sinStockInicial, stock: stockInicial } = initialFilters;
+    const iniciales = useRef({ catInicial, generoInicial, sinPrecioInicial, sinStockInicial, stockInicial, availableCategories, availableGenders });
+    iniciales.current = { catInicial, generoInicial, sinPrecioInicial, sinStockInicial, stockInicial, availableCategories, availableGenders };
     useEffect(() => {
         if (!isOpen) return;
         const i = iniciales.current;
@@ -108,7 +148,7 @@ export default function ExportModal({
         setSelectedGenders(i.generoInicial && i.generoInicial !== "Todos" ? [i.generoInicial] : i.availableGenders);
         setIncluirSinPrecio(i.sinPrecioInicial || false);
         setIncluirSinStock(i.sinStockInicial || false);
-        setStock("todo");
+        setStock(i.stockInicial ?? "todos");
     }, [isOpen]);
 
     // Filtros por separado, así cada grupo cuenta cuántos quedarían
@@ -116,10 +156,11 @@ export default function ExportModal({
         const precio = Number(lista === "Mayorista" ? p.price : p.priceMinorista);
         return incluirSinPrecio || (Number.isFinite(precio) && precio > 0);
     };
-    const pasaStock = (p: Producto, s: Stock = stock) => {
+    // En "Todo", los sin stock salen solo si está marcada la casilla
+    const pasaStock = (p: Producto, s: FiltroStock = stock) => {
         const estado = auto(p).estado;
-        if (estado === "sin-stock" && !incluirSinStock) return false;
-        return s === "todo" || (s === "con-stock" ? estado === "disponible" : estado !== "disponible");
+        if (s === "todos") return estado !== "sin-stock" || incluirSinStock;
+        return estado === s;
     };
     const pasaCategoria = (p: Producto) =>
         selectedCategories.some(c => c.trim().toUpperCase() === (p.category || "").trim().toUpperCase());
@@ -134,10 +175,16 @@ export default function ExportModal({
     };
 
     const filteredData = productos.filter(p => conPrecio(p) && pasaStock(p) && pasaCategoria(p) && pasaGenero(p));
-    const cuentaStock = (s: Stock) => productos.filter(p => conPrecio(p) && pasaStock(p, s) && pasaCategoria(p) && pasaGenero(p)).length;
+    const cuentaStock = (s: FiltroStock) => productos.filter(p => conPrecio(p) && pasaStock(p, s) && pasaCategoria(p) && pasaGenero(p)).length;
     const cuentaCategoria = (cat: string) => productos.filter(p => conPrecio(p) && pasaStock(p) && pasaGenero(p)
         && (p.category || "").trim().toUpperCase() === cat.trim().toUpperCase()).length;
+    // Los de ambiente cuentan en "Ambiente" aunque tengan otro género cargado
+    const generoDe = (p: Producto) => esAmbiente((p.category || "").trim().toUpperCase()) ? "AMBIENTE" : (p.gender || "UNISEX").trim().toUpperCase();
+    const cuentaGenero = (gen: string) => productos.filter(p => conPrecio(p) && pasaStock(p) && pasaCategoria(p)
+        && generoDe(p) === gen.trim().toUpperCase()).length;
     const enStock = filteredData.filter(p => auto(p).estado === "disponible").length;
+    const conDemora = filteredData.filter(p => auto(p).estado === "demora").length;
+    const sinMovimiento = useReducedMotion();
 
     const alternar = (lista: string[], valor: string) => lista.includes(valor) ? lista.filter(x => x !== valor) : [...lista, valor];
 
@@ -161,7 +208,7 @@ export default function ExportModal({
         }
     };
 
-    const titulo = "text-xs font-semibold uppercase tracking-[0.12em] text-[#2C2C2C]/50 dark:text-[#F4EFEA]/45";
+    const opcionStock = OPCIONES_STOCK.find(o => o.key === stock) ?? OPCIONES_STOCK[0];
 
     return (
         <Ventana abierta={isOpen} onCerrar={generando ? undefined : onClose} etiqueta="Exportar lista de precios">
@@ -176,13 +223,14 @@ export default function ExportModal({
                     cerrarDeshabilitado={generando}
                 />
 
-                <CuerpoVentana className="space-y-5">
-                    {/* Qué productos según el stock */}
+                <CuerpoVentana className="space-y-7">
+                    {/* Qué productos según el stock: control segmentado con la pastilla que se desliza */}
                     <section>
-                        <p className={titulo}>Qué productos</p>
-                        <div role="radiogroup" aria-label="Stock" className="mt-2 grid grid-cols-3 gap-2">
+                        <p className={TITULO_SECCION}>Qué productos</p>
+                        <div role="radiogroup" aria-label="Stock" className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-1 p-1 rounded-2xl bg-[#F4EFEA] dark:bg-[#1B1D1A] border border-[#E6DFD5]/70 dark:border-[#353B33]/70">
                             {OPCIONES_STOCK.map(o => {
                                 const activo = stock === o.key;
+                                const cantidad = cuentaStock(o.key);
                                 return (
                                     <button
                                         key={o.key}
@@ -190,88 +238,100 @@ export default function ExportModal({
                                         role="radio"
                                         aria-checked={activo}
                                         onClick={() => setStock(o.key)}
-                                        className={`text-left rounded-xl border px-3 py-2.5 active:scale-[0.98] transition-[border-color,background-color,transform] duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7D9878]/50 ${activo
-                                            ? "border-[#7D9878] bg-[#7D9878]/[0.08] dark:bg-[#7D9878]/[0.14]"
-                                            : "border-[#E6DFD5] dark:border-[#353B33] hover:border-[#7D9878]/50"}`}
+                                        className="relative h-14 px-2 rounded-xl flex flex-col items-center justify-center gap-0.5 cursor-pointer active:scale-[0.97] transition-transform duration-150 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7D9878]/50"
                                     >
-                                        <span className="flex items-center justify-between gap-2">
-                                            <span className={`flex items-center gap-1.5 text-sm font-semibold ${activo ? "text-[#3F5A3C] dark:text-[#C5D6BF]" : "text-[#2C2C2C] dark:text-[#F4EFEA]"}`}>
-                                                <o.Icono className="w-4 h-4" />
-                                                {o.titulo}
-                                            </span>
-                                            <span className="text-xs tabular-nums text-[#2C2C2C]/45 dark:text-[#F4EFEA]/40">{cuentaStock(o.key)}</span>
+                                        {activo && (
+                                            <motion.span
+                                                layoutId="pastilla-stock"
+                                                aria-hidden
+                                                className="absolute inset-0 rounded-xl bg-white dark:bg-[#2E332D] shadow-sm shadow-black/[0.06] ring-1 ring-[#E6DFD5] dark:ring-[#3F463D]"
+                                                transition={sinMovimiento ? { duration: 0 } : { type: "spring", duration: 0.35, bounce: 0.15 }}
+                                            />
+                                        )}
+                                        <span className={`relative flex items-center gap-1.5 text-[13px] font-semibold whitespace-nowrap transition-colors duration-150 ${activo ? "text-[#2C2C2C] dark:text-[#F4EFEA]" : "text-[#2C2C2C]/55 dark:text-[#F4EFEA]/50"}`}>
+                                            <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${o.punto}`} />
+                                            {o.titulo}
                                         </span>
-                                        <span className="block mt-0.5 text-[11px] leading-snug text-[#2C2C2C]/50 dark:text-[#F4EFEA]/45">{o.detalle}</span>
+                                        <span className={`relative text-xs tabular-nums transition-colors duration-150 ${activo ? "text-[#2C2C2C]/60 dark:text-[#F4EFEA]/60" : "text-[#2C2C2C]/35 dark:text-[#F4EFEA]/30"}`}>
+                                            {cantidad} {cantidad === 1 ? "producto" : "productos"}
+                                        </span>
                                     </button>
                                 );
                             })}
                         </div>
+                        <p className="mt-2.5 px-1 text-xs text-[#2C2C2C]/55 dark:text-[#F4EFEA]/50">{opcionStock.detalle}.</p>
                     </section>
 
                     <section>
                         <div className="flex items-center justify-between gap-3">
-                            <p className={titulo}>Categorías</p>
+                            <p className={TITULO_SECCION}>Categorías</p>
                             <TodoNada onTodo={() => setSelectedCategories(availableCategories)} onNada={() => setSelectedCategories([])} />
                         </div>
-                        <div className="mt-2 flex flex-wrap gap-1.5">
-                            {availableCategories.map(cat => {
-                                const elegida = selectedCategories.includes(cat);
-                                return (
-                                    <button key={cat} type="button" aria-pressed={elegida} onClick={() => setSelectedCategories(alternar(selectedCategories, cat))} className={chip(elegida)}>
-                                        {elegida && <Check className="w-3.5 h-3.5" strokeWidth={3} />}
-                                        {cat}
-                                        <span className="text-[11px] tabular-nums opacity-60">{cuentaCategoria(cat)}</span>
-                                    </button>
-                                );
-                            })}
-                        </div>
+                        <PistaFiltros etiqueta="Categorías">
+                            {availableCategories.map(cat => (
+                                <OpcionFiltro
+                                    key={cat}
+                                    nombre={nombreCorto(cat)}
+                                    titulo={cat}
+                                    cantidad={cuentaCategoria(cat)}
+                                    elegida={selectedCategories.includes(cat)}
+                                    onAlternar={() => setSelectedCategories(alternar(selectedCategories, cat))}
+                                />
+                            ))}
+                        </PistaFiltros>
                     </section>
 
                     <section>
                         <div className="flex items-center justify-between gap-3">
-                            <p className={titulo}>Géneros</p>
+                            <p className={TITULO_SECCION}>Géneros</p>
                             <TodoNada onTodo={() => setSelectedGenders(availableGenders)} onNada={() => setSelectedGenders([])} />
                         </div>
-                        <div className="mt-2 flex flex-wrap gap-1.5">
-                            {availableGenders.map(gen => {
-                                const elegido = selectedGenders.includes(gen);
-                                return (
-                                    <button key={gen} type="button" aria-pressed={elegido} onClick={() => setSelectedGenders(alternar(selectedGenders, gen))} className={chip(elegido)}>
-                                        {elegido && <Check className="w-3.5 h-3.5" strokeWidth={3} />}
-                                        {gen}
-                                    </button>
-                                );
-                            })}
-                        </div>
+                        <PistaFiltros etiqueta="Géneros">
+                            {availableGenders.map(gen => (
+                                <OpcionFiltro
+                                    key={gen}
+                                    nombre={gen}
+                                    cantidad={cuentaGenero(gen)}
+                                    elegida={selectedGenders.includes(gen)}
+                                    onAlternar={() => setSelectedGenders(alternar(selectedGenders, gen))}
+                                />
+                            ))}
+                        </PistaFiltros>
                     </section>
 
-                    <section className="rounded-xl bg-[#F9F6F0] dark:bg-[#1B1D1A] px-3.5 py-1.5 divide-y divide-[#E6DFD5]/70 dark:divide-[#353B33]/70">
-                        <Casilla
+                    <section className="space-y-2">
+                        <p className={`${TITULO_SECCION} mb-3`}>Opciones</p>
+                        <FilaInterruptor
                             activo={mostrarDisponibilidad}
                             onCambiar={setMostrarDisponibilidad}
                             titulo="Mostrar la disponibilidad"
-                            detalle="Columna con «Disponible», «Demora 7 días» o «Sin stock», según tu stock de hoy"
+                            descripcion="Columna con «Disponible», «Demora 7 días» o «Sin stock»"
                         />
-                        <Casilla
-                            activo={incluirSinStock}
-                            onCambiar={setIncluirSinStock}
-                            titulo="Incluir productos sin stock"
-                            detalle="Los que tienen la esencia a consultar con el proveedor"
-                        />
-                        <Casilla
+                        {stock === "todos" && (
+                            <FilaInterruptor
+                                activo={incluirSinStock}
+                                onCambiar={setIncluirSinStock}
+                                titulo="Incluir productos sin stock"
+                                descripcion="Los que tienen la esencia a consultar"
+                            />
+                        )}
+                        <FilaInterruptor
                             activo={incluirSinPrecio}
                             onCambiar={setIncluirSinPrecio}
                             titulo="Incluir productos sin precio"
-                            detalle="Salen como «Consultar»"
+                            descripcion="Salen como «Consultar»"
                         />
                     </section>
                 </CuerpoVentana>
 
                 <PieVentana>
-                    <p className="text-sm text-[#2C2C2C]/60 dark:text-[#F4EFEA]/55">
-                        <span className="font-semibold tabular-nums text-[#2C2C2C] dark:text-[#F4EFEA]">{filteredData.length}</span>
-                        {filteredData.length === 1 ? " producto" : " productos"}
-                        {filteredData.length > 0 && stock === "todo" && <span className="text-xs"> · {enStock} con stock</span>}
+                    <p className="text-sm text-[#2C2C2C]/60 dark:text-[#F4EFEA]/55 min-w-0">
+                        <span className="block font-semibold tabular-nums text-[#2C2C2C] dark:text-[#F4EFEA]">
+                            {filteredData.length} {filteredData.length === 1 ? "producto" : "productos"}
+                        </span>
+                        {filteredData.length > 0 && stock === "todos" && (
+                            <span className="block text-xs tabular-nums">{enStock} en stock · {conDemora} con demora</span>
+                        )}
                     </p>
                     <div className="flex items-center gap-2">
                         <button type="button" onClick={onClose} disabled={generando} className={BOTON_SECUNDARIO}>

@@ -69,7 +69,13 @@ const EASE_OUT = [0.23, 1, 0.32, 1] as const;
 
 // Botones de cada fila (Fórmula y Ganancia): borde de color, mismo alto que "Agregar"
 const BOTON_FILA = "inline-flex items-center gap-1.5 h-9 px-3 rounded-lg border text-xs font-semibold shadow-sm shadow-black/[0.03] active:scale-[0.96] transition-[background-color,border-color,transform] duration-150 whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7D9878]/50";
-const EASE_CAJON = [0.32, 0.72, 0, 1] as const; // como el panel lateral de iOS
+// Disponibilidad automática (mismos colores que Mi catálogo)
+const ESTADO_STOCK = {
+    disponible: { label: "En stock", punto: "bg-[#1baf7a]", color: "bg-[#1baf7a]/10 text-[#128a5f] dark:text-[#4fd1a0]" },
+    demora: { label: "Demora", punto: "bg-[#C9A877]", color: "bg-[#DAC4AA]/25 text-[#7A5C34] dark:text-[#DAC4AA]" },
+    "sin-stock": { label: "Sin stock", punto: "bg-[#C9866F]", color: "bg-[#C9866F]/10 text-[#97604D] dark:text-[#DBA793]" },
+} as const;
+const EASE_CAJON =[0.32, 0.72, 0, 1] as const; // como el panel lateral de iOS
 
 const fondoModal = {
     initial: { opacity: 0 },
@@ -426,7 +432,8 @@ export default function ListaPreciosPage() {
     const [genderFilter, setGenderFilter] = useState("Todos");
     const [sizeFilter, setSizeFilter] = useState("Todos");
     const [sortBy, setSortBy] = useState<"price-asc" | "price-desc" | "id-asc" | "id-desc" | "none">("none");
-    const [showOutOfStock, setShowOutOfStock] = useState(false);
+    // "todos" = en stock + con demora (los sin stock solo se ven si se eligen)
+    const [stockFilter, setStockFilter] = useState<"todos" | "disponible" | "demora" | "sin-stock">("todos");
     const [isCartOpen, setIsCartOpen] = useState(false);
     const [openItemDiscount, setOpenItemDiscount] = useState<string | null>(null);
     const [customerName, setCustomerName] = useState("");
@@ -491,9 +498,9 @@ export default function ListaPreciosPage() {
             result = result.filter(p => p.gender?.toLowerCase() === lowGenderFilter);
         }
 
-        if (!showOutOfStock) {
-            result = result.filter(p => disponibilidadDe(p).estado !== "sin-stock");
-        }
+        result = stockFilter === "todos"
+            ? result.filter(p => disponibilidadDe(p).estado !== "sin-stock")
+            : result.filter(p => disponibilidadDe(p).estado === stockFilter);
 
         if (!showConsult) {
             result = result.filter(p => {
@@ -523,7 +530,7 @@ export default function ListaPreciosPage() {
         }
 
         return result;
-    }, [productos, search, categoryFilter, genderFilter, sortBy, showOutOfStock, showConsult, isMinorista, disponibilidadDe]);
+    }, [productos, search, categoryFilter, genderFilter, sortBy, stockFilter, showConsult, isMinorista, disponibilidadDe]);
 
     const totalPages = Math.ceil(filteredAndSortedProductos.length / itemsPerPage);
     const paginatedProductos = useMemo(() => {
@@ -691,9 +698,10 @@ export default function ListaPreciosPage() {
     const estadoDescarga = (formato: "excel" | "pdf"): EstadoDescarga => descarga?.formato === formato ? descarga.estado : "reposo";
 
     const unidadesCarrito = cartFiltered.reduce((acc, i) => acc + i.quantity, 0);
-    const hayFiltros = search !== "" || categoryFilter !== "Todas" || genderFilter !== "Todos" || sortBy !== "none";
+    const hayFiltros = search !== "" || categoryFilter !== "Todas" || genderFilter !== "Todos" || sortBy !== "none" || stockFilter !== "todos";
     const limpiarFiltros = () => {
         setSearch("");
+        setStockFilter("todos");
         setCategoryFilter("Todas");
         setGenderFilter("Todos");
         setSortBy("none");
@@ -734,7 +742,7 @@ export default function ListaPreciosPage() {
                         {cartFiltered.length}
                     </span>
                 </button>
-                <div className="flex items-start gap-2">
+                <div className="flex items-center gap-2">
                     {(["excel", "pdf"] as const).map(formato => (
                         <BotonDescarga
                             key={formato}
@@ -759,7 +767,20 @@ export default function ListaPreciosPage() {
                     className="flex-1 min-w-0"
                 />
 
-                <div className="grid grid-cols-1 sm:grid-cols-3 lg:flex gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:flex gap-3">
+                    <FiltroSelect
+                        icon={Package}
+                        label="Stock"
+                        value={stockFilter}
+                        activo={stockFilter !== "todos"}
+                        onChange={(v) => { setStockFilter(v as typeof stockFilter); setCurrentPage(1); }}
+                    >
+                        <option value="todos">En stock y con demora</option>
+                        <option value="disponible">Solo en stock</option>
+                        <option value="demora">Solo con demora</option>
+                        <option value="sin-stock">Sin stock</option>
+                    </FiltroSelect>
+
                     <FiltroSelect
                         icon={Tags}
                         label="Categoría"
@@ -856,6 +877,7 @@ export default function ListaPreciosPage() {
                                     <th className="py-3 pl-6 pr-4 text-left font-semibold">Producto</th>
                                     <th className="py-3 px-4 text-center font-semibold">Categoría</th>
                                     <th className="py-3 px-4 text-center font-semibold">Género</th>
+                                    <th className="py-3 px-4 text-center font-semibold">Stock</th>
                                     <th className="py-3 px-4 text-center font-semibold">Precio {isMinorista ? "minorista" : "mayorista"}</th>
                                     <th className="py-3 px-4 text-center font-semibold">Margen</th>
                                     <th className="py-3 pl-4 pr-6 text-right font-semibold"><span className="sr-only">Acciones</span></th>
@@ -898,6 +920,21 @@ export default function ListaPreciosPage() {
                                             </td>
                                             <td className="py-3.5 px-4 text-center">
                                                 {getGenderBadge(producto.gender)}
+                                            </td>
+                                            <td className="py-3.5 px-4 text-center">
+                                                {(() => {
+                                                    const disp = disponibilidadDe(producto);
+                                                    const e = ESTADO_STOCK[disp.estado];
+                                                    const detalle = disp.estado === "disponible"
+                                                        ? `${disp.hechos} ${disp.hechos === 1 ? "hecho" : "hechos"} en stock`
+                                                        : disp.estado === "demora" ? `Sin hechos · ${disp.dias} días de preparación` : "La esencia no está disponible";
+                                                    return (
+                                                        <span title={detalle} className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold whitespace-nowrap ${e.color}`}>
+                                                            <span className={`w-1.5 h-1.5 rounded-full ${e.punto}`} />
+                                                            {disp.estado === "disponible" ? `En stock (${disp.hechos})` : disp.estado === "demora" ? `Demora ${disp.dias} días` : e.label}
+                                                        </span>
+                                                    );
+                                                })()}
                                             </td>
                                             <td className="py-3.5 px-4 text-center">
                                                 {!isValidPrice ? (
@@ -1007,8 +1044,8 @@ export default function ListaPreciosPage() {
                     initialFilters={{
                         category: categoryFilter,
                         gender: genderFilter,
-                        showOutOfStock: showOutOfStock,
-                        showConsult: showConsult
+                        showConsult: showConsult,
+                        stock: stockFilter
                     }}
                     type={exportFormat}
                     lista={isMinorista ? "Minorista" : "Mayorista"}
