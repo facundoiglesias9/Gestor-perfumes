@@ -2,13 +2,14 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, MotionConfig, motion } from "framer-motion";
-import { Search, Plus, Minus, ShoppingBag, X, MessageCircle, Clock, Trash2, Check, ChevronLeft, ChevronRight, ChevronDown, ArrowUpDown, LayoutGrid, Car, Wind, SprayCan, Sparkles, Users, Ruler } from "lucide-react";
+import { Search, Plus, Minus, ShoppingBag, X, MessageCircle, Clock, Trash2, Check, ChevronLeft, ChevronRight, ChevronDown, ArrowUpDown, LayoutGrid, Car, Wind, SprayCan, Sparkles, Users, Ruler, Flame, Flower2, Droplet } from "lucide-react";
 import { formatNumber } from "@/lib/format-utils";
 import Desplegable from "@/components/Desplegable";
-import { extractBrand } from "@/lib/product-utils";
 import Buscador from "@/components/Buscador";
 import BotonCarrito from "@/components/BotonCarrito";
 import { whatsappUrl } from "@/lib/contacto";
+import { tipoDe, mlDe, nombreYMarca, slugDe, agruparPorPerfume, type NotasPerfume } from "@/lib/catalogo-perfume";
+import Ventana from "@/components/Ventana";
 
 export type CatalogoProducto = {
     id: string;
@@ -28,14 +29,8 @@ const PAGE_SIZE = 12; // múltiplo de 2 y de 3: las filas quedan completas en ce
 // "Frascos de 50 ML" -> "50 ML", "Frascos Difusores" -> "Difusores": más corto para los botones de filtro.
 const etiquetaCategoria = (c: string) => c.replace(/^frascos\s+(de\s+)?/i, "");
 
-// Tipo de producto según su categoría: los frascos de 30/50 ML son perfumes
+// Tipo de producto según su categoría (tipoDe): los frascos de 30/50 ML son perfumes
 type Tipo = "todo" | "perfumes" | "difusores" | "auto";
-const tipoDe = (p: { category: string }): Exclude<Tipo, "todo"> => {
-    const c = (p.category || "").toLowerCase();
-    if (c.includes("difusor")) return "difusores";
-    if (c.includes("auto")) return "auto";
-    return "perfumes";
-};
 const TIPOS: { id: Tipo; titulo: string; Icono: typeof SprayCan }[] = [
     { id: "todo", titulo: "Todo", Icono: LayoutGrid },
     { id: "perfumes", titulo: "Perfumes", Icono: SprayCan },
@@ -73,7 +68,20 @@ function paginasVisibles(actual: number, total: number): (number | "…")[] {
 
 type Consulta = Record<string, number>; // id de producto -> cantidad
 
-export default function CatalogoClient({ productos }: { productos: CatalogoProducto[] | null }) {
+// Ficha abierta: qué perfume y qué tamaño se tocó
+type Abierto = { slug: string; id?: string };
+const RUTA_CATALOGO = "/catalogo";
+const rutaPerfume = (slug: string) => `/catalogo/p/${slug}`;
+
+export default function CatalogoClient({ productos, masPedidos = [], notas = {}, perfumeInicial }: {
+    /** Notas olfativas por perfume (slug) */
+    notas?: Record<string, NotasPerfume>;
+    productos: CatalogoProducto[] | null;
+    /** Códigos de los más vendidos de los últimos 3 meses, de más a menos */
+    masPedidos?: string[];
+    /** Si se entró por el link de un perfume, su ficha arranca abierta */
+    perfumeInicial?: string;
+}) {
     const [search, setSearch] = useState("");
     // Primero el tipo de producto; género y tamaño solo existen para los perfumes
     const [tipo, setTipo] = useState<Tipo>("todo");
@@ -85,6 +93,7 @@ export default function CatalogoClient({ productos }: { productos: CatalogoProdu
     const gridRef = useRef<HTMLDivElement>(null);
     const [consulta, setConsulta] = useState<Consulta>({});
     const [drawerOpen, setDrawerOpen] = useState(false);
+    const [abierto, setAbierto] = useState<Abierto | null>(perfumeInicial ? { slug: perfumeInicial } : null);
 
     // Recupera la consulta armada en una visita anterior (solo en este navegador).
     useEffect(() => {
@@ -100,19 +109,60 @@ export default function CatalogoClient({ productos }: { productos: CatalogoProdu
         } catch { }
     }, [consulta]);
 
+    const lista = productos ?? [];
+    const byId = useMemo(() => new Map(lista.map(p => [p.id, p])), [lista]);
+    const grupos = useMemo(() => agruparPorPerfume(lista), [lista]);
+
+    // Ficha del perfume: al abrirla la dirección pasa a /catalogo/p/<perfume> (así se puede copiar
+    // y compartir) sin salir del catálogo; al cerrarla vuelve a /catalogo y todo queda como estaba.
+    const abrirFicha = (p: CatalogoProducto) => {
+        const slug = slugDe(p);
+        setAbierto({ slug, id: p.id });
+        if (window.location.pathname !== rutaPerfume(slug)) window.history.pushState(null, "", rutaPerfume(slug));
+    };
+    const cerrarFicha = () => {
+        setAbierto(null);
+        if (window.location.pathname !== RUTA_CATALOGO) window.history.pushState(null, "", RUTA_CATALOGO);
+    };
+    // Atrás / adelante del navegador abren o cierran la ficha según la dirección
     useEffect(() => {
-        document.body.style.overflow = drawerOpen ? "hidden" : "";
-        // Escape cierra el panel del pedido
+        const alVolver = () => {
+            const m = window.location.pathname.match(/^\/catalogo\/p\/([^/]+)/);
+            setAbierto(m ? { slug: decodeURIComponent(m[1]) } : null);
+        };
+        window.addEventListener("popstate", alVolver);
+        return () => window.removeEventListener("popstate", alVolver);
+    }, []);
+
+    const tamanosAbiertos = abierto ? grupos.get(abierto.slug) ?? null : null;
+
+    // Panel del pedido: bloquea el scroll de atrás y se cierra con Escape (la ficha lo hace sola)
+    useEffect(() => {
+        if (!drawerOpen) return;
+        document.body.style.overflow = "hidden";
         const alTeclear = (e: KeyboardEvent) => { if (e.key === "Escape") setDrawerOpen(false); };
-        if (drawerOpen) document.addEventListener("keydown", alTeclear);
+        document.addEventListener("keydown", alTeclear);
         return () => {
             document.body.style.overflow = "";
             document.removeEventListener("keydown", alTeclear);
         };
     }, [drawerOpen]);
 
-    const lista = productos ?? [];
-    const byId = useMemo(() => new Map(lista.map(p => [p.id, p])), [lista]);
+    // Los más pedidos: un producto por perfume, solo los que se pueden pedir
+    const destacados = useMemo(() => {
+        const vistos = new Set<string>();
+        const out: CatalogoProducto[] = [];
+        for (const id of masPedidos) {
+            const p = byId.get(id);
+            if (!p || p.availability === "sin-stock") continue;
+            const s = slugDe(p);
+            if (vistos.has(s)) continue;
+            vistos.add(s);
+            out.push(p);
+            if (out.length === 8) break;
+        }
+        return out;
+    }, [masPedidos, byId]);
 
     const q = search.trim().toLowerCase();
     const coincideBusqueda = (p: CatalogoProducto) =>
@@ -418,6 +468,27 @@ export default function CatalogoClient({ productos }: { productos: CatalogoProdu
                             </div>
                         </section>
 
+                        {/* Los más pedidos: solo en la vista inicial, sin filtros, y si hay suficientes ventas */}
+                        {!hayFiltros && page === 1 && destacados.length >= 4 && (
+                            <section aria-labelledby="mas-pedidos" className="mb-8">
+                                <div className="flex items-end justify-between gap-3 mb-3 px-1">
+                                    <h2 id="mas-pedidos" className="flex items-center gap-2 font-brand text-lg font-bold">
+                                        <Flame className="w-4 h-4 text-[#C9866F]" />
+                                        Los más pedidos
+                                    </h2>
+                                    <p className="text-xs text-[#2C2C2C]/50 dark:text-[#F4EFEA]/45">Últimos 3 meses</p>
+                                </div>
+                                {/* Fila que se desliza de costado; en la compu entran 4 a la vista */}
+                                {/* Aire arriba y a los costados (compensado con márgenes negativos): una fila que se desliza
+                                    recorta lo que sobresale, y la tarjeta se levanta al pasar el mouse */}
+                                <div className="-mx-4 sm:-mx-2 px-4 sm:px-2 -mt-2 pt-2 pb-3 flex gap-3 overflow-x-auto snap-x snap-mandatory scroll-px-4 sm:scroll-px-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                                    {destacados.map((p, i) => (
+                                        <MiniTarjeta key={p.id} producto={p} puesto={i + 1} onAbrir={() => abrirFicha(p)} className="snap-start shrink-0 w-[46%] sm:w-[31%] lg:w-[calc(25%-9px)]" />
+                                    ))}
+                                </div>
+                            </section>
+                        )}
+
                         {filtered.length === 0 ? (
                             <EstadoVacio
                                 titulo="No encontramos productos con esa búsqueda"
@@ -433,6 +504,7 @@ export default function CatalogoClient({ productos }: { productos: CatalogoProdu
                                             producto={p}
                                             qty={consulta[p.id] ?? 0}
                                             onQty={qty => setQty(p.id, qty)}
+                                            onAbrir={() => abrirFicha(p)}
                                         />
                                     ))}
                                 </div>
@@ -496,6 +568,13 @@ export default function CatalogoClient({ productos }: { productos: CatalogoProdu
                     </a>
                 </footer>
             </main>
+
+            {/* Ficha del perfume: ventana centrada (cierra con Escape o tocando afuera) */}
+            <Ventana abierta={!!(abierto && tamanosAbiertos)} onCerrar={cerrarFicha} etiqueta="Ficha del perfume" z={60}>
+                {tamanosAbiertos && abierto && (
+                    <FichaPerfume tamanos={tamanosAbiertos} idInicial={abierto.id} notas={notas[abierto.slug]} onCerrar={cerrarFicha} />
+                )}
+            </Ventana>
 
             {/* Barra inferior con el resumen del pedido */}
             {totalUnidades > 0 && !drawerOpen && (
@@ -614,11 +693,80 @@ function estiloProducto(p: CatalogoProducto) {
     return { formato, Icono, fondo, acento };
 }
 
-function TarjetaProducto({ producto, qty, onQty }: { producto: CatalogoProducto; qty: number; onQty: (qty: number) => void }) {
-    const { title, brand } = extractBrand(producto.name);
-    // El tamaño o formato ya se muestra en la etiqueta del recuadro: no repetirlo en el nombre.
-    const nombre = title.replace(/\s+(\d+\s*ML|DIFUSOR|AUTO)\s*$/i, "").trim() || title;
-    const { formato, Icono, fondo, acento } = estiloProducto(producto);
+// Insignia de disponibilidad (en stock / demora / sin stock), la misma en tarjetas y ficha
+function InsigniaStock({ producto, className = "" }: { producto: CatalogoProducto; className?: string }) {
+    if (producto.availability === "sin-stock") {
+        return (
+            <span className={`rounded-full bg-[#C9866F] text-white px-2.5 py-1 text-[10px] font-black uppercase tracking-widest ${className}`}>
+                Sin stock
+            </span>
+        );
+    }
+    const enStock = producto.availability === "disponible";
+    return (
+        <span className={`inline-flex items-center gap-1.5 rounded-full bg-white/85 dark:bg-[#1B1D1A]/75 backdrop-blur px-2.5 py-1 text-[10px] font-black ${enStock
+            ? "text-[#128a5f] dark:text-[#4fd1a0]"
+            : "text-[#7A5C34] dark:text-[#DAC4AA]"} ${className}`}>
+            {enStock ? (
+                <><span aria-hidden className="w-1.5 h-1.5 rounded-full bg-[#1baf7a]" /> En stock</>
+            ) : (
+                <><Clock className="w-3 h-3" /> {producto.deliveryDays > 0 ? `Demora ${producto.deliveryDays} días` : "Con demora"}</>
+            )}
+        </span>
+    );
+}
+
+// Foto del producto o, si no tiene, el degradé con el ícono de su tipo
+function ImagenProducto({ producto, tamanoIcono = "w-10 h-10" }: { producto: CatalogoProducto; tamanoIcono?: string }) {
+    const { Icono, acento } = estiloProducto(producto);
+    return producto.foto ? (
+        <img
+            src={producto.foto}
+            alt={producto.name}
+            loading="lazy"
+            decoding="async"
+            className={`w-full h-full object-contain p-3 transition-transform duration-500 ease-out group-hover:scale-105 ${producto.availability === "sin-stock" ? "opacity-50 grayscale" : ""}`}
+        />
+    ) : (
+        <Icono className={`${tamanoIcono} ${acento} opacity-70 transition-transform duration-300 group-hover:scale-110`} strokeWidth={1.4} />
+    );
+}
+
+// Tarjeta chica para "Los más pedidos" y "Te puede gustar": toda la tarjeta abre la ficha
+function MiniTarjeta({ producto, puesto, onAbrir, className = "" }: { producto: CatalogoProducto; puesto?: number; onAbrir: () => void; className?: string }) {
+    const { nombre, marca } = nombreYMarca(producto.name);
+    const { fondo, formato } = estiloProducto(producto);
+    const ml = mlDe(producto);
+    return (
+        <button
+            type="button"
+            onClick={onAbrir}
+            className={`group text-left flex flex-col overflow-hidden rounded-2xl border border-[#E6DFD5] dark:border-[#353B33] bg-white dark:bg-[#242723] transition-[transform,border-color,box-shadow] duration-200 ease-out [@media(hover:hover)]:hover:-translate-y-0.5 [@media(hover:hover)]:hover:border-[#A3B69B]/60 [@media(hover:hover)]:hover:shadow-lg [@media(hover:hover)]:hover:shadow-[#2C2C2C]/5 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7D9878]/50 ${className}`}
+        >
+            <div className={`relative h-24 flex items-center justify-center ${producto.foto ? "bg-white" : `bg-gradient-to-br ${fondo}`}`}>
+                <ImagenProducto producto={producto} tamanoIcono="w-8 h-8" />
+                {puesto && (
+                    <span className="absolute top-2 left-2 w-6 h-6 rounded-full bg-[#2C2C2C] dark:bg-[#F4EFEA] text-white dark:text-[#1B1D1A] text-[11px] font-black flex items-center justify-center tabular-nums">
+                        {puesto}
+                    </span>
+                )}
+                <span className="absolute top-2 right-2 rounded-lg bg-white/85 dark:bg-[#1B1D1A]/75 backdrop-blur px-1.5 py-0.5 text-[10px] font-bold">
+                    {ml ? `${ml} ml` : formato}
+                </span>
+            </div>
+            <div className="p-3 flex-1 flex flex-col">
+                {marca && <p className="text-[9px] font-black uppercase tracking-[0.16em] text-[#7D9878] dark:text-[#A3B69B] truncate">{marca}</p>}
+                <p className="font-brand text-sm font-bold leading-snug line-clamp-2">{nombre}</p>
+                <p className="mt-auto pt-1.5 text-sm font-black tabular-nums">${formatNumber(producto.price)}</p>
+            </div>
+        </button>
+    );
+}
+
+function TarjetaProducto({ producto, qty, onQty, onAbrir }: { producto: CatalogoProducto; qty: number; onQty: (qty: number) => void; onAbrir: () => void }) {
+    // El tamaño o formato ya se muestra en la etiqueta del recuadro: no va en el nombre.
+    const { nombre, marca: brand } = nombreYMarca(producto.name);
+    const { formato, fondo, acento } = estiloProducto(producto);
     const enPedido = qty > 0;
     const sinStock = producto.availability === "sin-stock";
     // Mientras el carrito del botón viaja, el botón sigue a la vista (después aparece el − / +)
@@ -627,24 +775,16 @@ function TarjetaProducto({ producto, qty, onQty }: { producto: CatalogoProducto;
     const ml = formato.match(/(\d+)\s*ml/i)?.[1];
 
     return (
-        <article className={`group relative flex flex-col overflow-hidden rounded-3xl border bg-white dark:bg-[#242723] transition duration-200 hover:-translate-y-1 hover:shadow-xl hover:shadow-[#2C2C2C]/5 dark:hover:shadow-black/30 ${enPedido
+        // Tocar la tarjeta (menos sus botones) abre la ficha del perfume
+        <article
+            onClick={e => { if (!(e.target as HTMLElement).closest("button, a")) onAbrir(); }}
+            className={`group relative flex flex-col overflow-hidden rounded-3xl border bg-white dark:bg-[#242723] cursor-pointer transition duration-200 hover:-translate-y-1 hover:shadow-xl hover:shadow-[#2C2C2C]/5 dark:hover:shadow-black/30 ${enPedido
             ? "border-[#7D9878] ring-1 ring-[#7D9878]/40"
             : "border-[#E6DFD5] dark:border-[#353B33] hover:border-[#A3B69B]/60"}`}
         >
             {/* Recuadro visual: la foto si hay; si no, degradé con el ícono del tipo */}
             <div className={`relative h-40 overflow-hidden flex items-center justify-center ${producto.foto ? "bg-white" : `bg-gradient-to-br ${fondo}`}`}>
-                {producto.foto ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                        src={producto.foto}
-                        alt={producto.name}
-                        loading="lazy"
-                        decoding="async"
-                        className={`w-full h-full object-contain p-3 transition-transform duration-500 ease-out group-hover:scale-105 ${sinStock ? "opacity-50 grayscale" : ""}`}
-                    />
-                ) : (
-                    <Icono className={`w-10 h-10 ${acento} opacity-70 transition-transform duration-300 group-hover:scale-110`} strokeWidth={1.4} />
-                )}
+                <ImagenProducto producto={producto} />
                 {ml ? (
                     <span className="absolute top-3 left-3 inline-flex items-baseline gap-0.5 rounded-xl bg-[#2C2C2C] dark:bg-[#F4EFEA] text-white dark:text-[#1B1D1A] px-3 py-1.5 shadow-md shadow-black/15">
                         <span className="text-lg font-black leading-none tabular-nums">{ml}</span>
@@ -666,28 +806,19 @@ function TarjetaProducto({ producto, qty, onQty }: { producto: CatalogoProducto;
                     </span>
                 )}
                 {/* Disponibilidad: en stock / demora / sin stock */}
-                {sinStock ? (
-                    <span className="absolute bottom-3 left-3 rounded-full bg-[#C9866F] text-white px-2.5 py-1 text-[10px] font-black uppercase tracking-widest">
-                        Sin stock
-                    </span>
-                ) : (
-                    <span className={`absolute bottom-3 left-3 inline-flex items-center gap-1.5 rounded-full bg-white/85 dark:bg-[#1B1D1A]/75 backdrop-blur px-2.5 py-1 text-[10px] font-black ${producto.availability === "disponible"
-                        ? "text-[#128a5f] dark:text-[#4fd1a0]"
-                        : "text-[#7A5C34] dark:text-[#DAC4AA]"}`}>
-                        {producto.availability === "disponible" ? (
-                            <><span aria-hidden className="w-1.5 h-1.5 rounded-full bg-[#1baf7a]" /> En stock</>
-                        ) : (
-                            <><Clock className="w-3 h-3" /> {producto.deliveryDays > 0 ? `Demora ${producto.deliveryDays} días` : "Con demora"}</>
-                        )}
-                    </span>
-                )}
+                <InsigniaStock producto={producto} className="absolute bottom-3 left-3" />
             </div>
 
             <div className="flex-1 flex flex-col gap-1 p-5">
                 {brand && (
                     <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#7D9878] dark:text-[#A3B69B]">{brand}</p>
                 )}
-                <h3 className="font-brand text-lg font-bold leading-snug">{nombre}</h3>
+                <h3 className="font-brand text-lg font-bold leading-snug">
+                    {/* Botón real para quien navega con teclado o lector de pantalla */}
+                    <button type="button" onClick={onAbrir} className="text-left hover:text-[#5A7356] dark:hover:text-[#A3B69B] transition-colors duration-150 focus-visible:outline-none focus-visible:underline">
+                        {nombre}
+                    </button>
+                </h3>
                 {producto.description && (
                     <p className="text-sm text-[#2C2C2C]/65 dark:text-[#F4EFEA]/65 line-clamp-2 mt-1">{producto.description}</p>
                 )}
@@ -715,6 +846,176 @@ function TarjetaProducto({ producto, qty, onQty }: { producto: CatalogoProducto;
                 </div>
             </div>
         </article>
+    );
+}
+
+// Vidrio, el mismo lenguaje que la barra del sistema: relleno translúcido en degradé, desenfoque
+// del fondo y un brillo fino en el borde de arriba
+const VIDRIO_PANEL = [
+    "bg-gradient-to-b from-white/85 to-white/65 dark:from-[#2E322D]/80 dark:to-[#1F221E]/75",
+    "backdrop-blur-2xl backdrop-saturate-150",
+    "border border-white/80 dark:border-white/[0.12]",
+    "shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_30px_80px_-20px_rgba(44,44,44,0.45)]",
+    "dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.14),0_30px_80px_-20px_rgba(0,0,0,0.8)]",
+].join(" ");
+const VIDRIO_PIEZA = "bg-white/60 dark:bg-white/[0.05] border border-white/80 dark:border-white/[0.08] shadow-[inset_0_1px_0_rgba(255,255,255,0.7)] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]";
+
+// Las secciones entran una detrás de otra, apenas (se abre de vez en cuando: puede tener un detalle)
+const ENTRADA = {
+    oculto: { opacity: 0, y: 6 },
+    visible: (i: number) => ({ opacity: 1, y: 0, transition: { delay: 0.06 + i * 0.045, duration: 0.28, ease: [0.23, 1, 0.32, 1] as const } }),
+};
+
+// Cada nivel con un ícono que lo cuenta: la salida se evapora (aire), el corazón es floral,
+// el fondo queda en la piel (gota)
+const NIVELES_NOTAS = [
+    { nivel: "Salida", ayuda: "Lo primero que se siente", Icono: Wind, campo: "salida" },
+    { nivel: "Corazón", ayuda: "El centro del perfume", Icono: Flower2, campo: "corazon" },
+    { nivel: "Fondo", ayuda: "Lo que queda en la piel", Icono: Droplet, campo: "fondo" },
+] as const;
+
+// Ficha del perfume: ventana centrada de vidrio con lo que no entra en la tarjeta:
+// la descripción y las notas. Abajo, consultar por WhatsApp.
+function FichaPerfume({ tamanos, idInicial, notas, onCerrar }: {
+    tamanos: CatalogoProducto[];
+    idInicial?: string;
+    /** Notas olfativas del perfume, si están cargadas */
+    notas?: NotasPerfume;
+    onCerrar: () => void;
+}) {
+    const elegido = tamanos.find(t => t.id === idInicial) ?? tamanos.find(t => t.availability !== "sin-stock") ?? tamanos[0];
+    const { nombre, marca } = nombreYMarca(elegido.name);
+    const { acento, formato, Icono } = estiloProducto(elegido);
+    const esPerfume = tipoDe(elegido) === "perfumes";
+    // La descripción que cargaste en el producto tiene prioridad; si no hay, la de las notas
+    const descripcion = tamanos.map(t => t.description).find(Boolean) || notas?.descripcion || "";
+    const hayNotas = !!(notas && (notas.salida || notas.corazon || notas.fondo));
+    const detalle = `${nombre}${marca ? ` (${marca})` : ""}${esPerfume ? ` - ${elegido.gender}` : ""}`;
+    const g = (elegido.gender || "").toLowerCase();
+    // Resplandor de color detrás del encabezado, según el género (como el degradé de las tarjetas)
+    const resplandor = g.startsWith("fem") ? "bg-[#C9866F]" : g.startsWith("masc") ? "bg-[#7D9878]" : "bg-[#C9A877]";
+
+    const titulo = "text-[11px] font-semibold uppercase tracking-[0.16em] text-[#2C2C2C]/45 dark:text-[#F4EFEA]/40";
+
+    return (
+        <div className={`relative w-full max-w-lg overflow-hidden rounded-[2rem] ${VIDRIO_PANEL}`}>
+            {/* Luces de color difusas detrás del vidrio */}
+            <span aria-hidden className={`pointer-events-none absolute -top-24 -left-16 w-72 h-72 rounded-full ${resplandor} opacity-30 dark:opacity-25 blur-[70px]`} />
+            <span aria-hidden className="pointer-events-none absolute -top-20 right-0 w-56 h-56 rounded-full bg-[#DAC4AA] opacity-25 dark:opacity-10 blur-[70px]" />
+
+            <div className="relative">
+                {/* Encabezado */}
+                <div className="flex items-center gap-4 p-6 pr-16">
+                    <div className={`w-20 h-20 shrink-0 rounded-[1.4rem] overflow-hidden flex items-center justify-center ${elegido.foto ? "bg-white" : VIDRIO_PIEZA}`}>
+                        {elegido.foto ? <ImagenProducto producto={elegido} /> : <Icono className={`w-9 h-9 ${acento}`} strokeWidth={1.4} />}
+                    </div>
+                    <div className="min-w-0">
+                        {marca && <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#5A7356] dark:text-[#A3B69B]">{marca}</p>}
+                        <h2 className="font-brand text-[1.65rem] font-bold leading-tight">{nombre}</h2>
+                        <p className={`mt-1 text-[11px] font-bold uppercase tracking-widest ${acento}`}>{esPerfume ? elegido.gender : formato}</p>
+                        {/* Familia olfativa (floral, amaderado…) */}
+                        {notas && notas.familia.length > 0 && (
+                            <div className="mt-2 flex flex-wrap gap-1.5">
+                                {notas.familia.map(f => (
+                                    <span key={f} className={`h-6 px-2.5 rounded-full inline-flex items-center text-[11px] font-semibold text-[#2C2C2C]/70 dark:text-[#F4EFEA]/70 ${VIDRIO_PIEZA}`}>
+                                        {f}
+                                    </span>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                    {/* Cerrar: al pasar el mouse se tiñe de terracota y la X gira un cuarto de vuelta */}
+                    <button
+                        onClick={onCerrar}
+                        aria-label="Cerrar"
+                        className={`group/cerrar absolute top-5 right-5 w-9 h-9 rounded-full flex items-center justify-center ${VIDRIO_PIEZA} text-[#2C2C2C]/70 dark:text-[#F4EFEA]/70 [@media(hover:hover)]:hover:bg-[#C9866F] [@media(hover:hover)]:hover:border-[#C9866F] [@media(hover:hover)]:hover:text-white [@media(hover:hover)]:hover:shadow-[0_6px_18px_-4px_rgba(201,134,111,0.6)] active:scale-[0.92] transition-[background-color,border-color,color,box-shadow,transform] duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C9866F]/60`}
+                    >
+                        <X className="w-4 h-4 transition-transform duration-200 ease-out [@media(hover:hover)]:group-hover/cerrar:rotate-90" />
+                    </button>
+                </div>
+
+                <div className="px-6 pb-6 space-y-6">
+                    {/* Tamaños y precios: una placa de vidrio dividida en columnas, una por tamaño,
+                        con el tamaño arriba, el precio grande y la disponibilidad escrita abajo */}
+                    <motion.div
+                        custom={0}
+                        variants={ENTRADA}
+                        initial="oculto"
+                        animate="visible"
+                        className={`grid rounded-2xl overflow-hidden divide-x divide-[#2C2C2C]/[0.07] dark:divide-white/[0.07] ${VIDRIO_PIEZA}`}
+                        style={{ gridTemplateColumns: `repeat(${tamanos.length}, minmax(0, 1fr))` }}
+                    >
+                        {tamanos.map(t => {
+                            const ml = mlDe(t);
+                            const estado = t.availability === "disponible"
+                                ? { texto: "En stock", color: "text-[#128a5f] dark:text-[#4fd1a0]", punto: "bg-[#1baf7a]" }
+                                : t.availability === "demora"
+                                    ? { texto: t.deliveryDays > 0 ? `Demora ${t.deliveryDays} días` : "Con demora", color: "text-[#8A6A3E] dark:text-[#DAC4AA]", punto: "bg-[#C9A877]" }
+                                    : { texto: "Sin stock", color: "text-[#97604D] dark:text-[#DBA793]", punto: "bg-[#C9866F]" };
+                            return (
+                                <div key={t.id} className={`px-4 py-3.5 ${t.availability === "sin-stock" ? "opacity-60" : ""}`}>
+                                    <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#2C2C2C]/50 dark:text-[#F4EFEA]/45">
+                                        {ml ? `Frasco ${ml} ml` : etiquetaCategoria(t.category)}
+                                    </p>
+                                    <p className="mt-1 flex items-baseline gap-0.5 font-black tracking-tight tabular-nums">
+                                        <span className="text-sm text-[#2C2C2C]/55 dark:text-[#F4EFEA]/55">$</span>
+                                        <span className="text-[1.6rem] leading-none">{formatNumber(t.price)}</span>
+                                    </p>
+                                    <p className={`mt-2 inline-flex items-center gap-1.5 text-[11px] font-semibold ${estado.color}`}>
+                                        <span aria-hidden className={`w-1.5 h-1.5 rounded-full ${estado.punto}`} />
+                                        {estado.texto}
+                                    </p>
+                                </div>
+                            );
+                        })}
+                    </motion.div>
+
+                    <motion.section custom={1} variants={ENTRADA} initial="oculto" animate="visible">
+                        <p className={titulo}>Descripción</p>
+                        {descripcion ? (
+                            <p className="mt-2 text-[15px] leading-relaxed text-[#2C2C2C]/80 dark:text-[#F4EFEA]/80">{descripcion}</p>
+                        ) : (
+                            <p className="mt-2 text-sm text-[#2C2C2C]/45 dark:text-[#F4EFEA]/40">Todavía no cargamos la descripción de este perfume.</p>
+                        )}
+                    </motion.section>
+
+                    {/* Notas: salida, corazón y fondo, cada una con su ícono */}
+                    <motion.section custom={2} variants={ENTRADA} initial="oculto" animate="visible">
+                        <p className={titulo}>Notas</p>
+                        {hayNotas ? (
+                            <ol className="mt-3 space-y-2">
+                                {NIVELES_NOTAS.filter(n => notas?.[n.campo]).map(n => (
+                                    <li key={n.nivel} title={n.ayuda} className={`flex items-center gap-3 rounded-2xl pl-2 pr-3 py-2 ${VIDRIO_PIEZA}`}>
+                                        <span aria-hidden className="w-9 h-9 shrink-0 rounded-xl flex items-center justify-center bg-[#7D9878]/12 dark:bg-[#A3B69B]/10 text-[#5A7356] dark:text-[#A3B69B]">
+                                            <n.Icono className="w-4 h-4" strokeWidth={1.75} />
+                                        </span>
+                                        <span className="min-w-0 flex-1">
+                                            <span className="block text-[10px] font-bold uppercase tracking-[0.14em] text-[#2C2C2C]/45 dark:text-[#F4EFEA]/40">{n.nivel}</span>
+                                            <span className="block text-sm font-medium leading-snug">{notas?.[n.campo]}</span>
+                                        </span>
+                                    </li>
+                                ))}
+                            </ol>
+                        ) : (
+                            <p className="mt-2 text-sm text-[#2C2C2C]/45 dark:text-[#F4EFEA]/40">Todavía no cargamos las notas de este perfume. Consultanos por WhatsApp.</p>
+                        )}
+                    </motion.section>
+
+                    {/* Consultar: como la pastilla del menú (oscura; clara en modo oscuro) */}
+                    <motion.div custom={3} variants={ENTRADA} initial="oculto" animate="visible" className="pt-1">
+                        <a
+                            href={whatsappUrl(`¡Hola Scenta! Quería consultar por ${detalle}`)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="w-full inline-flex items-center justify-center gap-2 h-12 rounded-full bg-[#2C2C2C] dark:bg-[#F4EFEA] text-white dark:text-[#1B1D1A] text-sm font-bold shadow-lg shadow-black/15 dark:shadow-black/40 [@media(hover:hover)]:hover:brightness-110 active:scale-[0.97] transition-[filter,transform] duration-150"
+                        >
+                            <MessageCircle className="w-4 h-4 text-[#A3B69B] dark:text-[#5A7356]" />
+                            Consultar por WhatsApp
+                        </a>
+                    </motion.div>
+                </div>
+            </div>
+        </div>
     );
 }
 

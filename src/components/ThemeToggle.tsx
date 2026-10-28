@@ -35,7 +35,7 @@ export default function ThemeToggle() {
     return (
         <button
             onClick={toggleTheme}
-            className="w-9 h-9 flex items-center justify-center rounded-xl bg-white dark:bg-[#242723] hover:bg-[#F4EFEA] dark:hover:bg-[#2F332E] text-[#2C2C2C]/65 dark:text-[#F4EFEA]/65 hover:text-[#7D9878] dark:hover:text-[#A3B69B] border border-[#E6DFD5] dark:border-[#353B33] transition-[background-color,color,transform] duration-150 active:scale-[0.94] overflow-hidden"
+            className="w-9 h-9 flex items-center justify-center rounded-full bg-white/50 dark:bg-white/[0.04] hover:bg-white/90 dark:hover:bg-white/[0.1] text-[#2C2C2C]/65 dark:text-[#F4EFEA]/65 hover:text-[#7D9878] dark:hover:text-[#A3B69B] border border-white/70 dark:border-white/[0.08] transition-[background-color,color,transform] duration-150 active:scale-[0.94] overflow-hidden"
             title="Alternar modo claro / oscuro"
             aria-label="Alternar modo claro / oscuro"
         >

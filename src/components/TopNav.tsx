@@ -19,16 +19,27 @@ type NavItem = { href: string; label: string; icon: LucideIcon; desc?: string };
 const EASE_OUT = [0.23, 1, 0.32, 1] as const;
 const RESORTE = { type: "spring", bounce: 0.15, duration: 0.35 } as const;
 
-// Pastilla que marca la sección actual: se desliza de un botón al otro al navegar.
+// Pastilla que marca la sección actual: oscura sobre el vidrio (clara en modo oscuro),
+// se desliza de un botón al otro al navegar.
 function Pastilla() {
     return (
         <motion.span
             layoutId="nav-pastilla"
             transition={RESORTE}
-            className="absolute inset-0 rounded-xl bg-white dark:bg-[#353B33] shadow-sm shadow-[#2C2C2C]/[0.06] ring-1 ring-[#E6DFD5]/80 dark:ring-white/[0.04]"
+            className="absolute inset-0 rounded-full bg-[#2C2C2C] dark:bg-[#F4EFEA] shadow-md shadow-black/15 dark:shadow-black/40"
         />
     );
 }
+
+// Superficie de vidrio: relleno claro translúcido en degradé, desenfoque fuerte del fondo,
+// brillo fino en el borde de arriba (lo que hace que se lea como vidrio) y sombra que la despega
+const VIDRIO = [
+    "bg-gradient-to-b from-white/75 to-white/45 dark:from-white/[0.13] dark:to-white/[0.04]",
+    "backdrop-blur-2xl backdrop-saturate-[1.8]",
+    "border border-white/80 dark:border-white/[0.14]",
+    "shadow-[inset_0_1px_0_rgba(255,255,255,0.9),inset_0_-1px_0_rgba(255,255,255,0.25),0_12px_40px_-12px_rgba(44,44,44,0.25)]",
+    "dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.18),inset_0_-1px_0_rgba(255,255,255,0.04),0_16px_48px_-12px_rgba(0,0,0,0.7)]",
+].join(" ");
 
 // Mientras se abre la sección tocada: una rayita que late debajo del botón. Aparece recién a los
 // 120 ms, así en las secciones que abren al instante no se ve nada.
@@ -128,18 +139,21 @@ export default function TopNav() {
     const showPedidos = puedeVer(role, "/pedidos");
 
     // Estilos compartidos de la botonera (misma altura y peso en todos los botones).
-    const itemBase = "relative flex items-center gap-2 h-9 px-2.5 2xl:px-3 rounded-xl text-[13px] font-semibold whitespace-nowrap transition-[color,transform] duration-150 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7D9878]/50";
-    const itemActivo = "text-[#2C2C2C] dark:text-[#F4EFEA]";
-    const itemInactivo = "text-[#2C2C2C]/60 dark:text-[#F4EFEA]/55 hover:text-[#2C2C2C] dark:hover:text-[#F4EFEA]";
-    const botonDerecha = "flex items-center gap-2 h-9 px-3 rounded-xl border border-[#E6DFD5] dark:border-[#353B33] bg-white dark:bg-[#242723] text-[13px] font-semibold whitespace-nowrap transition-[background-color,border-color,color,transform] duration-150";
+    const itemBase = "relative flex items-center gap-2 h-9 px-3 2xl:px-3.5 rounded-full text-[13px] font-semibold whitespace-nowrap transition-[color,transform] duration-150 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7D9878]/50";
+    const itemActivo = "text-white dark:text-[#1B1D1A]";
+    const itemAbierto = "text-[#2C2C2C] dark:text-[#F4EFEA]";
+    const itemInactivo = "text-[#2C2C2C]/65 dark:text-[#F4EFEA]/60 hover:text-[#2C2C2C] dark:hover:text-[#F4EFEA]";
+    const iconoActivo = "text-[#A3B69B] dark:text-[#5A7356]";
+    const botonDerecha = "flex items-center gap-2 h-9 px-3 rounded-full border border-white/70 dark:border-white/[0.08] bg-white/50 dark:bg-white/[0.04] text-[13px] font-semibold whitespace-nowrap transition-[background-color,border-color,color,transform] duration-150";
     const inicial = (currentUser?.username || "?").charAt(0).toUpperCase();
 
     return (
-        <header className="sticky top-0 z-50 bg-white/80 dark:bg-[#1B1D1A]/80 backdrop-blur-xl border-b border-[#E6DFD5] dark:border-[#353B33] transition-colors duration-300 print:hidden">
-            <div className="max-w-[1800px] mx-auto px-4 sm:px-6 2xl:px-8">
+        // Barra flotante de vidrio: despegada de los bordes, con el contenido pasando por detrás
+        <header className="sticky top-0 z-50 px-3 sm:px-5 pt-3 transition-colors duration-300 print:hidden">
+            <div className={`max-w-[1800px] mx-auto pl-3 pr-2 sm:pl-4 rounded-full ${VIDRIO}`}>
                 {/* En pantallas grandes: tres columnas iguales a los costados, así el menú queda en el centro real.
                     En pantallas medianas (1280 a 1535 px) todo se achica un poco y se reparte el espacio para que entre en una fila. */}
-                <div className="flex 2xl:grid 2xl:grid-cols-[1fr_auto_1fr] items-center justify-between gap-4 xl:gap-3 2xl:gap-4 h-16 w-full">
+                <div className="flex 2xl:grid 2xl:grid-cols-[1fr_auto_1fr] items-center justify-between gap-4 xl:gap-3 2xl:gap-4 h-14 w-full">
 
                     {/* Izquierda: logo */}
                     <div className="flex items-center justify-self-start shrink-0">
@@ -165,7 +179,7 @@ export default function TopNav() {
                         <nav
                             ref={dropdownRef}
                             aria-label="Secciones"
-                            className="flex items-center gap-0.5 p-1 rounded-2xl bg-[#F4EFEA]/70 dark:bg-[#202320] border border-[#E6DFD5] dark:border-[#353B33]"
+                            className="flex items-center gap-0.5 p-1 rounded-full bg-[#2C2C2C]/[0.05] dark:bg-black/25 shadow-[inset_0_1px_2px_rgba(0,0,0,0.08)] dark:shadow-[inset_0_1px_3px_rgba(0,0,0,0.4)]"
                         >
                             {directItems.map((item) => {
                                 const isActive = pathname === item.href;
@@ -179,7 +193,7 @@ export default function TopNav() {
                                     >
                                         {isActive && <Pastilla />}
                                         <span className="relative flex items-center gap-2">
-                                            <Icon className={`w-4 h-4 shrink-0 transition-colors duration-150 ${isActive ? "text-[#7D9878] dark:text-[#A3B69B]" : "group-hover:text-[#7D9878] dark:group-hover:text-[#A3B69B]"}`} />
+                                            <Icon className={`w-4 h-4 shrink-0 transition-colors duration-150 ${isActive ? iconoActivo : "group-hover:text-[#7D9878] dark:group-hover:text-[#A3B69B]"}`} />
                                             {item.label}
                                         </span>
                                         <CargandoSeccion />
@@ -200,14 +214,14 @@ export default function TopNav() {
                                             onClick={() => setOpenDropdown(isOpen ? null : section.key)}
                                             aria-expanded={isOpen}
                                             aria-haspopup="menu"
-                                            className={`${itemBase} ${isSectionActive || isOpen ? itemActivo : itemInactivo} group`}
+                                            className={`${itemBase} ${isSectionActive ? itemActivo : isOpen ? itemAbierto : itemInactivo} group`}
                                         >
                                             {isSectionActive && <Pastilla />}
                                             {isOpen && !isSectionActive && (
-                                                <span className="absolute inset-0 rounded-xl bg-white/70 dark:bg-[#2F332E]" />
+                                                <span className="absolute inset-0 rounded-full bg-white/80 dark:bg-white/[0.08]" />
                                             )}
                                             <span className="relative flex items-center gap-2">
-                                                <SectionIcon className={`w-4 h-4 shrink-0 transition-colors duration-150 ${isSectionActive ? "text-[#7D9878] dark:text-[#A3B69B]" : "group-hover:text-[#7D9878] dark:group-hover:text-[#A3B69B]"}`} />
+                                                <SectionIcon className={`w-4 h-4 shrink-0 transition-colors duration-150 ${isSectionActive ? iconoActivo : "group-hover:text-[#7D9878] dark:group-hover:text-[#A3B69B]"}`} />
                                                 {section.title}
                                                 <ChevronDown className={`w-3.5 h-3.5 shrink-0 opacity-50 transition-transform duration-200 ease-out ${isOpen ? "rotate-180" : ""}`} />
                                             </span>
@@ -221,7 +235,7 @@ export default function TopNav() {
                                                     animate={{ opacity: 1, y: 0, scale: 1, transition: { duration: 0.18, ease: EASE_OUT } }}
                                                     exit={{ opacity: 0, scale: 0.98, transition: { duration: 0.1, ease: "easeOut" } }}
                                                     style={{ transformOrigin: "top center" }}
-                                                    className="absolute top-full left-1/2 -translate-x-1/2 mt-3 w-72 bg-white dark:bg-[#242723] rounded-2xl p-1.5 border border-[#E6DFD5] dark:border-[#353B33] shadow-xl shadow-[#2C2C2C]/10 dark:shadow-black/40 z-50"
+                                                    className="absolute top-full left-1/2 -translate-x-1/2 mt-4 w-72 bg-white/85 dark:bg-[#242723]/85 backdrop-blur-2xl backdrop-saturate-150 rounded-3xl p-1.5 border border-white/70 dark:border-white/[0.08] shadow-[0_20px_50px_-15px_rgba(44,44,44,0.3)] dark:shadow-black/50 z-50"
                                                 >
                                                     <p className="px-3 pt-2 pb-1.5 text-[10px] font-bold uppercase tracking-widest text-[#2C2C2C]/45 dark:text-[#F4EFEA]/45">
                                                         {section.title}
@@ -235,13 +249,13 @@ export default function TopNav() {
                                                                 href={item.href}
                                                                 role="menuitem"
                                                                 aria-current={isActive ? "page" : undefined}
-                                                                className={`group/item flex items-center gap-3 px-2 py-2 rounded-xl transition-colors duration-150 ${isActive
-                                                                    ? "bg-[#7D9878]/10 dark:bg-[#A3B69B]/15"
-                                                                    : "hover:bg-[#F9F6F0] dark:hover:bg-[#2F332E]"}`}
+                                                                className={`group/item flex items-center gap-3 px-2 py-2 rounded-2xl transition-colors duration-150 ${isActive
+                                                                    ? "bg-[#7D9878]/12 dark:bg-[#A3B69B]/15"
+                                                                    : "hover:bg-white/80 dark:hover:bg-white/[0.06]"}`}
                                                             >
-                                                                <span className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 transition-colors duration-150 ${isActive
-                                                                    ? "bg-[#7D9878] text-white"
-                                                                    : "bg-[#F4EFEA] dark:bg-[#1B1D1A] text-[#7D9878] dark:text-[#A3B69B] group-hover/item:bg-white dark:group-hover/item:bg-[#1B1D1A]"}`}>
+                                                                <span className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-colors duration-150 ${isActive
+                                                                    ? "bg-[#2C2C2C] dark:bg-[#F4EFEA] text-[#A3B69B] dark:text-[#5A7356]"
+                                                                    : "bg-[#2C2C2C]/[0.05] dark:bg-white/[0.06] text-[#7D9878] dark:text-[#A3B69B]"}`}>
                                                                     <Icon className="w-4 h-4" />
                                                                 </span>
                                                                 <span className="min-w-0">
@@ -271,7 +285,7 @@ export default function TopNav() {
                                 title="Pedidos a proveedores"
                                 aria-current={pathname === "/pedidos" ? "page" : undefined}
                                 className={pathname === "/pedidos"
-                                    ? "flex items-center gap-2 h-9 px-3 rounded-xl bg-[#7D9878] text-white text-[13px] font-semibold whitespace-nowrap shadow-sm shadow-[#7D9878]/30 active:scale-[0.97] transition-transform duration-150"
+                                    ? "flex items-center gap-2 h-9 px-3 rounded-full bg-[#2C2C2C] dark:bg-[#F4EFEA] text-white dark:text-[#1B1D1A] text-[13px] font-semibold whitespace-nowrap shadow-sm shadow-[#7D9878]/30 active:scale-[0.97] transition-transform duration-150"
                                     : `${botonDerecha} text-[#2C2C2C]/70 dark:text-[#F4EFEA]/70 hover:border-[#7D9878]/60 hover:text-[#2C2C2C] dark:hover:text-[#F4EFEA] active:scale-[0.97]`}
                             >
                                 <span className="relative flex">
@@ -298,7 +312,7 @@ export default function TopNav() {
                         <ThemeToggle />
 
                         {currentUser && (
-                            <div className={`flex items-center h-9 pl-1 pr-1 rounded-xl border bg-white dark:bg-[#242723] transition-colors duration-150 ${pathname === "/perfil" ? "border-[#7D9878]/60" : "border-[#E6DFD5] dark:border-[#353B33]"}`}>
+                            <div className={`flex items-center h-10 pl-1 pr-1 rounded-full border bg-white/50 dark:bg-white/[0.04] transition-colors duration-150 ${pathname === "/perfil" ? "border-[#7D9878]/60" : "border-white/70 dark:border-white/[0.08]"}`}>
                                 {/* Avatar y nombre llevan a Mi perfil (cuenta y usuarios del equipo) */}
                                 <Link
                                     href="/perfil"
@@ -306,7 +320,7 @@ export default function TopNav() {
                                     aria-current={pathname === "/perfil" ? "page" : undefined}
                                     className="flex items-center rounded-lg group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7D9878]/50 active:scale-[0.97] transition-transform duration-150"
                                 >
-                                    <span className="w-7 h-7 rounded-lg bg-gradient-to-br from-[#8FA888] to-[#6B8566] text-white text-xs font-black flex items-center justify-center transition-[filter] duration-150 group-hover:brightness-110">
+                                    <span className="w-8 h-8 rounded-full bg-gradient-to-br from-[#8FA888] to-[#6B8566] text-white text-xs font-black flex items-center justify-center transition-[filter] duration-150 group-hover:brightness-110">
                                         {inicial}
                                     </span>
                                     <span className="hidden min-[1800px]:inline px-2 text-[13px] font-semibold text-[#2C2C2C] dark:text-[#F4EFEA] capitalize group-hover:text-[#5A7356] dark:group-hover:text-[#A3B69B] transition-colors duration-150">
@@ -318,7 +332,7 @@ export default function TopNav() {
                                         await logout();
                                         window.location.href = "/login";
                                     }}
-                                    className="ml-1 w-7 h-7 rounded-lg flex items-center justify-center text-[#2C2C2C]/50 dark:text-[#F4EFEA]/50 hover:text-rose-500 hover:bg-rose-500/10 transition-colors duration-150 active:scale-[0.94]"
+                                    className="ml-1 w-8 h-8 rounded-full flex items-center justify-center text-[#2C2C2C]/50 dark:text-[#F4EFEA]/50 hover:text-rose-500 hover:bg-rose-500/10 transition-colors duration-150 active:scale-[0.94]"
                                     title="Cerrar sesión"
                                     aria-label="Cerrar sesión"
                                 >
@@ -333,7 +347,7 @@ export default function TopNav() {
                         <ThemeToggle />
                         <button
                             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                            className="w-10 h-10 flex items-center justify-center text-[#2C2C2C] dark:text-[#F4EFEA] bg-[#F9F6F0] dark:bg-[#242723] border border-[#E6DFD5] dark:border-[#353B33] rounded-xl active:scale-[0.95] transition-transform duration-150"
+                            className="w-10 h-10 flex items-center justify-center text-[#2C2C2C] dark:text-[#F4EFEA] bg-white/50 dark:bg-white/[0.04] border border-white/70 dark:border-white/[0.08] rounded-full active:scale-[0.95] transition-transform duration-150"
                             aria-label={isMobileMenuOpen ? "Cerrar menú" : "Abrir menú"}
                             aria-expanded={isMobileMenuOpen}
                         >
@@ -361,7 +375,7 @@ export default function TopNav() {
                         initial={{ opacity: 0, y: -8 }}
                         animate={{ opacity: 1, y: 0, transition: { duration: 0.22, ease: EASE_OUT } }}
                         exit={{ opacity: 0, y: -6, transition: { duration: 0.12, ease: "easeOut" } }}
-                        className="xl:hidden border-t border-[#E6DFD5] dark:border-[#353B33] bg-white dark:bg-[#242723] p-6 space-y-6 max-h-[calc(100vh-5rem)] overflow-y-auto"
+                        className={`xl:hidden mt-2 rounded-3xl p-6 space-y-6 max-h-[calc(100vh-6rem)] overflow-y-auto bg-white/85 dark:bg-[#242723]/85 backdrop-blur-2xl border border-white/70 dark:border-white/[0.08] shadow-[0_20px_50px_-15px_rgba(44,44,44,0.3)]`}
                     >
                         {/* Accesos rápidos que en escritorio están a la derecha */}
                         <div className="flex flex-wrap items-center gap-2">

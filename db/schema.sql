@@ -164,3 +164,16 @@ CREATE INDEX IF NOT EXISTS idx_orders_customer ON orders (customer_name);
 CREATE INDEX IF NOT EXISTS idx_transacciones_created ON transacciones (created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_solicitudes_estado ON solicitudes_mayorista (estado, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_usuarios_username ON usuarios (username);
+
+-- Notas olfativas de cada perfume del catálogo (una fila por perfume, la comparten sus tamaños).
+-- slug = el mismo del link del perfume (src/lib/catalogo-perfume.ts). Se carga con scripts/cargar-notas.mjs
+CREATE TABLE IF NOT EXISTS perfume_notas (
+    slug        text PRIMARY KEY,
+    original    text,
+    familia     text[] DEFAULT '{}',
+    salida      text,
+    corazon     text,
+    fondo       text,
+    descripcion text,
+    updated_at  timestamptz DEFAULT now()
+);

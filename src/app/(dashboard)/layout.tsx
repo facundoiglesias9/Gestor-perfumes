@@ -59,6 +59,13 @@ function DashboardContent({ children }: { children: ReactNode }) {
 
     return (
         <div className="min-h-screen flex flex-col bg-[#F9F6F0] dark:bg-[#1B1D1A] font-sans text-[#2C2C2C] dark:text-[#F4EFEA] selection:bg-[#7D9878]/30 selection:text-white transition-colors duration-300 print:bg-white print:text-black">
+            {/* Manchas de color muy suaves detrás de todo: le dan algo que desenfocar a la barra de vidrio */}
+            <div aria-hidden className="fixed inset-0 overflow-hidden pointer-events-none print:hidden">
+                <div className="absolute -top-48 left-[8%] w-[620px] h-[420px] rounded-full bg-[#A3B69B]/40 dark:bg-[#7D9878]/30 blur-[110px]" />
+                <div className="absolute -top-40 right-[10%] w-[520px] h-[380px] rounded-full bg-[#DAC4AA]/50 dark:bg-[#C9866F]/20 blur-[110px]" />
+                <div className="absolute top-1/2 -left-40 w-[480px] h-[480px] rounded-full bg-[#DAC4AA]/30 dark:bg-[#7D9878]/[0.12] blur-[120px]" />
+            </div>
+
             {/* Top Navigation Bar */}
             <TopNav />
 

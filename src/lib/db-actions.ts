@@ -23,10 +23,13 @@ const sinClave = (tabla: string, registro: any) => {
 };
 
 // El catálogo público calcula la disponibilidad con productos, perfumes hechos y esencias:
-// si cambia alguna de esas tablas, se regenera ya (sin esperar los 5 minutos).
-const AFECTAN_CATALOGO = new Set(['productos', 'inventario', 'esencias']);
+// si cambia alguna de esas tablas, se regenera ya (sin esperar los 5 minutos), también los links
+// de cada perfume. Las ventas (orders) cambian "Los más pedidos".
+const AFECTAN_CATALOGO = new Set(['productos', 'inventario', 'esencias', 'orders']);
 function refrescarCatalogo(tabla: string) {
-  if (AFECTAN_CATALOGO.has(tabla)) revalidatePath('/catalogo');
+  if (!AFECTAN_CATALOGO.has(tabla)) return;
+  revalidatePath('/catalogo');
+  revalidatePath('/catalogo/p/[slug]', 'page');
 }
 
 async function permitido(tabla: string) {
