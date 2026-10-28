@@ -8,8 +8,9 @@ import Desplegable from "@/components/Desplegable";
 import Buscador from "@/components/Buscador";
 import BotonCarrito from "@/components/BotonCarrito";
 import { whatsappUrl } from "@/lib/contacto";
-import { tipoDe, mlDe, nombreYMarca, slugDe, agruparPorPerfume, type NotasPerfume } from "@/lib/catalogo-perfume";
+import { tipoDe, mlDe, nombreYMarca, slugDe, agruparPorPerfume, acordesDe, colorAcorde, ACORDES, type NotasPerfume } from "@/lib/catalogo-perfume";
 import Ventana from "@/components/Ventana";
+import { BotonCerrar } from "@/components/ventana-partes";
 
 export type CatalogoProducto = {
     id: string;
@@ -68,6 +69,11 @@ function paginasVisibles(actual: number, total: number): (number | "…")[] {
 
 type Consulta = Record<string, number>; // id de producto -> cantidad
 
+// Filtro "Notas": un perfume entra si esa nota pesa al menos esto en sus barras de "Lo que predomina"
+const MINIMO_NOTA = 40;
+// Para buscar sin importar mayúsculas ni tildes ("jazmin" encuentra "jazmín")
+const normalizar = (s: string) => (s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+
 // Ficha abierta: qué perfume y qué tamaño se tocó
 type Abierto = { slug: string; id?: string };
 const RUTA_CATALOGO = "/catalogo";
@@ -87,6 +93,7 @@ export default function CatalogoClient({ productos, masPedidos = [], notas = {},
     const [tipo, setTipo] = useState<Tipo>("todo");
     const [genero, setGenero] = useState("Todos");
     const [tamano, setTamano] = useState("Todos");
+    const [nota, setNota] = useState("Todas"); // acorde que predomina (Dulce, Floral…)
     const [stock, setStock] = useState<FiltroStock>("todos");
     const [orden, setOrden] = useState<Orden>("recomendados");
     const [page, setPage] = useState(1);
@@ -164,12 +171,28 @@ export default function CatalogoClient({ productos, masPedidos = [], notas = {},
         return out;
     }, [masPedidos, byId]);
 
-    const q = search.trim().toLowerCase();
+    // Aroma de cada producto (sale de las notas de su perfume): los acordes que predominan, para el
+    // filtro "Notas", y el texto de sus notas, así el buscador encuentra "vainilla" o "jazmín"
+    const aromas = useMemo(() => {
+        const m = new Map<string, { acordes: Set<string>; texto: string }>();
+        for (const p of lista) {
+            const n = notas[slugDe(p)];
+            if (!n) continue;
+            m.set(p.id, {
+                acordes: new Set(acordesDe(n).filter(a => a.valor >= MINIMO_NOTA).map(a => a.nombre)),
+                texto: normalizar([n.salida, n.corazon, n.fondo, n.familia.join(" "), n.descripcion].join(" ")),
+            });
+        }
+        return m;
+    }, [lista, notas]);
+
+    const q = normalizar(search.trim());
     const coincideBusqueda = (p: CatalogoProducto) =>
-        !q || p.name.toLowerCase().includes(q) || p.description.toLowerCase().includes(q);
+        !q || normalizar(p.name).includes(q) || normalizar(p.description).includes(q) || !!aromas.get(p.id)?.texto.includes(q);
     const esPerfumes = tipo === "perfumes";
     const pasaGenero = (p: CatalogoProducto) => !esPerfumes || genero === "Todos" || p.gender === genero;
     const pasaTamano = (p: CatalogoProducto) => !esPerfumes || tamano === "Todos" || p.category === tamano;
+    const pasaNota = (p: CatalogoProducto) => !esPerfumes || nota === "Todas" || !!aromas.get(p.id)?.acordes.has(nota);
     const pasaStock = (p: CatalogoProducto) => stock === "todos" || p.availability === stock;
     const pasaTipo = (p: CatalogoProducto) => tipo === "todo" || tipoDe(p) === tipo;
 
@@ -186,14 +209,14 @@ export default function CatalogoClient({ productos, masPedidos = [], notas = {},
 
     const filtered = useMemo(() => {
         const r = lista.filter(p =>
-            pasaTipo(p) && pasaGenero(p) && pasaTamano(p) && pasaStock(p) && coincideBusqueda(p)
+            pasaTipo(p) && pasaGenero(p) && pasaTamano(p) && pasaNota(p) && pasaStock(p) && coincideBusqueda(p)
         );
         if (orden === "precio-asc") return [...r].sort((a, b) => a.price - b.price);
         if (orden === "precio-desc") return [...r].sort((a, b) => b.price - a.price);
         if (orden === "nombre") return [...r].sort((a, b) => a.name.localeCompare(b.name, "es"));
         // Recomendados: primero lo que se puede pedir ya, al final lo que no tiene stock
         return [...r].sort((a, b) => PESO_DISPONIBILIDAD[a.availability] - PESO_DISPONIBILIDAD[b.availability]);
-    }, [lista, q, tipo, genero, tamano, stock, orden]);
+    }, [lista, q, tipo, genero, tamano, nota, stock, orden, aromas]);
 
     // Cantidad que quedaría al tocar cada opción (respetando la búsqueda y los otros filtros)
     const cuentaTipo = useMemo(() => {
@@ -207,36 +230,49 @@ export default function CatalogoClient({ productos, masPedidos = [], notas = {},
     }, [lista, q, stock]);
 
     const cuentaGenero = useMemo(() => {
-        const base = perfumes.filter(p => pasaTamano(p) && pasaStock(p) && coincideBusqueda(p));
+        const base = perfumes.filter(p => pasaTamano(p) && pasaNota(p) && pasaStock(p) && coincideBusqueda(p));
         const c: Record<string, number> = { Todos: base.length };
         for (const p of base) c[p.gender] = (c[p.gender] ?? 0) + 1;
         return c;
-    }, [perfumes, q, tamano, tipo, stock]);
+    }, [perfumes, q, tamano, nota, tipo, stock, aromas]);
 
     const cuentaTamano = useMemo(() => {
-        const base = perfumes.filter(p => pasaGenero(p) && pasaStock(p) && coincideBusqueda(p));
+        const base = perfumes.filter(p => pasaGenero(p) && pasaNota(p) && pasaStock(p) && coincideBusqueda(p));
         const c: Record<string, number> = { Todos: base.length };
         for (const p of base) c[p.category] = (c[p.category] ?? 0) + 1;
         return c;
-    }, [perfumes, q, genero, tipo, stock]);
+    }, [perfumes, q, genero, nota, tipo, stock, aromas]);
+
+    // Notas: cuántos perfumes tiene cada una (con los otros filtros), de la más común a la menos
+    const cuentaNota = useMemo(() => {
+        const base = perfumes.filter(p => pasaGenero(p) && pasaTamano(p) && pasaStock(p) && coincideBusqueda(p));
+        const c: Record<string, number> = { Todas: base.length };
+        for (const p of base) for (const a of aromas.get(p.id)?.acordes ?? []) c[a] = (c[a] ?? 0) + 1;
+        return c;
+    }, [perfumes, q, genero, tamano, tipo, stock, aromas]);
+    const opcionesNota = useMemo(
+        () => ACORDES.map(a => a.nombre).filter(n => [...aromas.values()].some(x => x.acordes.has(n))),
+        [aromas],
+    );
 
     const cuentaStock = useMemo(() => {
-        const base = lista.filter(p => pasaTipo(p) && pasaGenero(p) && pasaTamano(p) && coincideBusqueda(p));
+        const base = lista.filter(p => pasaTipo(p) && pasaGenero(p) && pasaTamano(p) && pasaNota(p) && coincideBusqueda(p));
         const c: Record<FiltroStock, number> = { todos: base.length, disponible: 0, demora: 0 };
         for (const p of base) if (p.availability !== "sin-stock") c[p.availability]++;
         return c;
-    }, [lista, q, tipo, genero, tamano]);
+    }, [lista, q, tipo, genero, tamano, nota, aromas]);
 
     const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
     const pageItems = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
     const hayFiltros = tipo !== "todo" || q !== "" || orden !== "recomendados" || stock !== "todos";
 
-    useEffect(() => { setPage(1); }, [search, tipo, genero, tamano, stock, orden]);
+    useEffect(() => { setPage(1); }, [search, tipo, genero, tamano, nota, stock, orden]);
 
     const elegirTipo = (t: Tipo) => {
         setTipo(t);
         setGenero("Todos");
         setTamano("Todos");
+        setNota("Todas");
     };
 
     const irAPagina = (n: number) => {
@@ -447,6 +483,25 @@ export default function CatalogoClient({ productos, masPedidos = [], notas = {},
                                                     resaltado={tamano !== "Todos"}
                                                     className="sm:w-52"
                                                 />
+                                                {/* Notas: lo que predomina en el perfume (dulce, floral, amaderado…) */}
+                                                {opcionesNota.length > 0 && (
+                                                    <Desplegable
+                                                        valor={nota}
+                                                        opciones={["Todas", ...[...opcionesNota].sort((a, b) => (cuentaNota[b] ?? 0) - (cuentaNota[a] ?? 0))].map(n => ({
+                                                            valor: n,
+                                                            titulo: n === "Todas" ? "Todas las notas" : n,
+                                                            extra: String(cuentaNota[n] ?? 0),
+                                                            deshabilitada: n !== nota && !cuentaNota[n],
+                                                        }))}
+                                                        onCambiar={setNota}
+                                                        etiqueta="Notas"
+                                                        icono={nota === "Todas"
+                                                            ? <Flower2 className="w-4 h-4" />
+                                                            : <span aria-hidden className="w-2.5 h-2.5 rounded-full" style={{ background: colorAcorde(nota) }} />}
+                                                        resaltado={nota !== "Todas"}
+                                                        className="col-span-2 sm:col-span-1 sm:w-52"
+                                                    />
+                                                )}
                                             </div>
                                         </motion.div>
                                     )}
@@ -614,9 +669,7 @@ export default function CatalogoClient({ productos, masPedidos = [], notas = {},
                     >
                         <div className="flex items-center justify-between px-5 py-4 border-b border-[#E6DFD5] dark:border-[#353B33]">
                             <h2 className="font-brand text-xl font-bold">Mi pedido</h2>
-                            <button onClick={() => setDrawerOpen(false)} className="p-2 rounded-full hover:bg-[#E6DFD5] dark:hover:bg-[#353B33]" aria-label="Cerrar">
-                                <X className="w-5 h-5" />
-                            </button>
+                            <BotonCerrar onClick={() => setDrawerOpen(false)} />
                         </div>
 
                         {items.length === 0 ? (
@@ -890,6 +943,7 @@ function FichaPerfume({ tamanos, idInicial, notas, onCerrar }: {
     // La descripción que cargaste en el producto tiene prioridad; si no hay, la de las notas
     const descripcion = tamanos.map(t => t.description).find(Boolean) || notas?.descripcion || "";
     const hayNotas = !!(notas && (notas.salida || notas.corazon || notas.fondo));
+    const acordes = notas ? acordesDe(notas) : [];
     const detalle = `${nombre}${marca ? ` (${marca})` : ""}${esPerfume ? ` - ${elegido.gender}` : ""}`;
     const g = (elegido.gender || "").toLowerCase();
     // Resplandor de color detrás del encabezado, según el género (como el degradé de las tarjetas)
@@ -924,14 +978,8 @@ function FichaPerfume({ tamanos, idInicial, notas, onCerrar }: {
                             </div>
                         )}
                     </div>
-                    {/* Cerrar: al pasar el mouse se tiñe de terracota y la X gira un cuarto de vuelta */}
-                    <button
-                        onClick={onCerrar}
-                        aria-label="Cerrar"
-                        className={`group/cerrar absolute top-5 right-5 w-9 h-9 rounded-full flex items-center justify-center ${VIDRIO_PIEZA} text-[#2C2C2C]/70 dark:text-[#F4EFEA]/70 [@media(hover:hover)]:hover:bg-[#C9866F] [@media(hover:hover)]:hover:border-[#C9866F] [@media(hover:hover)]:hover:text-white [@media(hover:hover)]:hover:shadow-[0_6px_18px_-4px_rgba(201,134,111,0.6)] active:scale-[0.92] transition-[background-color,border-color,color,box-shadow,transform] duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C9866F]/60`}
-                    >
-                        <X className="w-4 h-4 transition-transform duration-200 ease-out [@media(hover:hover)]:group-hover/cerrar:rotate-90" />
-                    </button>
+                    {/* Cerrar: la X de todo el sistema (terracota y gira al pasar el mouse) */}
+                    <BotonCerrar onClick={onCerrar} className="absolute top-5 right-5" />
                 </div>
 
                 <div className="px-6 pb-6 space-y-6">
@@ -970,14 +1018,40 @@ function FichaPerfume({ tamanos, idInicial, notas, onCerrar }: {
                         })}
                     </motion.div>
 
-                    <motion.section custom={1} variants={ENTRADA} initial="oculto" animate="visible">
-                        <p className={titulo}>Descripción</p>
-                        {descripcion ? (
-                            <p className="mt-2 text-[15px] leading-relaxed text-[#2C2C2C]/80 dark:text-[#F4EFEA]/80">{descripcion}</p>
-                        ) : (
-                            <p className="mt-2 text-sm text-[#2C2C2C]/45 dark:text-[#F4EFEA]/40">Todavía no cargamos la descripción de este perfume.</p>
-                        )}
-                    </motion.section>
+                    {/* Descripción: como la bajada de una revista, en letra serif grande y con una línea de acento */}
+                    {descripcion && (
+                        <motion.section custom={1} variants={ENTRADA} initial="oculto" animate="visible" className="relative pl-4">
+                            <span aria-hidden className="absolute left-0 top-1 bottom-1 w-[3px] rounded-full bg-gradient-to-b from-[#A3B69B] to-[#C9A877]" />
+                            <p className="font-editorial text-[1.3rem] leading-snug font-semibold italic text-[#2C2C2C] dark:text-[#F4EFEA]">
+                                {descripcion}
+                            </p>
+                        </motion.section>
+                    )}
+
+                    {/* Acordes principales: barras de qué predomina, de mayor a menor */}
+                    {acordes.length > 0 && (
+                        <motion.section custom={1.5} variants={ENTRADA} initial="oculto" animate="visible">
+                            <p className={titulo}>Lo que predomina</p>
+                            <ul className="mt-3 space-y-2">
+                                {acordes.map((a, i) => (
+                                    <li key={a.nombre} className="grid grid-cols-[5.5rem_1fr_2.25rem] items-center gap-3">
+                                        <span className="text-[13px] font-semibold truncate">{a.nombre}</span>
+                                        <span className="relative h-2.5 rounded-full bg-[#2C2C2C]/[0.07] dark:bg-white/[0.08] overflow-hidden">
+                                            <motion.span
+                                                aria-hidden
+                                                className="absolute inset-y-0 left-0 w-full rounded-full origin-left"
+                                                style={{ background: `linear-gradient(90deg, ${colorAcorde(a.nombre)}cc, ${colorAcorde(a.nombre)})` }}
+                                                initial={{ scaleX: 0 }}
+                                                animate={{ scaleX: a.valor / 100 }}
+                                                transition={{ delay: 0.15 + i * 0.06, duration: 0.6, ease: [0.23, 1, 0.32, 1] }}
+                                            />
+                                        </span>
+                                        <span className="text-xs tabular-nums text-right text-[#2C2C2C]/50 dark:text-[#F4EFEA]/50">{a.valor}%</span>
+                                    </li>
+                                ))}
+                            </ul>
+                        </motion.section>
+                    )}
 
                     {/* Notas: salida, corazón y fondo, cada una con su ícono */}
                     <motion.section custom={2} variants={ENTRADA} initial="oculto" animate="visible">

@@ -9,6 +9,7 @@ import Link from "next/link";
 import { guardarFotoProducto, quitarFotoProducto } from "@/lib/catalogo-actions";
 import { prepararFoto } from "@/lib/foto-cliente";
 import { Selector } from "@/components/Desplegable";
+import { BotonCerrar } from "@/components/ventana-partes";
 
 export default function EditarProductoPage() {
     const { bases, insumos, esencias, categorias, updateProducto, productos, generos } = useAppContext();
@@ -328,9 +329,12 @@ export default function EditarProductoPage() {
                                             />
                                         </div>
                                         <span className="text-xs font-bold text-slate-400 w-8">{comp.type === "Esencia" ? (gender === "Limpia pisos" ? "ml" : "g") : "un."}</span>
-                                        <button type="button" onClick={() => setCurrentComponents(currentComponents.filter(c => c.id !== comp.id))} className="p-2 text-slate-400 hover:text-red-600 transition-colors opacity-0 group-hover:opacity-100">
-                                            <X className="w-4 h-4" />
-                                        </button>
+                                        <BotonCerrar
+                                            tamano="sm"
+                                            etiqueta={`Quitar ${comp.name}`}
+                                            onClick={() => setCurrentComponents(currentComponents.filter(c => c.id !== comp.id))}
+                                            className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
+                                        />
                                     </div>
                                 ))}
                                 <div className="mt-4 p-4 border-2 border-dashed border-slate-100 dark:border-slate-800 rounded-2xl text-center">

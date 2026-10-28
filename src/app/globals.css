@@ -155,6 +155,34 @@
   font-family: 'Cinzel', 'Cormorant Garamond', serif;
 }
 
+/* La "manito" del mouse en todo lo que se puede tocar. Tailwind 4 dejó de ponerla en los botones,
+   y sin ella un botón de solo ícono no se distingue de un dibujo. */
+@layer base {
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  [role="checkbox"],
+  [role="switch"],
+  [role="radio"],
+  [role="tab"],
+  [role="option"]:not([aria-disabled="true"]),
+  [role="menuitem"],
+  summary,
+  label:has(input[type="checkbox"], input[type="radio"], input[type="range"]),
+  input[type="range"],
+  select {
+    cursor: pointer;
+  }
+  button:disabled,
+  [aria-disabled="true"] {
+    cursor: not-allowed;
+  }
+}
+
+/* Textos de lectura con aire de revista (descripción de cada perfume) */
+.font-editorial {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+}
+
 /* Hide default number input arrows */
 @layer base {
   input[type="number"]::-webkit-inner-spin-button,

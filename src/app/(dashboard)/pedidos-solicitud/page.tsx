@@ -24,8 +24,15 @@ const Toast = ({ message, onClose, type = "success" }: { message: string, onClos
             <div>
                 <p className="font-black text-sm">{message}</p>
             </div>
-            <button onClick={onClose} className="p-1 hover:bg-white/10 rounded-full transition-colors">
-                <X className="w-4 h-4" />
+            {/* Sobre el color del aviso: la misma X que el resto, en blanco translúcido */}
+            <button
+                type="button"
+                onClick={onClose}
+                aria-label="Cerrar aviso"
+                title="Cerrar"
+                className="group/x w-7 h-7 rounded-full flex items-center justify-center shrink-0 border border-white/30 bg-white/15 [@media(hover:hover)]:hover:bg-white [@media(hover:hover)]:hover:text-[#2C2C2C] active:scale-[0.92] transition-[background-color,color,transform] duration-200 ease-out"
+            >
+                <X className="w-3.5 h-3.5 transition-transform duration-200 ease-out [@media(hover:hover)]:group-hover/x:rotate-90" />
             </button>
         </div>
     </div>

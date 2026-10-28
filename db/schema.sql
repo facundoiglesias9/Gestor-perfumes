@@ -175,5 +175,6 @@ CREATE TABLE IF NOT EXISTS perfume_notas (
     corazon     text,
     fondo       text,
     descripcion text,
+    acordes     jsonb,          -- barras de "qué predomina" ajustadas a mano; null = se calculan de las notas
     updated_at  timestamptz DEFAULT now()
 );

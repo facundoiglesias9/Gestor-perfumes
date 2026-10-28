@@ -1,6 +1,7 @@
 "use client";
 
 import {
+    useEffect,
     useMemo,
     useRef,
     useState,
@@ -19,7 +20,14 @@ import {
     EyeOff,
     ImageOff,
     Tags,
+    Sparkles,
+    X,
 } from "lucide-react";
+import EditorNotasPerfume from "@/components/EditorNotasPerfume";
+import Casilla from "@/components/Casilla";
+import { BotonCerrar } from "@/components/ventana-partes";
+import { listarNotasPerfumes } from "@/lib/perfume-notas-actions";
+import { slugDe, tipoDe, type NotasPerfume } from "@/lib/catalogo-perfume";
 import { toast } from "sonner";
 import { useAppContext, type Producto } from "@/context/AppContext";
 import type { EstadoAutomatico } from "@/lib/perfume-hecho";
@@ -33,6 +41,8 @@ import Buscador from "@/components/Buscador";
 import EncabezadoPagina, { BOTON_ENC, BOTON_ENC_BORDE } from "@/components/EncabezadoPagina";
 
 const POR_PAGINA = 20;
+// Botones de cada fila (Notas y Editar): con borde, ícono y texto, como los de la Lista de precios
+const BOTON_FILA = "inline-flex items-center gap-1.5 h-8 px-3 rounded-lg border text-xs font-semibold whitespace-nowrap cursor-pointer shadow-sm shadow-black/[0.03] active:scale-[0.96] transition-[background-color,border-color,color,transform] duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7D9878]/50";
 const EASE_OUT = [0.23, 1, 0.32, 1] as const;
 
 type Filtro = "publicados" | "hay" | "demora" | "sin-stock" | "sin-foto" | "no-publicados" | "todos";
@@ -41,6 +51,10 @@ const tienePrecio = (p: Producto) => Number(p.priceMinorista) > 0;
 // Lo que ve un cliente: visible y con precio minorista (los "sin stock" se ven, marcados así)
 const enCatalogo = (p: Producto) => p.visibleCatalogo !== false && tienePrecio(p);
 const pesos = (n: number) => `$${Math.round(n).toLocaleString("es-AR")}`;
+// El mismo identificador del perfume que usa el catálogo público (sus tamaños comparten las notas)
+const slugProducto = (p: Producto) => slugDe({ name: (p.name || "").trim(), category: (p.category || "").trim(), gender: (p.gender || "").trim() || "Unisex" });
+const esPerfume = (p: Producto) => tipoDe({ category: p.category || "" }) === "perfumes";
+const hayNotas = (n?: NotasPerfume) => !!(n && (n.salida || n.corazon || n.fondo));
 
 // Los de disponibilidad y foto miran solo lo publicado (lo que ve el cliente).
 // "Sin stock" aparece solo cuando hay alguno.
@@ -97,6 +111,16 @@ export default function MiCatalogoPage() {
     const [quitarFotoDe, setQuitarFotoDe] = useState<Producto | null>(null);
     const inputFoto = useRef<HTMLInputElement>(null);
     const fotoPara = useRef<string | null>(null);
+
+    // Notas olfativas de los perfumes (las ve el cliente al abrir cada perfume)
+    const [notas, setNotas] = useState<Record<string, NotasPerfume>>({});
+    const [editandoNotas, setEditandoNotas] = useState<{ slug: string; nombre: string } | null>(null);
+    useEffect(() => {
+        listarNotasPerfumes().then(r => {
+            if (r.data) setNotas(r.data);
+            else if (r.error) console.error("No se pudieron leer las notas:", r.error);
+        });
+    }, []);
 
     const ordenados = useMemo(
         () => [...productos].sort((a, b) => a.name.localeCompare(b.name, "es")),
@@ -307,32 +331,43 @@ export default function MiCatalogoPage() {
                 </div>
             </div>
 
-            {/* Acciones para varios a la vez */}
+            {/* Acciones para varios a la vez: barra flotante de vidrio abajo al centro (como el menú de arriba),
+                así queda a mano aunque bajes por la lista */}
             <AnimatePresence initial={false}>
                 {seleccion.size > 0 && (
                     <motion.div
-                        initial={{ opacity: 0, y: -6 }}
-                        animate={{ opacity: 1, y: 0, transition: { duration: 0.2, ease: EASE_OUT } }}
-                        exit={{ opacity: 0, y: -4, transition: { duration: 0.12 } }}
-                        className="flex flex-wrap items-center gap-2 px-4 py-3 rounded-2xl bg-[#2C2C2C] dark:bg-[#F4EFEA] text-white dark:text-[#1B1D1A]"
+                        role="toolbar"
+                        aria-label="Acciones con los elegidos"
+                        initial={{ opacity: 0, y: 16, scale: 0.97 }}
+                        animate={{ opacity: 1, y: 0, scale: 1, transition: { duration: 0.24, ease: EASE_OUT } }}
+                        exit={{ opacity: 0, y: 10, scale: 0.98, transition: { duration: 0.14 } }}
+                        className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 flex items-center gap-1.5 p-1.5 pl-2 rounded-full bg-gradient-to-b from-white/85 to-white/65 dark:from-[#2E322D]/85 dark:to-[#1F221E]/80 backdrop-blur-2xl backdrop-saturate-150 border border-white/80 dark:border-white/[0.12] shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_18px_50px_-12px_rgba(44,44,44,0.35)] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.12),0_18px_50px_-12px_rgba(0,0,0,0.75)] max-w-[calc(100vw-2rem)]"
                     >
-                        <span className="text-sm font-semibold mr-2">{seleccion.size} {seleccion.size === 1 ? "elegido" : "elegidos"}</span>
+                        <span className="inline-flex items-center gap-2 h-9 pl-1 pr-3 text-sm font-semibold whitespace-nowrap">
+                            <span key={seleccion.size} className="anim-pop min-w-7 h-7 px-2 rounded-full bg-[#7D9878] text-white text-xs font-bold tabular-nums flex items-center justify-center">
+                                {seleccion.size}
+                            </span>
+                            {seleccion.size === 1 ? "elegido" : "elegidos"}
+                        </span>
+                        <span aria-hidden className="w-px h-6 bg-[#2C2C2C]/10 dark:bg-white/10" />
                         {[
-                            { label: "Mostrar", icono: Eye, cambios: { visible: true }, aviso: "Ahora se ven en el catálogo" },
-                            { label: "Ocultar", icono: EyeOff, cambios: { visible: false }, aviso: "Ocultos del catálogo" },
+                            { label: "Mostrar en el catálogo", corto: "Mostrar", icono: Eye, cambios: { visible: true }, aviso: "Ahora se ven en el catálogo" },
+                            { label: "Ocultar del catálogo", corto: "Ocultar", icono: EyeOff, cambios: { visible: false }, aviso: "Ocultos del catálogo" },
                         ].map(a => (
                             <button
                                 key={a.label}
+                                type="button"
                                 onClick={() => aplicarASeleccion(a.cambios, a.aviso)}
-                                className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs font-semibold bg-white/10 dark:bg-[#1B1D1A]/10 hover:bg-white/20 dark:hover:bg-[#1B1D1A]/20 active:scale-[0.96] transition-[background-color,transform] duration-150"
+                                title={a.label}
+                                className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-full text-sm font-semibold whitespace-nowrap text-[#2C2C2C] dark:text-[#F4EFEA] [@media(hover:hover)]:hover:bg-[#2C2C2C]/[0.07] dark:[@media(hover:hover)]:hover:bg-white/[0.08] active:scale-[0.96] transition-[background-color,transform] duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7D9878]/50"
                             >
-                                <a.icono className="w-3.5 h-3.5" />
-                                {a.label}
+                                <a.icono className="w-4 h-4 text-[#7D9878] dark:text-[#A3B69B]" />
+                                <span className="hidden sm:inline">{a.label}</span>
+                                <span className="sm:hidden">{a.corto}</span>
                             </button>
                         ))}
-                        <button onClick={() => setSeleccion(new Set())} className="ml-auto text-xs font-semibold opacity-70 hover:opacity-100">
-                            Quitar selección
-                        </button>
+                        <span aria-hidden className="w-px h-6 bg-[#2C2C2C]/10 dark:bg-white/10" />
+                        <BotonCerrar etiqueta="Quitar selección" onClick={() => setSeleccion(new Set())} />
                     </motion.div>
                 )}
             </AnimatePresence>
@@ -351,13 +386,13 @@ export default function MiCatalogoPage() {
                         <table className="w-full border-collapse min-w-[880px]">
                             <thead>
                                 <tr className="text-[11px] font-semibold uppercase tracking-wider text-[#2C2C2C]/50 dark:text-[#F4EFEA]/45 bg-[#F9F6F0]/70 dark:bg-[#1B1D1A]/60 border-b border-[#E6DFD5] dark:border-[#353B33]">
-                                    <th className="w-12 py-3 pl-5">
-                                        <input
-                                            type="checkbox"
-                                            checked={todaLaPaginaElegida}
-                                            onChange={alternarPagina}
-                                            aria-label="Elegir todos los de esta página"
-                                            className="w-4 h-4 accent-[#7D9878] cursor-pointer"
+                                    <th className="w-12 py-3 pl-5 align-middle">
+                                        <Casilla
+                                            marcada={todaLaPaginaElegida}
+                                            mixta={!todaLaPaginaElegida && deLaPagina.some(p => seleccion.has(p.id))}
+                                            onCambiar={alternarPagina}
+                                            etiqueta="Elegir todos los de esta página"
+                                            className="align-middle"
                                         />
                                     </th>
                                     <th className="py-3 px-3 text-left font-semibold">Producto</th>
@@ -382,12 +417,11 @@ export default function MiCatalogoPage() {
                                             className={`anim-fila transition-colors duration-150 ${elegido ? "bg-[#7D9878]/[0.07]" : "hover:bg-[#F9F6F0] dark:hover:bg-[#2A2E29]"}`}
                                         >
                                             <td className="py-3 pl-5 align-middle">
-                                                <input
-                                                    type="checkbox"
-                                                    checked={elegido}
-                                                    onChange={() => alternarSeleccion(p.id)}
-                                                    aria-label={`Elegir ${p.name}`}
-                                                    className="w-4 h-4 accent-[#7D9878] cursor-pointer"
+                                                <Casilla
+                                                    marcada={elegido}
+                                                    onCambiar={() => alternarSeleccion(p.id)}
+                                                    etiqueta={`Elegir ${p.name}`}
+                                                    className="align-middle"
                                                 />
                                             </td>
                                             <td className="py-3 px-3">
@@ -474,15 +508,36 @@ export default function MiCatalogoPage() {
                                                     onCambiar={() => aplicar([p.id], { visible: !visible })}
                                                 />
                                             </td>
-                                            <td className="py-3 pl-3 pr-5 text-right">
-                                                <Link
-                                                    href={`/editar-producto/${p.id}`}
-                                                    title="Editar producto"
-                                                    aria-label={`Editar ${p.name}`}
-                                                    className="inline-flex w-8 h-8 rounded-lg items-center justify-center text-[#2C2C2C]/50 dark:text-[#F4EFEA]/45 hover:text-[#2C2C2C] dark:hover:text-[#F4EFEA] hover:bg-[#F4EFEA] dark:hover:bg-[#1B1D1A] active:scale-[0.94] transition-[background-color,color,transform] duration-150"
-                                                >
-                                                    <Pencil className="w-4 h-4" />
-                                                </Link>
+                                            <td className="py-3 pl-3 pr-5">
+                                                <div className="flex items-center justify-end gap-2">
+                                                    {/* Notas del perfume: el puntito avisa si ya tiene (verde) o le faltan (terracota) */}
+                                                    {esPerfume(p) && (() => {
+                                                        const slug = slugProducto(p);
+                                                        const tiene = hayNotas(notas[slug]);
+                                                        return (
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => setEditandoNotas({ slug, nombre: extractBrand(p.name).title.replace(/\s+\d+\s*ML\s*$/i, "").trim() || p.name })}
+                                                                title={tiene ? "Ver y editar las notas del perfume" : "Este perfume todavía no tiene notas"}
+                                                                aria-label={`Notas de ${p.name}`}
+                                                                className={`${BOTON_FILA} border-[#7D9878]/45 bg-[#7D9878]/[0.08] text-[#3F5A3C] dark:text-[#C5D6BF] [@media(hover:hover)]:hover:bg-[#7D9878]/[0.18] [@media(hover:hover)]:hover:border-[#7D9878]/80`}
+                                                            >
+                                                                <Sparkles className="w-3.5 h-3.5" />
+                                                                Notas
+                                                                <span aria-hidden className={`w-1.5 h-1.5 rounded-full ${tiene ? "bg-[#1baf7a]" : "bg-[#C9866F]"}`} />
+                                                            </button>
+                                                        );
+                                                    })()}
+                                                    <Link
+                                                        href={`/editar-producto/${p.id}`}
+                                                        title="Editar producto"
+                                                        aria-label={`Editar ${p.name}`}
+                                                        className={`${BOTON_FILA} border-[#E6DFD5] dark:border-[#3A403A] bg-white dark:bg-white/[0.03] text-[#2C2C2C]/80 dark:text-[#F4EFEA]/80 [@media(hover:hover)]:hover:border-[#2C2C2C]/30 dark:[@media(hover:hover)]:hover:border-white/25 [@media(hover:hover)]:hover:text-[#2C2C2C] dark:[@media(hover:hover)]:hover:text-[#F4EFEA]`}
+                                                    >
+                                                        <Pencil className="w-3.5 h-3.5" />
+                                                        Editar
+                                                    </Link>
+                                                </div>
                                             </td>
                                         </tr>
                                     );
@@ -499,6 +554,15 @@ export default function MiCatalogoPage() {
             </section>
 
             <PaginationControls currentPage={paginaActual} totalPages={totalPaginas} onPageChange={setPagina} />
+
+            <EditorNotasPerfume
+                abierto={!!editandoNotas}
+                slug={editandoNotas?.slug ?? null}
+                nombre={editandoNotas?.nombre ?? ""}
+                notas={editandoNotas ? notas[editandoNotas.slug] : undefined}
+                onCerrar={() => setEditandoNotas(null)}
+                onGuardado={(slug, n) => setNotas(prev => ({ ...prev, [slug]: n }))}
+            />
 
             <ConfirmModal
                 isOpen={!!quitarFotoDe}

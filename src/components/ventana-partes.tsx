@@ -44,17 +44,32 @@ export function PanelVentana({ ancho = "md", alto = "contenido", className = "",
     );
 }
 
-export function BotonCerrar({ onClick, disabled, className = "" }: { onClick: () => void; disabled?: boolean; className?: string }) {
+// La X de todo el sistema (cerrar una ventana o quitar algo de una lista): círculo de vidrio que,
+// al pasar el mouse, se tiñe de terracota y la X gira un cuarto de vuelta. "sm" para dentro de listas.
+const TAMANOS_X = {
+    md: { boton: "w-9 h-9", icono: "w-4 h-4" },
+    sm: { boton: "w-7 h-7", icono: "w-3.5 h-3.5" },
+} as const;
+
+export function BotonCerrar({ onClick, disabled, className = "", tamano = "md", etiqueta = "Cerrar" }: {
+    onClick: () => void;
+    disabled?: boolean;
+    className?: string;
+    tamano?: keyof typeof TAMANOS_X;
+    /** Lo que hace, para el lector de pantalla y el cartelito: "Cerrar", "Quitar Sauvage"… */
+    etiqueta?: string;
+}) {
+    const t = TAMANOS_X[tamano];
     return (
         <button
             type="button"
             onClick={onClick}
             disabled={disabled}
-            title="Cerrar"
-            aria-label="Cerrar"
-            className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 cursor-pointer bg-[#2C2C2C]/[0.05] dark:bg-white/[0.06] text-[#2C2C2C]/60 dark:text-[#F4EFEA]/60 hover:bg-[#2C2C2C]/10 dark:hover:bg-white/[0.12] hover:text-[#2C2C2C] dark:hover:text-[#F4EFEA] active:scale-[0.94] disabled:opacity-40 disabled:pointer-events-none transition-[background-color,color,transform] duration-150 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7D9878]/50 ${className}`}
+            title={etiqueta}
+            aria-label={etiqueta}
+            className={`group/x ${t.boton} rounded-full flex items-center justify-center shrink-0 cursor-pointer border border-white/80 dark:border-white/[0.08] bg-white/60 dark:bg-white/[0.05] shadow-[inset_0_1px_0_rgba(255,255,255,0.7)] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] text-[#2C2C2C]/70 dark:text-[#F4EFEA]/70 [@media(hover:hover)]:hover:bg-[#C9866F] [@media(hover:hover)]:hover:border-[#C9866F] [@media(hover:hover)]:hover:text-white [@media(hover:hover)]:hover:shadow-[0_6px_18px_-4px_rgba(201,134,111,0.6)] active:scale-[0.92] disabled:opacity-40 disabled:pointer-events-none transition-[background-color,border-color,color,box-shadow,transform] duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C9866F]/60 ${className}`}
         >
-            <X className="w-5 h-5" />
+            <X className={`${t.icono} transition-transform duration-200 ease-out [@media(hover:hover)]:group-hover/x:rotate-90`} />
         </button>
     );
 }

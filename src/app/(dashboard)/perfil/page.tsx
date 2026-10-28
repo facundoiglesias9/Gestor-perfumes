@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { useAppContext, type Usuario } from "@/context/AppContext";
 import { CORREO_VALIDO } from "@/lib/correo";
 import { crearUsuarioEquipo, cambiarClaveUsuario, cambiarEstadoUsuario, cambiarGmailUsuario, eliminarUsuario } from "@/lib/auth-actions";
+import { BotonCerrar } from "@/components/ventana-partes";
 
 const EASE_OUT = [0.23, 1, 0.32, 1] as const;
 const aparecer = {
@@ -422,9 +423,7 @@ export default function PerfilPage() {
                             >
                                 <div className="flex items-center justify-between gap-3">
                                     <p className="text-sm font-semibold text-[#2C2C2C] dark:text-[#F4EFEA]">Nuevo usuario</p>
-                                    <button type="button" onClick={cerrarNuevo} aria-label="Cerrar" className="w-8 h-8 rounded-lg flex items-center justify-center text-[#2C2C2C]/50 dark:text-[#F4EFEA]/50 hover:bg-[#F4EFEA] dark:hover:bg-[#1B1D1A]">
-                                        <X className="w-4 h-4" />
-                                    </button>
+                                    <BotonCerrar tamano="sm" onClick={cerrarNuevo} />
                                 </div>
                                 <div className="grid sm:grid-cols-2 gap-3">
                                     <div>

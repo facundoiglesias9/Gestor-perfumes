@@ -4,7 +4,7 @@ import { cache } from "react";
 import sql from "@/lib/db";
 import { calculadorDisponibilidad } from "@/lib/perfume-hecho";
 import type { CatalogoProducto } from "@/app/catalogo/CatalogoClient";
-import type { NotasPerfume } from "@/lib/catalogo-perfume";
+import { filaANotas, type NotasPerfume } from "@/lib/catalogo-perfume";
 
 // Las descripciones que el sistema genera solo ("Generado de base ...") son notas internas.
 function descripcionPublica(desc: unknown): string {
@@ -65,14 +65,8 @@ export const getProductosPublicos = cache(async (): Promise<CatalogoProducto[] |
 // Notas olfativas de los perfumes, por slug (si la tabla todavía no existe, el catálogo sigue sin notas)
 export const getNotasPerfumes = cache(async (): Promise<Record<string, NotasPerfume>> => {
     try {
-        const rows = await sql`SELECT slug, familia, salida, corazon, fondo, descripcion FROM perfume_notas`;
-        return Object.fromEntries(rows.map(r => [String(r.slug), {
-            familia: Array.isArray(r.familia) ? r.familia.map(String) : [],
-            salida: r.salida ? String(r.salida) : "",
-            corazon: r.corazon ? String(r.corazon) : "",
-            fondo: r.fondo ? String(r.fondo) : "",
-            descripcion: r.descripcion ? String(r.descripcion) : "",
-        }]));
+        const rows = await sql`SELECT slug, familia, salida, corazon, fondo, descripcion, acordes FROM perfume_notas`;
+        return Object.fromEntries(rows.map(r => [String(r.slug), filaANotas(r)]));
     } catch (err) {
         console.error("Catálogo público: no se pudieron leer las notas", err);
         return {};

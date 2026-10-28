@@ -692,15 +692,7 @@ function TarjetaElegida({ fila: f, cantidad, error, onCantidad, onQuitar }: {
                         {f.genero && <Genero genero={f.genero} />}
                     </p>
                 </div>
-                <button
-                    type="button"
-                    onClick={onQuitar}
-                    aria-label={`Quitar ${f.nombreCompleto}`}
-                    title="Quitar"
-                    className="w-9 h-9 -mt-1.5 -mr-1.5 rounded-lg flex items-center justify-center shrink-0 text-[#2C2C2C]/40 dark:text-[#F4EFEA]/40 hover:text-[#B5654A] dark:hover:text-[#DBA793] hover:bg-[#C9866F]/10 transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7D9878]/50"
-                >
-                    <X className="w-4 h-4" />
-                </button>
+                <BotonCerrar tamano="sm" etiqueta={`Quitar ${f.nombreCompleto}`} onClick={onQuitar} className="-mt-0.5" />
             </div>
             <div className="mt-3 flex items-center justify-between gap-3">
                 <span className={`text-xs font-medium ${error ? "text-[#97604D] dark:text-[#DBA793]" : "text-[#2C2C2C]/55 dark:text-[#F4EFEA]/50"}`}>

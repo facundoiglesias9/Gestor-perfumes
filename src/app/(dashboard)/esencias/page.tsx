@@ -759,9 +759,9 @@ export default function EsenciasPage() {
                                                         setIsCustomProvider(false);
                                                         setFormData({ ...formData, provider: proveedores[0]?.name || "" });
                                                     }}
-                                                    className="absolute right-1.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-lg flex items-center justify-center text-[#2C2C2C]/45 dark:text-[#F4EFEA]/45 hover:text-[#2C2C2C] dark:hover:text-[#F4EFEA] hover:bg-[#2C2C2C]/[0.06] dark:hover:bg-white/10 transition-colors duration-150"
+                                                    className="group/x absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full flex items-center justify-center border border-white/80 dark:border-white/[0.08] bg-white/60 dark:bg-white/[0.05] text-[#2C2C2C]/70 dark:text-[#F4EFEA]/70 [@media(hover:hover)]:hover:bg-[#C9866F] [@media(hover:hover)]:hover:border-[#C9866F] [@media(hover:hover)]:hover:text-white active:scale-[0.92] transition-[background-color,border-color,color,transform] duration-200 ease-out"
                                                 >
-                                                    <X className="w-4 h-4" />
+                                                    <X className="w-3.5 h-3.5 transition-transform duration-200 ease-out [@media(hover:hover)]:group-hover/x:rotate-90" />
                                                 </button>
                                             </span>
                                         ) : (

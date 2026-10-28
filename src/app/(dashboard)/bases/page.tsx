@@ -7,7 +7,7 @@ import { useState, useCallback, useMemo } from "react";
 import { useAppContext, Base, BaseComponent } from "@/context/AppContext";
 import ConfirmModal from "@/components/ConfirmModal";
 import Ventana from "@/components/Ventana";
-import { PanelVentana, CabeceraVentana, CuerpoVentana, PieVentana, BOTON_PRINCIPAL, BOTON_SECUNDARIO } from "@/components/ventana-partes";
+import { PanelVentana, CabeceraVentana, CuerpoVentana, PieVentana, BotonCerrar, BOTON_PRINCIPAL, BOTON_SECUNDARIO } from "@/components/ventana-partes";
 import { Selector } from "@/components/Desplegable";
 
 // Curva de la casa: salida rápida para lo que aparece.
@@ -480,15 +480,7 @@ export default function BasesPage() {
                                         {formData.name.trim() || "Sin nombre"}
                                     </h2>
                                 </div>
-                                <button
-                                    type="button"
-                                    onClick={handleCloseModal}
-                                    className="w-10 h-10 rounded-full bg-[#2C2C2C]/[0.05] dark:bg-white/[0.06] text-[#2C2C2C]/60 dark:text-[#F4EFEA]/60 hover:bg-[#2C2C2C]/10 dark:hover:bg-white/[0.12] hover:text-[#2C2C2C] dark:hover:text-[#F4EFEA] active:scale-[0.94] transition-[background-color,color,transform] duration-150 ease-out flex items-center justify-center shrink-0 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7D9878]/50"
-                                    title="Cerrar"
-                                    aria-label="Cerrar"
-                                >
-                                    <X className="w-5 h-5" />
-                                </button>
+                                <BotonCerrar onClick={handleCloseModal} />
                             </div>
 
                             <ol aria-label="Pasos" className="mt-5 flex items-center gap-2">

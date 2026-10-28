@@ -8,7 +8,7 @@ import { AnimatePresence, MotionConfig, motion, useReducedMotion, type Variants 
 import { toast } from "sonner";
 import { useAppContext } from "@/context/AppContext";
 import Ventana from "@/components/Ventana";
-import { PanelVentana, CabeceraVentana, CAMPO, ETIQUETA_CAMPO, BOTON_PRINCIPAL, BOTON_SECUNDARIO } from "@/components/ventana-partes";
+import { PanelVentana, CabeceraVentana, BotonCerrar, CAMPO, ETIQUETA_CAMPO, BOTON_PRINCIPAL, BOTON_SECUNDARIO } from "@/components/ventana-partes";
 import { Selector } from "@/components/Desplegable";
 import Buscador from "@/components/Buscador";
 import { formatNumber } from "@/lib/format-utils";
@@ -390,14 +390,7 @@ export default function PedidosPage() {
                                                     <div className="flex items-center gap-2 ml-auto">
                                                         <Contador chico valor={item.bultosToBuy} onCambiar={n => cambiarBultos(item.cartId, n)} etiqueta={`Bultos de ${item.name}`} />
                                                         <p className="w-24 text-right text-sm font-semibold tabular-nums text-[#2C2C2C] dark:text-[#F4EFEA]">{pesos(subtotal(item))}</p>
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => quitar(item.cartId)}
-                                                            aria-label={`Quitar ${item.name}`}
-                                                            className="w-8 h-8 rounded-lg flex items-center justify-center text-[#2C2C2C]/40 dark:text-[#F4EFEA]/35 hover:text-[#97604D] dark:hover:text-[#DBA793] hover:bg-[#C9866F]/10 active:scale-[0.92] transition-[background-color,color,transform] duration-150"
-                                                        >
-                                                            <X className="w-4 h-4" />
-                                                        </button>
+                                                        <BotonCerrar tamano="sm" etiqueta={`Quitar ${item.name}`} onClick={() => quitar(item.cartId)} />
                                                     </div>
                                                 </motion.div>
                                             </motion.li>

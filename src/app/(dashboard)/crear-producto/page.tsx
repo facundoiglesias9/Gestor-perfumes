@@ -10,6 +10,7 @@ import { upsertRecord } from "@/lib/db-actions";
 import { guardarFotoProducto } from "@/lib/catalogo-actions";
 import { prepararFoto } from "@/lib/foto-cliente";
 import { Selector } from "@/components/Desplegable";
+import { BotonCerrar } from "@/components/ventana-partes";
 
 export default function CrearProductoPage() {
     const { bases, insumos, esencias, categorias, productos, setProductos, setProductosSinGuardar, generos } = useAppContext();
@@ -433,9 +434,12 @@ const handleMarginMinoristaChange = (val: string) => {
                                                     />
                                                 </div>
                                                 <span className="text-xs font-bold text-[#2C2C2C]/50 dark:text-[#F4EFEA]/50 w-8">{comp.type === "Esencia" ? (gender === "Limpia pisos" ? "ml" : "g") : "un."}</span>
-                                                <button type="button" onClick={() => setCurrentComponents(currentComponents.filter(c => c.id !== comp.id))} className="p-2 text-[#2C2C2C]/40 hover:text-[#C9866F] transition-colors opacity-0 group-hover:opacity-100">
-                                                    <X className="w-4 h-4" />
-                                                </button>
+                                                <BotonCerrar
+                                                    tamano="sm"
+                                                    etiqueta={`Quitar ${comp.name}`}
+                                                    onClick={() => setCurrentComponents(currentComponents.filter(c => c.id !== comp.id))}
+                                                    className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
+                                                />
                                             </div>
                                         );
                                     })
