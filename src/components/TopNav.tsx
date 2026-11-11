@@ -6,8 +6,8 @@ import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
     Tags, Wallet, ChevronDown, Layers, Plus, ShoppingCart, Archive,
-    FlaskConical, ListTree, Percent, Terminal, StickyNote, Menu, X,
-    LogOut, Store, Boxes, Settings2, PieChart, Users, UserRound, LayoutGrid, type LucideIcon
+    FlaskConical, ListTree, Percent, StickyNote, Menu, X,
+    LogOut, Store, Boxes, Settings2, PieChart, Users, UserRound, LayoutGrid, Bot, type LucideIcon
 } from "lucide-react";
 import ThemeToggle from "@/components/ThemeToggle";
 import { useAppContext } from "@/context/AppContext";
@@ -125,7 +125,7 @@ export default function TopNav() {
             items: [
                 { href: "/parametros", label: "Parámetros y Clasificación", icon: ListTree, desc: "Categorías, géneros y opciones" },
                 { href: "/porcentaje-ganancia", label: "Porcentaje de Ganancia", icon: Percent, desc: "Márgenes por categoría" },
-                { href: "/logs", label: "Logs del Sistema", icon: Terminal, desc: "Actividad y errores del sistema" },
+                { href: "/agentes", label: "Agentes", icon: Bot, desc: "Revisan el negocio y el sistema por vos" },
                 { href: "/perfil", label: "Usuarios", icon: Users, desc: "Quién puede entrar al sistema" },
             ]
         },
